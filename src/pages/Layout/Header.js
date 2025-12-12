@@ -1,0 +1,296 @@
+import React, { useState, useRef, useEffect } from "react";
+import { Button, Menu, MenuItem, ListItemIcon, Box, Typography, Divider } from "@mui/material";
+import { UserCircle, User, Key } from "lucide-react";
+import { makeStyles } from "@mui/styles";
+import { getCookie, setCookie } from "../../services/Cookies";
+import PasswordChange from "../../services/PasswordChange";
+import { useNavigate } from "react-router-dom";
+import { postRequest } from "../../services/Apiservice";
+import LoadingMask from "../../services/LoadingMask";
+import { ToastError, ToastSuccess } from "../../services/ToastMsg";
+
+const useStyles = makeStyles({
+  button: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "2px",
+    width: "100%",
+    padding: "6px 10px",
+  },
+  dateText: {
+    fontSize: "12px",
+    fontWeight: "bold",
+  },
+  timerText: {
+    fontSize: "14px",
+    fontWeight: "bold",
+  },
+});
+
+const Header = () => {
+  const classes = useStyles();
+  const [clockedIn, setClockedIn] = useState(false);
+  const [timer, setTimer] = useState(0);
+  const [clockInTime, setClockInTime] = useState(null);
+  const intervalRef = useRef(null);
+  const navigate = useNavigate();
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(getCookie("isDefaultPasswordChanged") === "false");
+  const [isManualChange, setIsManualChange] = useState(false); // true when user clicks menu
+
+  // Get user details from cookies
+  const firstName = getCookie("firstName") || "";
+  const lastName = getCookie("lastName") || "";
+  const employeeId = getCookie("employeeId") || "";
+
+
+  useEffect(() => {
+    const cookieClockIn = getCookie("clockInTime");
+    if (cookieClockIn) {
+      const clockTime = new Date(cookieClockIn);
+      setClockedIn(true);
+      setClockInTime(clockTime);
+
+      const elapsedSeconds = Math.floor((new Date() - clockTime) / 1000);
+      setTimer(elapsedSeconds);
+
+      intervalRef.current = setInterval(() => setTimer(prev => prev + 1), 1000);
+    }
+
+    return () => clearInterval(intervalRef.current);
+  }, []);
+
+
+  const fetchIpAddress = async () => {
+    try {
+      const res = await fetch("https://api64.ipify.org?format=json");
+      const data = await res.json();
+      return data.ip;
+    } catch (err) {
+      console.error("Error fetching IP:", err);
+      return null;
+    }
+  };
+
+  const fetchLocation = async () => {
+    if (!navigator.geolocation) {
+      console.error("Geolocation is not supported.");
+      return null;
+    }
+
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const latitude = position.coords.latitude;
+          const longitude = position.coords.longitude;
+
+          // Reverse geocode using OpenStreetMap
+          let city = "";
+          //let area = "";
+          try {
+            const res = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`
+            );
+            const data = await res.json();
+            city = data.address.city || data.address.town || data.address.village || "";
+            //area = data.address.suburb || data.address.neighbourhood || "";
+          } catch (err) {
+            console.error("Error fetching city/area:", err);
+          }
+
+          resolve({
+            city,
+          });
+        },
+        (error) => {
+          if (error.code === error.PERMISSION_DENIED) {
+            console.warn("Location permission denied.");
+            alert(
+              "Location permission denied. Clock In/Out will continue without location."
+            );
+          } else {
+            console.error("Error getting location:", error);
+          }
+          resolve(null);
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    });
+  };
+
+
+
+
+
+  // Clock In/Out
+  // Clock In/Out
+  const handleClock = async () => {   // <-- add async here
+    const ip = await fetchIpAddress();
+    const location = await fetchLocation();
+    let data = {
+      location: location.city,
+      ipAddress: ip,
+    };
+    if (!clockedIn) {
+      const url = `Attendance/clock-in`;
+      setLoading(true);
+      postRequest(url, data)
+        .then((res) => {
+          if (res.status === 200) {
+            const now = new Date();
+            setClockedIn(true);
+            setClockInTime(now);
+            setTimer(0);
+            intervalRef.current = setInterval(() => setTimer(prev => prev + 1), 1000);
+            ToastSuccess("Clock-In successful!"); 
+            setLoading(false);
+            setCookie(
+              "clockInTime",
+              now,
+              new Date(new Date().setDate(new Date().getDate() + 1))
+            );
+          }
+        })
+        .catch((err) => {
+          setLoading(false);
+          console.error("Login error:", err);
+          ToastError("Clock-In failed!"); 
+        });
+    } else {
+      const url = `Attendance/clock-out`;
+      setLoading(true);
+      postRequest(url, data)
+        .then((res) => {
+          if (res.status === 200) {
+            setClockedIn(false);
+            setClockInTime(null);
+            setTimer(0);
+            clearInterval(intervalRef.current);
+            ToastSuccess("Clock-Out successful!"); 
+            setLoading(false);
+            setCookie("clockInTime", null, new Date(0));
+          }
+        })
+        .catch((err) => {
+          setLoading(false);
+          console.error("Login error:", err);
+          ToastError("Clock-Out failed!"); 
+        });
+    }
+  };
+
+
+  const formatTime = (seconds) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const formatDate = (date) => {
+    if (!date) return "";
+    return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  };
+
+  // Account menu handlers
+  const handleAccountClick = (event) => setAnchorEl(event.currentTarget);
+  const handleAccountClose = () => setAnchorEl(null);
+
+  // When user clicks "Change Password" in menu
+  const handleManualPasswordChange = () => {
+    setIsManualChange(true);
+    setShowPassword(true);
+    handleAccountClose();
+  };
+
+  return (
+    <header className="header">
+      <LoadingMask loading={loading} />
+      {/* PasswordChange modal */}
+      {showPassword && (
+        <PasswordChange
+          isManualChange={isManualChange}
+          onSuccess={() => {
+            setShowPassword(false);
+            setIsManualChange(false);
+          }}
+          onClose={() => {
+            setShowPassword(false);
+            setIsManualChange(false);
+          }}
+        />
+      )}
+
+      <div className="header-left">
+        <img src="/assets/images/natobotics-logo.png" alt="Logo" className="header-logo" />
+        <div className="header-text">
+          Nato<span>botics</span>
+        </div>
+      </div>
+
+      <div className="header-right">
+        {/* Clock In Button */}
+        <Button
+          variant="contained"
+          color={clockedIn ? "success" : "primary"}
+          onClick={handleClock}
+          className={classes.button}
+        >
+          {clockedIn ? (
+            <>
+              <span className={classes.dateText}>{formatDate(clockInTime)}</span>
+              <span className={classes.timerText}>{formatTime(timer)}</span>
+            </>
+          ) : (
+            "Clock In"
+          )}
+        </Button>
+
+        {/* Account icon */}
+        <div className="icon-with-text" onClick={handleAccountClick} style={{ cursor: "pointer", marginLeft: 10 }}>
+          <UserCircle size={25} />
+          <span>Account</span>
+        </div>
+
+        {/* Account Menu */}
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={handleAccountClose}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+          transformOrigin={{ vertical: "top", horizontal: "right" }}
+        >
+          <Box sx={{ px: 2, py: 1 }}>
+            <Typography variant="subtitle1" color="textSecondary">
+              Hi,
+            </Typography>
+            <Typography variant="body1" fontWeight="bold">
+              {firstName} {lastName}
+            </Typography>
+            <Typography variant="body3" color="textSecondary">
+              {employeeId}
+            </Typography>
+          </Box>
+          <Divider />
+          <MenuItem onClick={() => { handleAccountClose(); navigate("/view-employee") }}>
+            <ListItemIcon>
+              <User size={18} />
+            </ListItemIcon>
+            View Profile
+          </MenuItem>
+          <MenuItem onClick={handleManualPasswordChange}>
+            <ListItemIcon>
+              <Key size={18} />
+            </ListItemIcon>
+            Change Password
+          </MenuItem>
+        </Menu>
+      </div>
+    </header>
+  );
+};
+
+export default Header;

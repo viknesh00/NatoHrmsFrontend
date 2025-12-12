@@ -1,13 +1,317 @@
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* Sidebar */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 250px;
+  height: 100%; /* full height of parent flex container */
+  background-color: #fff;
+  border-right: 1px solid #ddd;
+  transition: width 0.3s ease;
+  overflow-x: hidden;
+  position: relative;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+.sidebar.collapsed {
+  width: 70px; /* collapsed width */
 }
+
+.collapse-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  align-items: center;
+  color: #444;
+  transition: background 0.2s, justify-content 0.2s;
+}
+
+/* Alignments */
+.sidebar:not(.collapsed) .collapse-btn {
+  justify-content: flex-end;
+}
+
+.sidebar.collapsed .collapse-btn {
+  justify-content: center;
+}
+
+.collapse-btn:hover {
+  background-color: #f5f5f5;
+}
+
+.menu-scroll {
+  flex: 1; /* take remaining height */
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px;
+}
+
+.sidebar.collapsed .menu-scroll {
+  overflow-y: visible;
+}
+
+.menu-section ul,
+.logout-section ul {
+  list-style: none !important; /* remove bullets */
+  padding: 0;
+  margin: 0;
+}
+
+.menu-section li,
+.logout-section li {
+  list-style: none !important;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  text-decoration: none;
+  color: #444;
+  margin-bottom: 6px;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.menu-item .icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background-color: #eee;
+  color: #555;
+  flex-shrink: 0;
+}
+
+.menu-item:hover {
+  background-color: #f0f0f0;
+}
+
+.menu-item.active {
+  background-color: #e0f2fe;
+  color: #1d4ed8;
+  font-weight: 500;
+}
+
+.menu-item.active .icon {
+  background-color: #1d4ed8;
+  color: #fff;
+}
+
+.sidebar.collapsed .menu-item {
+  justify-content: center; /* center icons */
+  padding: 8px 0;
+  gap: 0;
+}
+
+.sidebar.collapsed .menu-item span {
+  display: none; /* hide labels */
+}
+
+.sidebar.collapsed .menu-item[title] {
+  position: relative;
+}
+
+.sidebar.collapsed .menu-item[title]::after {
+  content: attr(title);
+  position: absolute;
+  left: 70px; /* outside collapsed sidebar */
+  top: 50%;
+  transform: translateY(-50%) translateX(-10px);
+  background: #1d4ed8;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+}
+
+.sidebar.collapsed .menu-item[title]:hover::after {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+.logout-section {
+  padding: 10px;
+  flex-shrink: 0; /* prevent shrinking */
+}
+
+.footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 15px;
+  font-size: 12px;
+  color: #888;
+  border-top: 1px solid #ddd;
+  flex-shrink: 0; /* keep footer at bottom */
+  background-color: #fff;
+}
+
+.footer-logo {
+  height: 28px;
+  width: 28px;
+  cursor: pointer;
+}
+
+.footer-text {
+  cursor: pointer;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  display: block;
+}
+
+.footer-companyname {
+  font-size: 14px;
+  line-height: 16.8px;
+  margin: 0 2px;
+  color: #0a9949;
+}
+
+.menu-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.menu-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.menu-scroll::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+  height: 60px;
+  transition: justify-content 0.3s ease;
+}
+
+.logo img {
+  height: 36px;
+  width: 36px;
+  object-fit: contain;
+}
+
+.logo-text {
+  font-size: 20px;
+  font-weight: bold;
+  color: #1d4ed8;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+/*Header css*/
+.header {
+  position: sticky;
+  top: 0; /* <-- required */
+  z-index: 1000; /* optional, makes sure it stays above other content */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 80px;
+  padding: 0 16px;
+  background-color: #fff;
+  border-bottom: 1px solid #ddd;
+}
+
+
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+.header-logo {
+  height: 36px;
+  width: 36px;
+  object-fit: contain;
+}
+
+.header-text {
+  font-size: 20px;
+  font-weight: bold;
+  color: #1d4ed8;
+  margin-left: 8px;
+}
+
+.header-text span {
+  color: #333;
+}
+
+/* Right side icons */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+/* Icon + text vertically aligned */
+.icon-with-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 16px;
+  color: #444;
+  cursor: pointer;
+}
+
+.icon-with-text svg {
+  padding: 6px;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.icon-with-text svg:hover {
+  background-color: #e0f0ff; /* choose any color */
+  cursor: pointer;
+}
+.icon-with-text span {
+  margin-top: 2px;
+}
+
+/* Table header background and text */
+.reportstablehead table thead th {
+  background: #e0f2fe;
+  color: #1d4ed8 !important;
+  font-weight: 500;
+  font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Header text inside div */
+.reportstablehead table thead th div {
+  color: #1d4ed8 !important;
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 18px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Sort icon color */
+.reportstablehead table thead th .MuiTableSortLabel-root .MuiTableSortLabel-icon {
+  color: #1d4ed8 !important;
+}
+
+

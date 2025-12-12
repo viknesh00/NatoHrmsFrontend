@@ -1,24 +1,23 @@
-import logo from './logo.svg';
+import React from 'react';
 import './App.css';
+import { BrowserRouter, useRoutes } from 'react-router-dom';
+import routes from "./routes";
+import { ToastContainer, Zoom } from "react-toastify";
+
+
+const AppRoutes = () => {
+    const routing = useRoutes(routes);
+    return routing;
+};
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <React.Fragment>
+      <BrowserRouter>
+            <AppRoutes />
+        </BrowserRouter>
+        <ToastContainer transition={Zoom} />
+    </React.Fragment>
   );
 }
 
