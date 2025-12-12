@@ -5,7 +5,7 @@ import { makeStyles } from "@material-ui/core/styles";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import { Pencil, Plus } from "lucide-react";
-import { Button, Dialog, DialogTitle, DialogContent, DialogActions, RadioGroup, FormControlLabel, Radio } from "@mui/material";
+import { Button, Dialog, DialogTitle, DialogContent, DialogActions, RadioGroup, FormControlLabel, Radio, TextField } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import moment from "moment";
 import { getRequest, postRequest } from "../../services/Apiservice";
@@ -439,9 +439,12 @@ export default function Leave() {
                     </RadioGroup>
                     {!selectedStatus && (
                         <Box mt={2}>
-                            <strong>Rejection Reason:</strong>
-                            <textarea
-                                style={{ width: "100%", minHeight: 60 }}
+                            <TextField
+                                label="Rejection Reason"
+                                variant="outlined"
+                                fullWidth
+                                multiline
+                                minRows={3}
                                 value={selectedRow.approverReason || ""}
                                 onChange={(e) =>
                                     setSelectedRow({ ...selectedRow, approverReason: e.target.value })

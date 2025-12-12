@@ -627,13 +627,21 @@ const TimesheetCalendar = () => {
                                 label="Working Hours"
                                 variant="outlined"
                                 type="number"
-                                inputProps={{ min: 0, max: 24 }}
+                                inputProps={{ min: 0, max: 8 }} // ✅ max set to 8
                                 value={hours}
                                 onChange={(e) => {
-                                    const val = e.target.value;
+                                    let val = e.target.value;
+
+                                    // Clear leaveType if changing hours
                                     setLeaveType(null);
+
+                                    // Prevent entering values > 8
                                     if (val === "") {
                                         setHours("");
+                                    } else if (Number(val) > 8) {
+                                        setHours(8);
+                                    } else if (Number(val) < 0) {
+                                        setHours(0);
                                     } else {
                                         setHours(Number(val));
                                     }
