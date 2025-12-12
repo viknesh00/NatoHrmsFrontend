@@ -259,7 +259,7 @@
 .header-right {
   display: flex;
   align-items: center;
-  gap: 32px;
+  gap: 16px;
 }
 
 /* Icon + text vertically aligned */
@@ -286,32 +286,27 @@
   margin-top: 2px;
 }
 
-/* Table header background and text */
 .reportstablehead table thead th {
   background: #e0f2fe;
   color: #1d4ed8 !important;
   font-weight: 500;
-  font-size: 16px;
+  font-size: 15px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  text-align: left;
+  padding: 8px 12px !important;   /* Set padding only here */
 }
 
-/* Header text inside div */
-.reportstablehead table thead th div {
-  color: #1d4ed8 !important;
-  font-weight: 500;
-  font-size: 16px;
-  line-height: 18px;
-  text-align: left;
+.reportstablehead table tbody td {
+  font-size: 15px;
+  color: #374151;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  text-align: left;
+  position: relative;
+  left: 10px;
+  padding: 8px 12px !important;  /* Same padding → aligns perfectly */
 }
 
 /* Sort icon color */
 .reportstablehead table thead th .MuiTableSortLabel-root .MuiTableSortLabel-icon {
   color: #1d4ed8 !important;
 }
-
-

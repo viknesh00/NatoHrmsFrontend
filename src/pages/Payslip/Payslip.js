@@ -9,6 +9,7 @@ import { FileText, RefreshCw } from "lucide-react";
 import { getRequest } from "../../services/Apiservice";
 import LoadingMask from "../../services/LoadingMask";
 import moment from "moment";
+import Breadcrumb from "../../services/Breadcrumb";
 
 const useStyles = makeStyles({
   rootBox: { backgroundColor: "#fff", padding: 16, borderRadius: 8, boxShadow: "0 1px 4px rgba(0,0,0,0.12)" },
@@ -21,6 +22,7 @@ const useStyles = makeStyles({
 const Payslip = () => {
   const classes = useStyles();
   const navigate = useNavigate();
+  const breadCrumb = [{ label: "Payslip" }];
   const [loading, setLoading] = useState(false);
   const [employeeData, setEmployeeData] = useState([]);
   const [employee, setEmployee] = useState(null);
@@ -67,6 +69,7 @@ const Payslip = () => {
   return (
     <Box className={classes.rootBox}>
       <LoadingMask loading={loading} />
+      <Breadcrumb items={breadCrumb} />
       <Box className={classes.container}>
         <Typography variant="h6" className={classes.title}>Payslip Generation</Typography>
 

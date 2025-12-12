@@ -12,6 +12,7 @@ import { getRequest, postRequest } from "../../services/Apiservice";
 import LoadingMask from "../../services/LoadingMask";
 import { ToastError, ToastSuccess } from "../../services/ToastMsg";
 import { getCookie } from "../../services/Cookies";
+import Breadcrumb from "../../services/Breadcrumb";
 
 const getMuiTheme = () =>
     createTheme({
@@ -121,6 +122,7 @@ const useStyles = makeStyles((theme) => ({
 export default function Leave() {
     const classes = useStyles();
     const navigate = useNavigate();
+    const breadCrumb = [{ label: "Leave" }];
     const [loading, setLoading] = useState(false);
     const [hover, setHover] = useState(false);
     const [leaveList, setLeaveList] = useState([]);
@@ -129,6 +131,7 @@ export default function Leave() {
     const [selectedStatus, setSelectedStatus] = useState(true);
     const userRole = getCookie("role");
     const isAdmin = userRole === "Admin";
+    const isAdminOrManager = userRole === "Admin" || userRole === "Manager";
 
     useEffect(() => {
         getLeave();
@@ -221,6 +224,7 @@ export default function Leave() {
         {
             name: "leaveId",
             label: "Leave ID",
+            options: { display: false }
         },
         { name: "employeeName", label: "Name" },
         {
@@ -270,18 +274,18 @@ export default function Leave() {
                         <span
                             className={statusClass}
                             style={{
-                                cursor: isAdmin ? "pointer" : "not-allowed",
-                                opacity: isAdmin ? 1 : 0.6,
-                                textDecoration: hover && isAdmin ? "underline" : "none",
+                                cursor: isAdminOrManager ? "pointer" : "not-allowed",
+                                opacity: isAdminOrManager ? 1 : 0.6,
+                                textDecoration: hover && isAdminOrManager ? "underline" : "none",
                             }}
                             onMouseEnter={() => {
-                                if (isAdmin) setHover(true);
+                                if (isAdminOrManager) setHover(true);
                             }}
                             onMouseLeave={() => {
-                                if (isAdmin) setHover(false);
+                                if (isAdminOrManager) setHover(false);
                             }}
                             onClick={() => {
-                                if (!isAdmin) return; // ❌ block click if not admin
+                                if (!isAdminOrManager) return; // ❌ block click if not admin
                                 handleStatusClick(dataIndex, isApproved);
                             }}
                         >
@@ -301,11 +305,19 @@ export default function Leave() {
                 display: !isAdmin,
                 customBodyRender: (value, tableMeta) => {
                     const rowData = leaveList[tableMeta.rowIndex];
+                    const loggedInEmail = getCookie("email");
 
+                    // ❌ If leave already approved, do NOT show pencil
                     if (rowData.approvedBy !== null) {
                         return null;
                     }
 
+                    // ❌ If row email doesn't match logged-in email, hide pencil
+                    if (rowData.userName !== loggedInEmail) {
+                        return null;
+                    }
+
+                    // ✅ Only show pencil when the logged-in user owns the record
                     return (
                         <IconButton onClick={() => handleEdit(rowData)}>
                             <Pencil size={20} />
@@ -319,20 +331,22 @@ export default function Leave() {
 
     const options = {
         customToolbarSelect: () => { },
-        selectToolbarPlacement: "above",
         selectableRows: "none",
+        responsive: "standard",
+        filterType: 'multiselect',
         download: true,
-        print: false,
+        print: true,
         search: true,
         filter: true,
         viewColumns: true,
-        rowsPerPage: 5,
-        rowsPerPageOptions: [5, 10, 20],
+        rowsPerPage: 10,
+        rowsPerPageOptions: [10, 15, 50, 100],
     };
 
     return (
         <Box className={classes.rootBox}>
             <LoadingMask loading={loading} />
+            <Breadcrumb items={breadCrumb} />
             <Box className={classes.addButtonContainer}>
                 {!isAdmin && (
                     <Button

@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Button, Menu, MenuItem, ListItemIcon, Box, Typography, Divider } from "@mui/material";
-import { UserCircle, User, Key } from "lucide-react";
+import { UserCircle, User, Key, LogOut } from "lucide-react";
 import { makeStyles } from "@mui/styles";
-import { getCookie, setCookie } from "../../services/Cookies";
+import { cookieKeys, getCookie, setCookie } from "../../services/Cookies";
+import { cookieObj } from "../../models/cookieObj";
 import PasswordChange from "../../services/PasswordChange";
 import { useNavigate } from "react-router-dom";
 import { postRequest } from "../../services/Apiservice";
 import LoadingMask from "../../services/LoadingMask";
+import { Avatar } from "@mui/material";
 import { ToastError, ToastSuccess } from "../../services/ToastMsg";
 
 const useStyles = makeStyles({
@@ -45,6 +47,7 @@ const Header = () => {
   const firstName = getCookie("firstName") || "";
   const lastName = getCookie("lastName") || "";
   const employeeId = getCookie("employeeId") || "";
+  const employeeRole = getCookie("role") || "";
 
 
   useEffect(() => {
@@ -206,6 +209,11 @@ const Header = () => {
     handleAccountClose();
   };
 
+  const handleLogout = () => {
+    cookieKeys(cookieObj, 0);
+    navigate("/login");
+  };
+
   return (
     <header className="header">
       <LoadingMask loading={loading} />
@@ -249,10 +257,28 @@ const Header = () => {
           )}
         </Button>
 
-        {/* Account icon */}
-        <div className="icon-with-text" onClick={handleAccountClick} style={{ cursor: "pointer", marginLeft: 10 }}>
-          <UserCircle size={25} />
-          <span>Account</span>
+         <Box sx={{ textAlign: "right", whiteSpace: "nowrap" }}>
+          <Typography sx={{ fontSize: "0.9rem", color: "#111" }}>
+            {firstName} {lastName}
+          </Typography>
+          <Typography sx={{ fontWeight: "500", fontSize: "0.9rem", color: "#555" }}>
+            {employeeRole}
+          </Typography>
+        </Box>
+
+        {/* Account icon replaced with Avatar */}
+        <div onClick={handleAccountClick} style={{ cursor: "pointer", marginLeft: 10 }}>
+          <Avatar
+            sx={{
+              background: "linear-gradient(135deg, #1565c0 0%, #f55742 50%, #f9d890 100%)",
+              width: 40,
+              height: 40,
+              fontSize: "1rem",
+              color: "#fff" // optional: ensures text is visible
+            }}
+          >
+            {firstName.charAt(0).toUpperCase()}
+          </Avatar>
         </div>
 
         {/* Account Menu */}
@@ -286,6 +312,12 @@ const Header = () => {
               <Key size={18} />
             </ListItemIcon>
             Change Password
+          </MenuItem>
+          <MenuItem onClick={handleLogout}>
+            <ListItemIcon>
+              <LogOut size={18} />
+            </ListItemIcon>
+            Logout
           </MenuItem>
         </Menu>
       </div>

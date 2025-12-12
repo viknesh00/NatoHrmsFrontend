@@ -19,20 +19,20 @@ const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const userRole = getCookie("role") || "Employee";
 
-  const mainMenu = [
-    { to: "/dashboard", label: "Dashboard", icon: <LayoutDashboard size={20} />, roles: ["Admin","Manager","Employee"] },
-  ];
+  // const mainMenu = [
+  //   { to: "/dashboard", label: "Dashboard", icon: <LayoutDashboard size={20} />, roles: ["Admin","Manager","Employee"] },
+  // ];
 
   const organizationMenu = [
     { to: "/employees", label: "Employees", icon: <Users size={20} />, roles: ["Admin"] },
     { to: "/timesheet", label: "Timesheet", icon: <ClipboardList size={20} />, roles: ["Admin", "Manager", "Employee"] },
     { to: "/attendance", label: "Attendance", icon: <CalendarCheck2 size={20} />, roles: ["Admin","Manager","Employee"] },
     { to: "/payslip", label: "Payslip", icon: <File size={20} />, roles: ["Admin"] },
-    { to: "/announcement", label: "Announcement", icon: <Megaphone size={20} />, roles: ["Admin"] },
+    { to: "/announcement", label: "Announcement", icon: <Megaphone size={20} />, roles: ["Admin", "Manager", "Employee"] },
     { to: "/leave", label: "Leave", icon: <UserMinus size={20} />, roles: ["Admin","Manager","Employee"] },
   ];
 
-  const filteredMainMenu = mainMenu.filter(item => item.roles.includes(userRole));
+  // const filteredMainMenu = mainMenu.filter(item => item.roles.includes(userRole));
   const filteredOrganizationMenu = organizationMenu.filter(item => item.roles.includes(userRole));
 
   return (
@@ -42,8 +42,8 @@ const Sidebar = () => {
       </button>
 
       <div className="menu-scroll">
-        <MenuSection items={filteredMainMenu} collapsed={collapsed} />
-        <MenuSection title="ORGANIZATION" items={filteredOrganizationMenu} collapsed={collapsed} />
+        {/* <MenuSection title="ORGANIZATION" items={filteredMainMenu} collapsed={collapsed} /> */}
+        <MenuSection  items={filteredOrganizationMenu} collapsed={collapsed} />
       </div>
 
       <div className="logout-section" onClick={() => { cookieKeys(cookieObj, 0); }}>

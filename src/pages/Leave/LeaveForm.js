@@ -10,6 +10,7 @@ import LoadingMask from "../../services/LoadingMask";
 import { getCookie } from "../../services/Cookies";
 import { postRequest } from "../../services/Apiservice";
 import { format, toDate } from "date-fns";
+import Breadcrumb from "../../services/Breadcrumb";
 
 const useStyles = makeStyles({
   rootBox: {
@@ -58,6 +59,7 @@ const LeaveForm = () => {
   const [loading, setLoading] = useState(false);
   const location = useLocation();
   const editData = location.state?.editData || null;
+  const breadCrumb = !editData ? [{ label: "Leave", link: "/leave" }, { label: "Apply-Leave" }] : [{ label: "Leave", link: "/leave" }, { label: "Edit-Leave" }];
 
   // Form state
   const [formValues, setFormValues] = useState({
@@ -139,6 +141,7 @@ const LeaveForm = () => {
   return (
     <Box className={classes.rootBox}>
       <LoadingMask loading={loading} />
+      <Breadcrumb items={breadCrumb} />
       <Box className={classes.container}>
         <Typography variant="h6" className={classes.title}>
           Employee Leave Form
@@ -173,6 +176,7 @@ const LeaveForm = () => {
             label={<span>To Date <span style={{ color: 'red' }}>*</span></span>}
             value={formValues.toDate}
             format="dd/MM/yyyy"
+            minDate={formValues.fromDate || undefined} // <-- Prevent selecting before From Date
             onChange={(newValue) => handleChange("toDate", newValue)}
             renderInput={(params) => <TextField fullWidth {...params} />}
           />

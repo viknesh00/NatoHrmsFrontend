@@ -18,6 +18,7 @@ import WorkingHours from "./pages/Attendance/WorkingHours";
 import WorkingHoursForm from "./pages/Attendance/WorkingHoursForm";
 import TimeSheetLayout from "./pages/TimeSheet/TimeSheetLayout";
 import TimesheetCalendar from "./pages/TimeSheet/TimesheetCalendar";
+import RoleBasedRedirect from "./services/RoleBasedRedirect";
 
 const routes = [
     // Public Route
@@ -50,7 +51,7 @@ const routes = [
             { path: "payslip/payslip-preview", element: <PayslipPreview /> },
             { path: "timesheet", element: <TimeSheetLayout /> },
             { path: "timesheet/timesheet-view", element: <TimesheetCalendar/>},
-            { path: "*", element: <Navigate to="/dashboard" /> },
+            { path: "*", element: <RoleBasedRedirect /> },
         ],
     },
 

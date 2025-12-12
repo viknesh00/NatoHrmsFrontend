@@ -9,6 +9,7 @@ import Autocomplete from "@mui/material/Autocomplete";
 import { postRequest } from "../../services/Apiservice";
 import { ToastSuccess } from "../../services/ToastMsg";
 import LoadingMask from "../../services/LoadingMask";
+import Breadcrumb from "../../services/Breadcrumb";
 
 const useStyles = makeStyles({
   rootBox: {
@@ -42,6 +43,7 @@ const AnnouncementForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const editData = location.state?.editData || null;
+  const breadCrumb = !editData ? [{ label: "Announcement", link: "/announcement" }, { label: "Create-Announcement" }] : [{ label: "Announcement", link: "/announcement" }, { label: "Edit-Announcement" }];
   const [loading, setLoading] = useState(false);
   const initialDate = editData?.announcementDate
   ? parse(editData.announcementDate, "dd/MM/yyyy", new Date())
@@ -99,6 +101,7 @@ const AnnouncementForm = () => {
   return (
     <Box className={classes.rootBox}>
       <LoadingMask loading={loading} />
+      <Breadcrumb items={breadCrumb} />
       <Box className={classes.container}>
         <Typography variant="h6" className={classes.title}>
           {editData ? "Edit Announcement" : "Create Announcement"}

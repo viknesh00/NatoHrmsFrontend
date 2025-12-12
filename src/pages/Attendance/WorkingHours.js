@@ -166,17 +166,18 @@ export default function WorkingHours() {
 
 
     const options = {
-        customToolbarSelect: () => { },
-        selectToolbarPlacement: "above",
-        selectableRows: "none",
-        download: true,
-        print: false,
-        search: true,
-        filter: true,
-        viewColumns: true,
-        rowsPerPage: 5,
-        rowsPerPageOptions: [5, 10, 20],
-    };
+    customToolbarSelect: () => { },
+    selectableRows: "none",
+    responsive: "standard",
+    filterType: 'multiselect',
+    download: true,
+    print: true,
+    search: true,
+    filter: true,
+    viewColumns: true,
+    rowsPerPage: 10,
+    rowsPerPageOptions: [10, 15, 50, 100],
+  };
 
     return (
         <Box className={classes.rootBox}>

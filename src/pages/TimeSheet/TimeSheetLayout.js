@@ -7,8 +7,8 @@ import TimeSheetOverview from "./TimeSheetOverview";
 export default function TimeSheetLayout() {
 
     const userRole = getCookie("role");
-    const isAdmin = userRole === "Admin";
+    const isAdminOrManager = userRole === "Admin" || userRole === "Manager";
                         
-    return isAdmin ? <TimeSheetOverview /> : <TimesheetCalendar />;
+    return isAdminOrManager ? <TimeSheetOverview /> : <TimesheetCalendar />;
 
 }

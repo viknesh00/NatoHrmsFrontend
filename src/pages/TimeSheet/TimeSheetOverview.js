@@ -12,6 +12,7 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import { Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import Breadcrumb from "../../services/Breadcrumb";
 
 const getMuiTheme = () =>
     createTheme({
@@ -84,6 +85,7 @@ const useStyles = makeStyles(() => ({
 export default function TimeSheetOverview() {
     const classes = useStyles();
     const navigate = useNavigate();
+    const breadCrumb = [{ label: "TimeSheet" }];
     const [loading, setLoading] = useState(false);
     const [singleDate, setSingleDate] = useState(dayjs());
     const [tableData, setTableData] = useState([]);
@@ -105,15 +107,21 @@ export default function TimeSheetOverview() {
                     employeeName: item.employeeName,
                     employeeId: item.employeeId,
                     username: item.username,
+                    totalWorkingHours: 0,   // <-- ADD THIS
                     timesheet: [],
                 };
             }
 
+            // Push timesheet entry
             grouped[uid].timesheet.push(item);
+
+            // Accumulate total working hours
+            grouped[uid].totalWorkingHours += Number(item.workingHours || 0);
         });
 
-        return Object.values(grouped); // return array of grouped objects
+        return Object.values(grouped);
     };
+
 
 
     const getTimeSheetEntries = (monthObj) => {
@@ -153,6 +161,7 @@ export default function TimeSheetOverview() {
         { name: "employeeId", label: "Employee Id" },
         { name: "employeeName", label: "EmployeeName" },
         { name: "username", label: "Email" },
+        { name: "totalWorkingHours", label: "Working Hours" },
         {
             name: "action",
             label: "Action",
@@ -174,15 +183,14 @@ export default function TimeSheetOverview() {
 
     const options = {
         customToolbarSelect: () => { },
-        selectToolbarPlacement: "above",
-        responsive: 'standard',
         selectableRows: "multiple",
-        toolbar: false,
+        responsive: "standard",
+        filterType: 'multiselect',
         download: true,
-        print: false,
+        print: true,
         search: true,
         filter: true,
-        filterType: 'multiselect',
+        viewColumns: true,
         rowsPerPage: 10,
         rowsPerPageOptions: [10, 15, 50, 100],
           
@@ -273,7 +281,7 @@ export default function TimeSheetOverview() {
     return (
         <Box className={classes.rootBox}>
             <LoadingMask loading={loading} />
-
+            <Breadcrumb items={breadCrumb} />
             <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <Box className={classes.dateFilterBox}>
                     <DatePicker
@@ -299,7 +307,7 @@ export default function TimeSheetOverview() {
                     </Tooltip>
                 </Box>
             </LocalizationProvider>
-
+            <Box className="reportstablehead">
             <ThemeProvider theme={getMuiTheme()}>
                 <MUIDataTable
                     title={"Employee Timesheet"}
@@ -309,6 +317,7 @@ export default function TimeSheetOverview() {
                     options={options}
                 />
             </ThemeProvider>
+            </Box>
         </Box>
     );
 }

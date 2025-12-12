@@ -16,6 +16,7 @@ import { postRequest } from "../../services/Apiservice";
 import LoadingMask from "../../services/LoadingMask";
 import { getCookie } from "../../services/Cookies";
 import { useNavigate } from "react-router-dom";
+import Breadcrumb from "../../services/Breadcrumb";
 
 // Extend dayjs with plugins
 dayjs.extend(isSameOrAfter);
@@ -157,7 +158,8 @@ export default function Attendance() {
   const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(false);
   const userRole = getCookie("role");
-  const isAdmin = userRole === "Admin";
+  const isAdminOrManager = userRole === "Admin" || userRole === "Manager";
+  const breadCrumb = [{ label: "Attendance" }];
 
   // Initialize filteredData when tab changes
   useEffect(() => {
@@ -292,7 +294,7 @@ export default function Attendance() {
       name: "userName",
       label: "User Name",
       options: {
-        display: isAdmin,
+        display: isAdminOrManager,
       }
     },
     { name: "time", label: "Time" },
@@ -324,9 +326,9 @@ export default function Attendance() {
     },
     {
       name: 'userEmail',
-      label: 'User Email',
+      label: 'User Name',
       options: {
-        display: isAdmin,
+        display: isAdminOrManager,
       }
     },
     { name: 'firstClockIn', label: 'First Clock In' },
@@ -343,19 +345,22 @@ export default function Attendance() {
   const options = {
     customToolbarSelect: () => { },
     selectableRows: "none",
+    responsive: "standard",
+    filterType: 'multiselect',
     download: true,
-    print: false,
+    print: true,
     search: true,
     filter: true,
     viewColumns: true,
-    rowsPerPage: 100,
+    rowsPerPage: 10,
     rowsPerPageOptions: [10, 15, 50, 100],
   };
 
   return (
     <Box className={classes.rootBox}>
       <LoadingMask loading={loading} />
-      {isAdmin && (
+      <Breadcrumb items={breadCrumb} />
+      {isAdminOrManager && (
         <Box className={classes.addButtonContainer}>
           <Button
             variant="contained"

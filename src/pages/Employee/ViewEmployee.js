@@ -4,6 +4,7 @@ import { File } from "lucide-react"
 import { makeStyles } from "@material-ui/core/styles";
 import { getCookie } from "../../services/Cookies";
 import { getRequest } from "../../services/Apiservice";
+import Breadcrumb from "../../services/Breadcrumb";
 
 const useStyles = makeStyles((theme) => ({
     rootBox: {
@@ -16,6 +17,7 @@ const useStyles = makeStyles((theme) => ({
 const ViewEmployee = ({ employee }) => {
     const classes = useStyles();
     const email = getCookie("email");
+    const breadCrumb = [{ label: "View Profile" }]
     const [formvalues, setFormvalues] = useState({
         firstName: "",
         lastName: "",
@@ -127,6 +129,7 @@ const ViewEmployee = ({ employee }) => {
 
     return (
         <Box className={classes.rootBox} display="flex" flexDirection="column" gap={3}>
+            <Breadcrumb items={breadCrumb} />
             <Card>
                 <CardContent>
                     <Typography variant="h6" gutterBottom>Personal Details</Typography>

@@ -21,6 +21,7 @@ import { getRequest, postRequest } from "../../services/Apiservice";
 import { ToastError, ToastSuccess } from "../../services/ToastMsg";
 import { format, parseISO } from "date-fns";
 import LoadingMask from "../../services/LoadingMask";
+import Breadcrumb from "../../services/Breadcrumb";
 
 const steps = [
     "Personal Details",
@@ -39,6 +40,7 @@ export default function AddEmployee() {
     const [departmentNames, setDepartmentNames] = useState([]);
     const [managerList, setManagerList] = useState([]);
     const isEditMode = !!email;
+    const breadCrumb = !isEditMode ? [{ label: "Employee", link: "/employees" }, { label: "Add-Employee" }] : [{ label: "Employee", link: "/employees" }, { label: "Edit-Employee" }];
     const [formvalues, setFormvalues] = useState({
         firstName: null,
         lastName: null,
@@ -846,6 +848,7 @@ export default function AddEmployee() {
     return (
         <Box>
             <LoadingMask />
+            <Breadcrumb items={breadCrumb} />
             <Card elevation={1} sx={{ height: "625px", borderRadius: 3, display: "flex", flexDirection: "column" }}>
                 <Box
                     sx={{

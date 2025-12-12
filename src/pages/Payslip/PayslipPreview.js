@@ -5,6 +5,7 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { makeStyles } from "@mui/styles";
 import { useLocation } from "react-router-dom";
+import Breadcrumb from "../../services/Breadcrumb";
 
 // --- Utility: Convert number to words ---
 const numberToWords = (num) => {
@@ -52,6 +53,7 @@ const useStyles = makeStyles({
 const PayslipPreview = () => {
     const classes = useStyles();
     const location = useLocation();
+    const breadCrumb = [{ label: "Payslip", link: "/payslip" }, { label: "Generate Payslip" }];
     const { employee, monthYear } = location.state || {};
     const selectedYear = monthYear?.getFullYear();
     const selectedMonth = monthYear?.getMonth();
@@ -165,6 +167,7 @@ const PayslipPreview = () => {
 
     return (
         <Box className={classes.rootBox}>
+            <Breadcrumb items={breadCrumb} />
             <Box id="payslip-content" p={2} border={1} borderRadius={2} borderColor="grey.300" sx={{ width: "100%", maxWidth: 900, margin: "auto", fontSize: 12, overflow: "hidden" }}>
                 {/* Header */}
                 <Box className={classes.headerBox}>

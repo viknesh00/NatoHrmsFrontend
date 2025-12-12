@@ -22,6 +22,7 @@ import LoadingMask from "../../services/LoadingMask";
 import moment from "moment/moment";
 import { getRequest, postRequest } from "../../services/Apiservice";
 import { useLocation } from "react-router-dom";
+import Breadcrumb from "../../services/Breadcrumb";
 
 dayjs.extend(isoWeek);
 
@@ -166,6 +167,7 @@ const TimesheetCalendar = () => {
     const totalDays = [];
     const location = useLocation();
     const { viewData, selectedMonth } = location.state || {};
+    const breadCrumb = !viewData ? [{ label: "TimeSheet" }] : [{ label: "TimeSheet", link: "/timesheet" }, { label: `${viewData.username} - Timesheet for ${moment(viewData.monthYear).format("MMM-YYYY")}` }];
 
     let day = startDay;
     while (day.isBefore(endDay, "day") || day.isSame(endDay, "day")) {
@@ -428,7 +430,7 @@ const TimesheetCalendar = () => {
     return (
         <div className={classes.rootBox}>
             <LoadingMask loading={loading} />
-            {/* Month navigation */}
+            <Breadcrumb items={breadCrumb} />
             {!viewData ? (
                 // Show month navigation when NO viewData
                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
@@ -449,16 +451,17 @@ const TimesheetCalendar = () => {
                     />
                 </Box>
             ) : (
-                // Show custom text when viewData exists
-                <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-                    <Box width={40} />
-                    <Typography variant="h6" color="primary" textAlign="center">
-                        Timesheet for {viewData.employeeName} - {selectedMonth}
-                    </Typography>
-                    <IconButton onClick={() => navigate("/timesheet")}>
-                        <X />
-                    </IconButton>
-                </Box>
+                ""
+                // // Show custom text when viewData exists
+                // <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+                //     <Box width={40} />
+                //     <Typography variant="h6" color="primary" textAlign="center">
+                //         Timesheet for {viewData.employeeName} - {selectedMonth}
+                //     </Typography>
+                //     <IconButton onClick={() => navigate("/timesheet")}>
+                //         <X />
+                //     </IconButton>
+                // </Box>
             )}
 
 

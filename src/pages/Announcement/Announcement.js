@@ -10,6 +10,8 @@ import { useNavigate } from "react-router-dom";
 import moment from "moment";
 import { getRequest } from "../../services/Apiservice";
 import LoadingMask from "../../services/LoadingMask";
+import Breadcrumb from "../../services/Breadcrumb";
+import { getCookie } from "../../services/Cookies";
 
 const getMuiTheme = () =>
     createTheme({
@@ -97,23 +99,33 @@ const useStyles = makeStyles((theme) => ({
         fontWeight: 500,
     },
     blinkText: {
-        color: "red",
-        fontWeight: "bold",
-        marginLeft: 8,
-        animation: "$blink 1s step-start infinite",
-    },
-    "@keyframes blink": {
-        "50%": {
-            opacity: 0,
-        },
-    },
+    display: "inline-block",
+    padding: "2px 6px",
+    borderRadius: "4px",
+    background: "linear-gradient(90deg, #ff6a00, #ff8c00)", // orange gradient
+    color: "#fff",
+    fontWeight: 600,
+    fontSize: "0.5rem",
+    marginLeft: 8,
+    animation: "$pulse 1s infinite",
+},
+"@keyframes pulse": {
+    "0%": { transform: "scale(1)", opacity: 1 },
+    "50%": { transform: "scale(1.1)", opacity: 0.8 },
+    "100%": { transform: "scale(1)", opacity: 1 },
+},
+
 }));
 
 export default function Announcement() {
     const classes = useStyles();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
+    const breadCrumb = [{ label: "Announcement" }];
     const [announcementList, setAnnouncementList] = useState([]);
+    const userRole = getCookie("role");
+    const isAdminOrManager = userRole === "Admin" || userRole === "Manager";
+
     useEffect(() => {
         getAnnouncement();
     }, []);
@@ -132,7 +144,8 @@ export default function Announcement() {
                             d.createdDate = moment(d.createdDate).format("DD/MM/YYYY");
                         }
                     });
-                    setAnnouncementList(res.data);
+                    const filteredData = isAdminOrManager ? res.data : res.data.filter((d) => d.isActive);
+                    setAnnouncementList(filteredData);
                     setLoading(false);
                 }
             })
@@ -151,6 +164,10 @@ export default function Announcement() {
 
 
     const columns = [
+        {
+            name: "announcementDate",
+            label: "Announcement Date",
+        },
         {
             name: "createdDate",
             label: "Created Date",
@@ -176,13 +193,10 @@ export default function Announcement() {
         },
         { name: "department", label: "Department" },
         {
-            name: "announcementDate",
-            label: "Announcement Date",
-        },
-        {
             name: "isActive",
             label: "Status",
             options: {
+                display: isAdminOrManager,
                 customBodyRenderLite: (dataIndex) => {
                     const value = announcementList[dataIndex]?.isActive;
                     const statusText = value ? "Active" : "Inactive";
@@ -214,29 +228,34 @@ export default function Announcement() {
 
     const options = {
         customToolbarSelect: () => { },
-        selectToolbarPlacement: "above",
         selectableRows: "none",
+        responsive: "standard",
+        filterType: 'multiselect',
         download: true,
-        print: false,
+        print: true,
         search: true,
         filter: true,
         viewColumns: true,
-        rowsPerPage: 5,
-        rowsPerPageOptions: [5, 10, 20],
+        rowsPerPage: 10,
+        rowsPerPageOptions: [10, 15, 50, 100],
     };
 
     return (
         <Box className={classes.rootBox}>
             <LoadingMask loading={loading} />
-            <Box className={classes.addButtonContainer}>
-                <Button
-                    variant="contained"
-                    onClick={handleAddEmployee}
-                    className={classes.addButton}
-                >
-                    <Plus size={20} /> Create
-                </Button>
-            </Box>
+            <Breadcrumb items={breadCrumb} />
+            {isAdminOrManager && (
+    <Box className={classes.addButtonContainer}>
+        <Button
+            variant="contained"
+            onClick={handleAddEmployee}
+            className={classes.addButton}
+        >
+            <Plus size={20} /> Create
+        </Button>
+    </Box>
+)}
+
             <Box className="reportstablehead">
                 <ThemeProvider theme={getMuiTheme()}>
                     <MUIDataTable

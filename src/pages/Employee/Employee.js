@@ -11,6 +11,7 @@ import { Button, Dialog, DialogTitle, DialogContent, DialogActions, RadioGroup, 
 import { useNavigate } from "react-router-dom";
 import { getRequest, postRequest } from "../../services/Apiservice";
 import LoadingMask from "../../services/LoadingMask";
+import Breadcrumb from "../../services/Breadcrumb";
 
 const getMuiTheme = () =>
   createTheme({
@@ -104,6 +105,7 @@ const useStyles = makeStyles((theme) => ({
 export default function Employees() {
   const classes = useStyles();
   const navigate = useNavigate();
+  const breadCrumb = [{ label: "Employee" }]
   const [employeeList, setEmployeeList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedUserName, setSelectedUserName] = useState("");
@@ -228,19 +230,21 @@ export default function Employees() {
   const options = {
     customToolbarSelect: () => { },
     selectableRows: "none",
+    responsive: "standard",
+    filterType: 'multiselect',
     download: true,
-    print: false,
+    print: true,
     search: true,
     filter: true,
     viewColumns: true,
-    rowsPerPage: 5,
-    rowsPerPageOptions: [5, 10, 20],
+    rowsPerPage: 10,
+    rowsPerPageOptions: [10, 15, 50, 100],
   };
 
   return (
     <Box className={classes.rootBox}>
       <LoadingMask loading={loading} />
-
+      <Breadcrumb items={breadCrumb} />
       <Box className={classes.addButtonContainer}>
         <Button
           variant="contained"

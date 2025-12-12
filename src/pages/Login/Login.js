@@ -58,8 +58,16 @@ const Login = () => {
           const mergedCookies = { ...cookieObj, ...userData };
           cookieKeys(mergedCookies, new Date(res.data.expiration));
 
+          const roleDefaultRoute = {
+            "Admin": "/employees",
+            "Manager": "/timesheet",
+            "Employee": "/timesheet",
+          };
+
+          const defaultRoute = roleDefaultRoute[res.data.role] || "/dashboard";
+
           setTimeout(() => {
-            navigate("/dashboard");
+            navigate(defaultRoute);
           }, 800);
         } else {
           ToastError("Invalid credentials!");
@@ -138,7 +146,7 @@ const Login = () => {
           display="block"
           sx={{ mt: 3, color: "text.disabled" }}
         >
-          © Natobotics 2025. All rights reserved.
+          © Natobotics {new Date().getFullYear()}. All rights reserved.
         </Typography>
       </Paper>
     </Box>
