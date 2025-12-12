@@ -111,7 +111,6 @@ const LeaveForm = () => {
       ToastError("Please fill all required fields");
       return;
     }
-    debugger
     let data = {
       ...formValues,
       leaveType: formValues.leaveType.value,

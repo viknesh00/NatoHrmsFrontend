@@ -205,7 +205,6 @@ const TimesheetCalendar = () => {
         getRequest(url)
             .then((res) => {
                 if (res.data) {
-                    debugger
                     res.data.leaves.forEach((d) => {
                         if (d.fromDate) {
                             d.fromDate = moment(d.fromDate).format("YYYY-MM-DD");

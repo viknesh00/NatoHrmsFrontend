@@ -131,6 +131,7 @@ const Header = () => {
   // Clock In/Out
   // Clock In/Out
   const handleClock = async () => {   // <-- add async here
+    setLoading(true);
     const ip = await fetchIpAddress();
     const location = await fetchLocation();
     let data = {
@@ -139,7 +140,6 @@ const Header = () => {
     };
     if (!clockedIn) {
       const url = `Attendance/clock-in`;
-      setLoading(true);
       postRequest(url, data)
         .then((res) => {
           if (res.status === 200) {
@@ -164,7 +164,6 @@ const Header = () => {
         });
     } else {
       const url = `Attendance/clock-out`;
-      setLoading(true);
       postRequest(url, data)
         .then((res) => {
           if (res.status === 200) {

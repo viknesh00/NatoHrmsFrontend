@@ -110,7 +110,8 @@ export default function Holiday() {
     const [holidays, setHolidays] = useState([]);
     const [loading, setLoading] = useState(false);
     const [currentMonth, setCurrentMonth] = useState(dayjs());
-    const role = getCookie("role");
+    const userRole = getCookie("role");
+    const isAdminOrManager = userRole === "Admin" || userRole === "Manager";
 
     useEffect(() => {
         getEvent();
@@ -164,7 +165,7 @@ export default function Holiday() {
             <Breadcrumb items={breadCrumb} />
 
             {/* CREATE BUTTON (ONLY FOR ADMIN) */}
-            {role === "Admin" && (
+            {isAdminOrManager && (
                 <Box className={classes.addButtonContainer}>
                     <Button
                         variant="contained"
@@ -250,11 +251,11 @@ export default function Holiday() {
                                             key={day.format("YYYY-MM-DD")}
                                             className={cellClasses.join(" ")}
                                             onClick={() =>
-                                                role === "Admin" && holidayObj && handleEdit(holidayObj)
+                                                isAdminOrManager && holidayObj && handleEdit(holidayObj)
                                             }
                                             style={{
                                                 cursor:
-                                                    role === "Admin" && holidayObj
+                                                    isAdminOrManager && holidayObj
                                                         ? "pointer"
                                                         : "default",
                                             }}

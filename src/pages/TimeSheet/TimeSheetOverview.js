@@ -134,7 +134,6 @@ export default function TimeSheetOverview() {
             .then((res) => {
                 if (res && res.data) {
                     const grouped = groupByUser(res.data);
-                    debugger
                     setTableData(grouped);
                 } else {
                     setTableData([]);
