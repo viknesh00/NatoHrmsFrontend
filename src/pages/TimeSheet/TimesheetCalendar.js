@@ -102,7 +102,7 @@ const useStyles = makeStyles({
         transform: "translate(-50%, -50%)",
         fontSize: 24,
         fontWeight: "bold",
-        color: "	#016795",
+        color: "#016795",
     },
     legendWrapper: {
         display: "flex",
@@ -136,12 +136,12 @@ const useStyles = makeStyles({
         border: "1px solid #fff",
     },
 
-    filled: { backgroundColor: "#b2dfdb" },
-    notFilled: { backgroundColor: "#ffcdd2" },       // ❌ Not Filled
-    partiallyFilled: { backgroundColor: "#b3e5fc" }, // light sky blue
-    appliedLeave: { backgroundColor: "#e1bee7" },    // light lavender
-    approvedLeave: { backgroundColor: "#a5d6a7" },   // Approved Leave (green)
-    holiday: { backgroundColor: "#e1bee7" },         // 🎉 Holiday
+    filled: { backgroundColor: "#e0f7fa" },
+    notFilled: { backgroundColor: "#ffe5b4" },
+    partiallyFilled: { backgroundColor: "#b3e5fc" },
+    appliedLeave: { backgroundColor: "#e1bee7" },
+    approvedLeave: { backgroundColor: "#a5d6a7", cursor: "not-allowed" },
+    holiday: { backgroundColor: "#ffcccc", cursor: "not-allowed" },
 
 });
 
@@ -162,6 +162,7 @@ const TimesheetCalendar = () => {
     const leaveOptions = ["Sick Leave", "Casual Leave", "Other Leave"];
     const [loading, setLoading] = useState(false);
     const [leaveList, setLeaveList] = useState([]);
+    const [holidayList, setHolidayList] = useState([]);
     const startDay = currentMonth.startOf("month").startOf("isoWeek");
     const endDay = currentMonth.endOf("month").endOf("isoWeek");
     const totalDays = [];
@@ -199,21 +200,29 @@ const TimesheetCalendar = () => {
     }, [currentMonth]);
 
     const getLeave = () => {
-        const url =!viewData? `User/GetEmployeeLeave`: `User/GetEmployeeLeave?userName=${viewData.username}`;
+        const url = !viewData ? `User/GetEmployeeLeave` : `User/GetEmployeeLeave?userName=${viewData.username}`;
         setLoading(true);
         getRequest(url)
             .then((res) => {
                 if (res.data) {
-                    res.data.forEach((d) => {
+                    debugger
+                    res.data.leaves.forEach((d) => {
                         if (d.fromDate) {
-                            d.fromDate = moment(d.fromDate).format("YYYY-MM-DD"); 
+                            d.fromDate = moment(d.fromDate).format("YYYY-MM-DD");
                         }
                         if (d.toDate) {
-                            d.toDate = moment(d.toDate).format("YYYY-MM-DD");     
+                            d.toDate = moment(d.toDate).format("YYYY-MM-DD");
                         }
                     });
-                    console.log(res.data)
-                    setLeaveList(res.data);
+                    setLeaveList(res.data.leaves);
+                    setHolidayList(
+                        res.data.holidays
+                            .filter(x => x.eventType === "Holiday")
+                            .map(h => ({
+                                ...h,
+                                eventDate: dayjs(h.eventDate).format("YYYY-MM-DD") // format here
+                            }))
+                    );
                     setLoading(false);
                 }
             })
@@ -271,6 +280,20 @@ const TimesheetCalendar = () => {
         if (date.month() !== currentMonth.month()) return;
         if (date.isAfter(today, "day")) return;
         if (currentMonth.isBefore(today, "month")) return;
+        if (holidayList.includes(date.format("YYYY-MM-DD"))) return;
+        const leave = leaveList.find(l => {
+            const from = dayjs(l.fromDate, "YYYY-MM-DD");
+            const to = dayjs(l.toDate, "YYYY-MM-DD");
+
+            return date.isSame(from, "day") ||
+                date.isSame(to, "day") ||
+                (date.isAfter(from, "day") && date.isBefore(to, "day"));
+        });
+
+        // 🚫 If leave exists AND no approverReason → approved or pending → do NOT open modal
+        if (leave && !leave.approverReason) {
+            return; // Block modal
+        }
 
         // open modal
         setSelectedDate(date);
@@ -365,13 +388,22 @@ const TimesheetCalendar = () => {
                 (dt.isAfter(from, "day") && dt.isBefore(to, "day"));
         });
 
-        if (leave) {
-            return leave.isApproved === true ? classes.approvedLeave : classes.appliedLeave;
+        if (leave && leave.approverReason) {
+            if (!entry) return "";
+            if (entry.hours >= 8) return classes.filled;
+            if (entry.hours > 0 && entry.hours < 8) return classes.partiallyFilled;
+            if (entry.hours === 0) return classes.notFilled;
+            return "";
         }
 
+        // 🟢 Approved leave
+        if (leave && leave.isApproved === true) {
+            return classes.approvedLeave;
+        }
 
-        if (leave) {
-            return leave.isApproved ? classes.approvedLeave : classes.appliedLeave;
+        // 🟣 Pending leave
+        if (leave && leave.isApproved === false) {
+            return classes.appliedLeave;
         }
 
         // fallback to entry-based styling
@@ -487,12 +519,14 @@ const TimesheetCalendar = () => {
                                     const entry = entries[d.format("YYYY-MM-DD")];
                                     const isPastMonth = d.isBefore(today.startOf("month"), "day");
                                     const isFutureDate = d.isAfter(today, "day");
+                                    const isHoliday = holidayList.some(h => h.eventDate === d.format("YYYY-MM-DD"));
+
 
                                     return (
                                         <td
                                             key={d.format("YYYY-MM-DD")}
                                             onClick={() => handleCellClick(d)}
-                                            className={`${classes.td} ${isWeekend ? classes.weekend : ""} ${isFutureDate ? classes.futureDay : ""} ${isPastMonth ? classes.pastMonth : ""} ${!isCurrentMonth ? classes.outsideMonth : ""} ${getStatusClass(entry, d)}`}
+                                            className={`${classes.td} ${isWeekend ? classes.weekend : ""} ${isFutureDate ? classes.futureDay : ""} ${isHoliday ? classes.holiday : ""} ${isPastMonth ? classes.pastMonth : ""} ${!isCurrentMonth ? classes.outsideMonth : ""} ${getStatusClass(entry, d)}`}
                                         >
                                             <div className={classes.tdContent}>{d.format("DD")}</div>
                                             {entry && (
@@ -528,8 +562,13 @@ const TimesheetCalendar = () => {
                     Filled Hours
                 </Box>
 
-                <Box className={classes.legendItem} sx={{ backgroundColor: "#ffebee" }}>
-                    <div className={classes.legendColorBox} style={{ backgroundColor: "#d32f2f" }} />
+                <Box className={classes.legendItem} sx={{ backgroundColor: "#ffcccc" }}>
+                    <div className={classes.legendColorBox} style={{ backgroundColor: "#990000" }} />
+                    Holiday
+                </Box>
+
+                <Box className={classes.legendItem} sx={{ backgroundColor: "#ffe5b4" }}>
+                    <div className={classes.legendColorBox} style={{ backgroundColor: "#ff9800" }} />
                     Not Filled Hours
                 </Box>
 

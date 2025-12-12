@@ -332,7 +332,7 @@ export default function Attendance() {
       }
     },
     { name: 'firstClockIn', label: 'First Clock In' },
-    { name: 'latestClockOut', label: 'Latest Clock Out' },
+    { name: 'latestClockOut', label: 'Last Clock Out' },
     { name: 'clockInIp', label: 'Clock In IP' },
     { name: 'clockOutIp', label: 'Clock Out IP' },
     { name: 'clockInLocation', label: 'Clock In Location' },

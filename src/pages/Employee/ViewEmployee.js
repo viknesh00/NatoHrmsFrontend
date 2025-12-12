@@ -214,7 +214,7 @@ const ViewEmployee = ({ employee }) => {
                         <Box display="flex" flexDirection="column" gap={1} flex={1}>
                             <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Date of Joining</Typography>
                             <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Department</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Work Location</Typography>
+                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Work Location (City)</Typography>
                         </Box>
                         <Box display="flex" flexDirection="column" gap={1} flex={1}>
                             <Typography sx={{ color: "#555" }}>{emp.doj}</Typography>
@@ -317,7 +317,7 @@ const ViewEmployee = ({ employee }) => {
                 </CardContent>
             </Card>
 
-            <Card>
+            {/* <Card>
                 <CardContent>
                     <Typography variant="h6" gutterBottom>Documents & Other Info</Typography>
                     <Divider sx={{ mb: 2 }} />
@@ -344,7 +344,7 @@ const ViewEmployee = ({ employee }) => {
                         </Box>
                     </Box>
                 </CardContent>
-            </Card>
+            </Card> */}
 
             <Card>
                 <CardContent>

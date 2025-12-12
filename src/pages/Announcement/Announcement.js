@@ -99,21 +99,21 @@ const useStyles = makeStyles((theme) => ({
         fontWeight: 500,
     },
     blinkText: {
-    display: "inline-block",
-    padding: "2px 6px",
-    borderRadius: "4px",
-    background: "linear-gradient(90deg, #ff6a00, #ff8c00)", // orange gradient
-    color: "#fff",
-    fontWeight: 600,
-    fontSize: "0.5rem",
-    marginLeft: 8,
-    animation: "$pulse 1s infinite",
-},
-"@keyframes pulse": {
-    "0%": { transform: "scale(1)", opacity: 1 },
-    "50%": { transform: "scale(1.1)", opacity: 0.8 },
-    "100%": { transform: "scale(1)", opacity: 1 },
-},
+        display: "inline-block",
+        padding: "2px 6px",
+        borderRadius: "4px",
+        background: "linear-gradient(90deg, #ff6a00, #ff8c00)", // orange gradient
+        color: "#fff",
+        fontWeight: 600,
+        fontSize: "0.5rem",
+        marginLeft: 8,
+        animation: "$pulse 1s infinite",
+    },
+    "@keyframes pulse": {
+        "0%": { transform: "scale(1)", opacity: 1 },
+        "50%": { transform: "scale(1.1)", opacity: 0.8 },
+        "100%": { transform: "scale(1)", opacity: 1 },
+    },
 
 }));
 
@@ -163,6 +163,53 @@ export default function Announcement() {
     const handleAddEmployee = () => navigate("/announcement/announcement-form");
 
 
+    const getStatusColor = (status) => {
+        switch (status?.toLowerCase()) {
+            case "active":
+                return "#0F7B0F"; // green
+            case "inactive":
+                return "#C62828"; // red
+            case "disabled":
+                return "#6c757d"; // gray
+            default:
+                return "#7D7D7D";
+        }
+    };
+
+    const getBackgroundColor = (status) => {
+        switch (status?.toLowerCase()) {
+            case "active":
+                return "#DFF5D8"; // light green
+            case "inactive":
+                return "#FDE0E0"; // light red
+            case "disabled":
+                return "#ECECEC"; // light gray
+            default:
+                return "#E9E9E9";
+        }
+    };
+
+    const StatusChip = ({ label }) => {
+        return (
+            <div
+                style={{
+                    backgroundColor: getBackgroundColor(label),
+                    color: getStatusColor(label),
+                    padding: "3px 10px",
+                    fontWeight: 500,
+                    fontSize: "12px",
+                    borderRadius: "16px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    textTransform: "capitalize",
+                }}
+            >
+                {label}
+            </div>
+        );
+    };
+
     const columns = [
         {
             name: "announcementDate",
@@ -202,7 +249,7 @@ export default function Announcement() {
                     const statusText = value ? "Active" : "Inactive";
                     const statusClass = value ? classes.statusActive : classes.statusInactive;
 
-                    return <span className={statusClass}>{statusText}</span>;
+                    return <span><StatusChip label={statusText} /></span>;
                 },
             },
         },
@@ -245,16 +292,16 @@ export default function Announcement() {
             <LoadingMask loading={loading} />
             <Breadcrumb items={breadCrumb} />
             {isAdminOrManager && (
-    <Box className={classes.addButtonContainer}>
-        <Button
-            variant="contained"
-            onClick={handleAddEmployee}
-            className={classes.addButton}
-        >
-            <Plus size={20} /> Create
-        </Button>
-    </Box>
-)}
+                <Box className={classes.addButtonContainer}>
+                    <Button
+                        variant="contained"
+                        onClick={handleAddEmployee}
+                        className={classes.addButton}
+                    >
+                        <Plus size={20} /> Create
+                    </Button>
+                </Box>
+            )}
 
             <Box className="reportstablehead">
                 <ThemeProvider theme={getMuiTheme()}>

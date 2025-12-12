@@ -86,6 +86,7 @@ const LeaveForm = () => {
   useEffect(() => {
     if (editData) {
       setFormValues({
+        ...formValues,
         leaveId: editData.leaveId,
         employeeName: editData.employeeName,
         userName: editData.userName,
@@ -95,7 +96,7 @@ const LeaveForm = () => {
         reason: editData.reason,
         isApproved: editData.isApproved,
         cancelLeave: editData.cancelLeave,
-        dayType: dayTypeOptions.find(x => x.value === editData.dayType) || null,
+        dayType: dayTypeOptions.find(x => x.value === editData.dayType) || null, // keep object
       });
     }
   }, [editData]);
@@ -115,7 +116,7 @@ const LeaveForm = () => {
       ...formValues,
       leaveType: formValues.leaveType.value,
       dayType: formValues.dayType.value,
-      fromDate:formValues.fromDate ? format(formValues.fromDate, "yyyy-MM-dd") : null,
+      fromDate: formValues.fromDate ? format(formValues.fromDate, "yyyy-MM-dd") : null,
       toDate: formValues.toDate ? format(formValues.toDate, "yyyy-MM-dd") : null
     }
     setLoading(true);
@@ -186,14 +187,17 @@ const LeaveForm = () => {
           fullWidth
           options={dayTypeOptions}
           getOptionLabel={(option) => option.label}
-          value={dayTypeOptions.find((x) => x.value === formValues.dayType) || null}
+          value={formValues.dayType || null}  // just use the object directly
           onChange={(event, newValue) =>
             handleChange("dayType", newValue)
           }
-          renderInput={(params) => <TextField {...params} label={<span>Day Type <span style={{ color: 'red' }}>*</span></span>} />}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label={<span>Day Type <span style={{ color: 'red' }}>*</span></span>}
+            />
+          )}
         />
-
-
 
         <Autocomplete
           fullWidth

@@ -175,6 +175,54 @@ export default function Employees() {
     setOpenStatusDialog(false);
   };
 
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case "active":
+        return "#0F7B0F"; // green
+      case "inactive":
+        return "#C62828"; // red
+      case "disabled":
+        return "#6c757d"; // gray
+      default:
+        return "#7D7D7D";
+    }
+  };
+
+  const getBackgroundColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case "active":
+        return "#DFF5D8"; // light green
+      case "inactive":
+        return "#FDE0E0"; // light red
+      case "disabled":
+        return "#ECECEC"; // light gray
+      default:
+        return "#E9E9E9";
+    }
+  };
+
+  const StatusChip = ({ label }) => {
+    return (
+      <div
+        style={{
+          backgroundColor: getBackgroundColor(label),
+          color: getStatusColor(label),
+          padding: "3px 10px",
+          fontWeight: 500,
+          fontSize: "12px",
+          borderRadius: "16px",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          textTransform: "capitalize",
+          cursor: "pointer"
+        }}
+      >
+        {label}
+      </div>
+    );
+  };
+
   const columns = [
     { name: "userId", label: "ID", options: { display: false } },
     { name: "firstName", label: "First Name" },
@@ -199,7 +247,7 @@ export default function Employees() {
               className={statusClass}
               onClick={() => handleStatusClick(dataIndex, value)}
             >
-              {statusText}
+              <StatusChip label={statusText} />
             </span>
           );
         },

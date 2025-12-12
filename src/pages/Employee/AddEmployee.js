@@ -28,7 +28,7 @@ const steps = [
     "Employment Details",
     "Salary Details",
     "Education & Experience",
-    "Documents & Other Info",
+    // "Documents & Other Info",
     "Other Details",
 ];
 
@@ -456,7 +456,7 @@ export default function AddEmployee() {
                             />
                             <TextField
                                 fullWidth
-                                label={<span>Work Location <span style={{ color: 'red' }}>*</span></span>}
+                                label={<span>Work Location (City) <span style={{ color: 'red' }}>*</span></span>}
                                 value={formvalues.workLocation || ""}
                                 onChange={(e) =>
                                     setFormvalues({ ...formvalues, workLocation: e.target.value })
@@ -708,67 +708,67 @@ export default function AddEmployee() {
                         </Box>
                     </>
                 )
+            // case 4:
+            //     return (
+            //         <>
+            //             <Box
+            //                 sx={{
+            //                     display: "flex",
+            //                     flexDirection: "column",
+            //                     alignItems: "center",
+            //                     justifyContent: "center",
+            //                     width: "100%",
+            //                 }}
+            //             >
+            //                 {[
+            //                     { label: "Profile Photo", key: "profilePhoto", accept: ".jpg,.png" },
+            //                     { label: "Resume", key: "resume", accept: ".pdf" },
+            //                     { label: "Aadhar Card", key: "aadharCard", accept: ".pdf,.jpg" },
+            //                     { label: "PAN Card", key: "panCard", accept: ".pdf,.jpg" },
+            //                     { label: "Offer Letter", key: "offerLetter", accept: ".pdf" },
+            //                 ].map((item, index) => (
+            //                     <Box
+            //                         key={index}
+            //                         sx={{
+            //                             display: "flex",
+            //                             alignItems: "center",
+            //                             justifyContent: "space-between",
+            //                             width: "60%",
+            //                             mb: 2,
+            //                             border: "1px solid #ddd",
+            //                             borderRadius: "8px",
+            //                             padding: "10px 15px",
+            //                             backgroundColor: "#fafafa",
+            //                         }}
+            //                     >
+            //                         <Typography variant="body1" sx={{ fontWeight: 500 }}>
+            //                             {item.label}
+            //                         </Typography>
+            //                         <input
+            //                             type="file"
+            //                             accept={item.accept}
+            //                             onChange={(e) => {
+            //                                 const file = e.target.files[0];
+            //                                 if (file && file.size > 100 * 1024) {
+            //                                     alert("File size exceeds 100 KB limit!");
+            //                                     e.target.value = "";
+            //                                     return;
+            //                                 }
+
+            //                                 // ✅ Store file in formValues
+            //                                 setFormvalues((prev) => ({
+            //                                     ...prev,
+            //                                     [item.key]: file || null,
+            //                                 }));
+            //                             }}
+            //                         />
+            //                     </Box>
+            //                 ))}
+            //             </Box>
+            //         </>
+            //     );
+
             case 4:
-                return (
-                    <>
-                        <Box
-                            sx={{
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                width: "100%",
-                            }}
-                        >
-                            {[
-                                { label: "Profile Photo", key: "profilePhoto", accept: ".jpg,.png" },
-                                { label: "Resume", key: "resume", accept: ".pdf" },
-                                { label: "Aadhar Card", key: "aadharCard", accept: ".pdf,.jpg" },
-                                { label: "PAN Card", key: "panCard", accept: ".pdf,.jpg" },
-                                { label: "Offer Letter", key: "offerLetter", accept: ".pdf" },
-                            ].map((item, index) => (
-                                <Box
-                                    key={index}
-                                    sx={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "space-between",
-                                        width: "60%",
-                                        mb: 2,
-                                        border: "1px solid #ddd",
-                                        borderRadius: "8px",
-                                        padding: "10px 15px",
-                                        backgroundColor: "#fafafa",
-                                    }}
-                                >
-                                    <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                                        {item.label}
-                                    </Typography>
-                                    <input
-                                        type="file"
-                                        accept={item.accept}
-                                        onChange={(e) => {
-                                            const file = e.target.files[0];
-                                            if (file && file.size > 100 * 1024) {
-                                                alert("File size exceeds 100 KB limit!");
-                                                e.target.value = "";
-                                                return;
-                                            }
-
-                                            // ✅ Store file in formValues
-                                            setFormvalues((prev) => ({
-                                                ...prev,
-                                                [item.key]: file || null,
-                                            }));
-                                        }}
-                                    />
-                                </Box>
-                            ))}
-                        </Box>
-                    </>
-                );
-
-            case 5:
                 return (
                     <>
                         <Box sx={{ display: "flex", gap: 2, mb: 2 }}>

@@ -143,7 +143,7 @@ export default function Leave() {
         getRequest(url)
             .then((res) => {
                 if (res.data) {
-                    res.data.forEach((d) => {
+                    res.data.leaves.forEach((d) => {
                         if (d.fromDate) {
                             d.fromDate = moment(d.fromDate).format("DD/MM/YYYY");
                         }
@@ -151,7 +151,7 @@ export default function Leave() {
                             d.toDate = moment(d.toDate).format("DD/MM/YYYY");
                         }
                     });
-                    setLeaveList(res.data);
+                    setLeaveList(res.data.leaves);
                     setLoading(false);
                 }
             })
@@ -186,37 +186,84 @@ export default function Leave() {
     };
 
     const handleSaveStatus = () => {
-        let data = {
-            leaveId: selectedRow.leaveId,
-            employeeName: selectedRow.employeeName,
-            userName: selectedRow.userName,
-            fromDate: convertDMYtoYMD(selectedRow.fromDate),
-            toDate: convertDMYtoYMD(selectedRow.toDate),
-            leaveType: selectedRow.leaveType,
-            reason: selectedRow.reason,
-            isApproved: selectedStatus,
-            dayType: selectedRow.dayType,
-            cancelLeave: selectedRow.cancelLeave
+        if (!selectedStatus && !selectedRow.approverReason) {
+            ToastError("Please enter a reason for rejection");
+            return;
         }
-        const url = `User/ApplyLeave`;
+
+        const data = {
+            leaveId: selectedRow.leaveId,
+            isApproved: selectedStatus,
+            approverReason: !selectedStatus ? selectedRow.approverReason || "" : null // null if approved
+        };
+
+        const url = `User/ApproveRejectLeave`;
         setLoading(true);
+
         postRequest(url, data)
             .then((res) => {
                 if (res.status === 200) {
-
-                    ToastSuccess("Status updated successfully")
+                    ToastSuccess("Status updated successfully");
                     setLoading(false);
                     getLeave();
                 }
             })
             .catch((err) => {
                 setLoading(false);
-                console.error("Login error:", err);
+                console.error("Error:", err);
                 ToastError(err.response?.data?.message || "Failed to update status");
             });
 
         setOpenStatusDialog(false);
     };
+
+    const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case "approved":
+        return "#0F7B0F"; // green
+      case "declined":
+        return "#C62828"; // red
+      case "update Status":
+        return "#6c757d"; // gray
+      default:
+        return "#7D7D7D";
+    }
+  };
+
+  const getBackgroundColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case "approved":
+        return "#DFF5D8"; // light green
+      case "declined":
+        return "#FDE0E0"; // light red
+      case "update Status":
+        return "#ECECEC"; // light gray
+      default:
+        return "#E9E9E9";
+    }
+  };
+
+  const StatusChip = ({ label }) => {
+    return (
+      <div
+        style={{
+          backgroundColor: getBackgroundColor(label),
+          color: getStatusColor(label),
+          padding: "3px 10px",
+          fontWeight: 500,
+          fontSize: "12px",
+          borderRadius: "16px",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          textTransform: "capitalize",
+          cursor: "pointer"
+        }}
+      >
+        {label}
+      </div>
+    );
+  };
 
 
 
@@ -289,7 +336,7 @@ export default function Leave() {
                                 handleStatusClick(dataIndex, isApproved);
                             }}
                         >
-                            {statusText}
+                            <StatusChip label={statusText} />
                         </span>
                     );
                 },
@@ -390,6 +437,19 @@ export default function Leave() {
                         </Box>
 
                     </RadioGroup>
+                    {!selectedStatus && (
+                        <Box mt={2}>
+                            <strong>Rejection Reason:</strong>
+                            <textarea
+                                style={{ width: "100%", minHeight: 60 }}
+                                value={selectedRow.approverReason || ""}
+                                onChange={(e) =>
+                                    setSelectedRow({ ...selectedRow, approverReason: e.target.value })
+                                }
+                            />
+                        </Box>
+                    )}
+
                 </DialogContent>
 
                 <DialogActions>

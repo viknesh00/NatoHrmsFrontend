@@ -11,6 +11,7 @@ import {
   CalendarCheck2,
   UserMinus,
   ClipboardList,
+  Calendar,
 } from "lucide-react";
 import { cookieKeys, getCookie } from "../../services/Cookies";
 import { cookieObj } from "../../models/cookieObj";
@@ -30,6 +31,7 @@ const Sidebar = () => {
     { to: "/payslip", label: "Payslip", icon: <File size={20} />, roles: ["Admin"] },
     { to: "/announcement", label: "Announcement", icon: <Megaphone size={20} />, roles: ["Admin", "Manager", "Employee"] },
     { to: "/leave", label: "Leave", icon: <UserMinus size={20} />, roles: ["Admin","Manager","Employee"] },
+    { to: "/Calendar", label: "Calendar", icon: <Calendar size={20} />, roles: ["Admin", "Manager", "Employee"] },
   ];
 
   // const filteredMainMenu = mainMenu.filter(item => item.roles.includes(userRole));
