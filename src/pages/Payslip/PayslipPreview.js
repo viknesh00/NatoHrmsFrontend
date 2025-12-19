@@ -3,7 +3,7 @@ import { Box, Typography, Divider, TextField, Button } from "@mui/material";
 import { FileDown } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import { makeStyles } from "@mui/styles";
+import { makeStyles } from "@material-ui/core/styles";
 import { useLocation } from "react-router-dom";
 import Breadcrumb from "../../services/Breadcrumb";
 

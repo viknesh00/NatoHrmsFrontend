@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import MUIDataTable from "mui-datatables";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
-import { makeStyles } from "@mui/styles";
+import { makeStyles } from "@material-ui/core/styles";
 import { Box, IconButton, Tabs, Tab, Tooltip, Button } from "@mui/material";
 import { Check, Clock, RotateCcw } from "lucide-react";
 import moment from "moment";

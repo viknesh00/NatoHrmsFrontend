@@ -1,5 +1,5 @@
 import React from "react";
-import { makeStyles } from "@mui/styles"; // If using MUI v5, @mui/styles is separate
+import { makeStyles } from "@material-ui/core/styles"; // If using MUI v5, @mui/styles is separate
 
 const useStyles = makeStyles({
   mask: {
