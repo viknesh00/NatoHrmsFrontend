@@ -115,7 +115,7 @@ export default function WorkingHours() {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [departmentTimeList, setDepartmentTimeList] = useState([]);
-    const breadCrumb = [{ label: "Department List" }]
+    const breadCrumb = [{ label: "Employee", link: "/employees", label: "Department List" }]
 
     useEffect(() => {
         getDepartmentTiming();

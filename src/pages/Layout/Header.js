@@ -80,44 +80,44 @@ const Header = () => {
 
   const fetchLocation = async () => {
     if (!navigator.geolocation) {
-      console.error("Geolocation is not supported.");
-      return null;
+      return { city: "Unknown" };
     }
 
     return new Promise((resolve) => {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
-          const latitude = position.coords.latitude;
-          const longitude = position.coords.longitude;
-
-          // Reverse geocode using OpenStreetMap
-          let city = "";
-          //let area = "";
           try {
+            const { latitude, longitude } = position.coords;
+
             const res = await fetch(
               `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`
             );
             const data = await res.json();
-            city = data.address.city || data.address.town || data.address.village || "";
-            //area = data.address.suburb || data.address.neighbourhood || "";
-          } catch (err) {
-            console.error("Error fetching city/area:", err);
-          }
 
-          resolve({
-            city,
-          });
-        },
-        (error) => {
-          if (error.code === error.PERMISSION_DENIED) {
-            console.warn("Location permission denied.");
-            alert(
-              "Location permission denied. Clock In/Out will continue without location."
-            );
-          } else {
-            console.error("Error getting location:", error);
+            const city =
+              data.address.city ||
+              data.address.town ||
+              data.address.village ||
+              data.address.county ||
+              "Unknown";
+
+            resolve({ city });
+          } catch (err) {
+            console.error("Reverse geocode failed", err);
+            resolve({ city: "Unknown" });
           }
-          resolve(null);
+        },
+        async (error) => {
+          console.warn("Geolocation error:", error);
+
+          // 🔁 FALLBACK: get city from IP
+          try {
+            const res = await fetch("https://ipapi.co/json/");
+            const data = await res.json();
+            resolve({ city: data.city || "Unknown" });
+          } catch {
+            resolve({ city: "Unknown" });
+          }
         },
         { enableHighAccuracy: true, timeout: 10000 }
       );

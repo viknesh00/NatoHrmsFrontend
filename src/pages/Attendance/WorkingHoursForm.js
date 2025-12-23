@@ -45,7 +45,7 @@ const WorkingHoursForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const editData = location.state?.editData || null;
-  const breadCrumb = !editData ? [{ label: "Department List", link: "/employees/working-hours" }, { label: "Create-Department" }] : [{ label: "Department List", link: "/employees/working-hours" }, { label: "Edit-Department" }];
+  const breadCrumb = !editData ? [{ label: "Employee", link: "/employees", label: "Department List", link: "/employees/working-hours" }, { label: "Create-Department" }] : [{ label: "Department List", link: "/employees/working-hours" }, { label: "Edit-Department" }];
   const [loading, setLoading] = useState(false);
   const [formValues, setFormValues] = useState({
     deptId: editData?.deptId ?? null,
