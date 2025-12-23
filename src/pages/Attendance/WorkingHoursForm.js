@@ -45,13 +45,12 @@ const WorkingHoursForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const editData = location.state?.editData || null;
-  const breadCrumb = !editData ? [{ label: "Department List", link: "/attendance/working-hours" }, { label: "Create-Department" }] : [{ label: "Department List", link: "/attendance/working-hours" }, { label: "Edit-Department" }];
+  const breadCrumb = !editData ? [{ label: "Department List", link: "/employees/working-hours" }, { label: "Create-Department" }] : [{ label: "Department List", link: "/employees/working-hours" }, { label: "Edit-Department" }];
   const [loading, setLoading] = useState(false);
   const [formValues, setFormValues] = useState({
     deptId: editData?.deptId ?? null,
-    departmentName: editData?.departmentName
-      ? { label: editData.departmentName, value: editData.departmentName }
-      : null,
+    //departmentName: editData?.departmentName ? { label: editData.departmentName, value: editData.departmentName }: null,
+    departmentName:editData?.departmentName??null,
     startTime: editData?.startTime ? parse(editData.startTime, "HH:mm:ss", new Date()) : null,
     endTime: editData?.endTime ? parse(editData.endTime, "HH:mm:ss", new Date()) : null,
   });
@@ -78,7 +77,7 @@ const WorkingHoursForm = () => {
       .then((res) => {
         if (res.status === 200) {
           ToastSuccess(res.data.message);
-          navigate("/attendance/working-hours");
+          navigate("/employees/working-hours");
         }
       })
       .catch((err) => {
@@ -87,7 +86,7 @@ const WorkingHoursForm = () => {
       });
   };
 
-  const handleCancel = () => navigate("/attendance/working-hours");
+  const handleCancel = () => navigate("/employees/working-hours");
 
   return (
     <Box className={classes.rootBox}>
@@ -99,7 +98,7 @@ const WorkingHoursForm = () => {
         </Typography>
 
         {/* Department */}
-        <Autocomplete
+        {/* <Autocomplete
           fullWidth
           options={departmentOptions}
           getOptionLabel={(option) => option.label || ""}
@@ -109,6 +108,15 @@ const WorkingHoursForm = () => {
           }
           disabled={!!editData}
           renderInput={(params) => <TextField {...params} label="Department" fullWidth />}
+        /> */}
+
+        <TextField
+          fullWidth
+          label={<span>Department Name <span style={{ color: 'red' }}>*</span></span>}
+          value={formValues.departmentName || ""}
+          onChange={(e) =>
+            setFormValues({ ...formValues, departmentName: e.target.value })
+          }
         />
 
         {/* Start Time */}

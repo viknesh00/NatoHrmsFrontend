@@ -138,18 +138,32 @@ export default function WorkingHours() {
             });
     };
 
-    const handleCreateDepartment = () => navigate("/attendance/add-working-hours");
+    const handleCreateDepartment = () => navigate("/employees/add-working-hours");
 
 
     const handleEdit = (rowData) => {
-        navigate("/attendance/edit-working-hours", { state: { editData: rowData } });
+        navigate("/employees/edit-working-hours", { state: { editData: rowData } });
     };
 
     const columns = [
         { name: "deptId", label: "Department ID" },
         { name: "departmentName", label: "Department Name" },
-        { name: "startTime", label: "Start Time" },
-        { name: "endTime", label: "End Time" },
+        { 
+            name: "startTime", 
+            label: "Start Time",
+            options: {
+                customBodyRender: (value) =>
+                    value ? moment(value, "HH:mm").format("hh:mm A") : "-"
+            } 
+        },
+        { 
+            name: "endTime", 
+            label: "End Time",
+            options: {
+                customBodyRender: (value) =>
+                    value ? moment(value, "HH:mm").format("hh:mm A") : "-"
+            }
+        },
         {
             name: "actions",
             label: "Actions",

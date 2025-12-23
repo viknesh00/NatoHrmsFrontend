@@ -294,7 +294,7 @@ export default function Employees() {
   };
 
   const handleDepartment = () => {
-    navigate("/attendance/working-hours")
+    navigate("/employees/working-hours")
   }
 
   return (
