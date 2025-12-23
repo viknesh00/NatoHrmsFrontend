@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Button, Menu, MenuItem, ListItemIcon, Box, Typography, Divider } from "@mui/material";
 import { UserCircle, User, Key, LogOut } from "lucide-react";
-import { makeStyles } from "@material-ui/core/styles";
+import { makeStyles } from "@mui/styles";
 import { cookieKeys, getCookie, setCookie } from "../../services/Cookies";
 import { cookieObj } from "../../models/cookieObj";
 import PasswordChange from "../../services/PasswordChange";
@@ -80,44 +80,44 @@ const Header = () => {
 
   const fetchLocation = async () => {
     if (!navigator.geolocation) {
-      return { city: "Unknown" };
+      console.error("Geolocation is not supported.");
+      return null;
     }
 
     return new Promise((resolve) => {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
-          try {
-            const { latitude, longitude } = position.coords;
+          const latitude = position.coords.latitude;
+          const longitude = position.coords.longitude;
 
+          // Reverse geocode using OpenStreetMap
+          let city = "";
+          //let area = "";
+          try {
             const res = await fetch(
               `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`
             );
             const data = await res.json();
-
-            const city =
-              data.address.city ||
-              data.address.town ||
-              data.address.village ||
-              data.address.county ||
-              "Unknown";
-
-            resolve({ city });
+            city = data.address.city || data.address.town || data.address.village || "";
+            //area = data.address.suburb || data.address.neighbourhood || "";
           } catch (err) {
-            console.error("Reverse geocode failed", err);
-            resolve({ city: "Unknown" });
+            console.error("Error fetching city/area:", err);
           }
-        },
-        async (error) => {
-          console.warn("Geolocation error:", error);
 
-          // 🔁 FALLBACK: get city from IP
-          try {
-            const res = await fetch("https://ipapi.co/json/");
-            const data = await res.json();
-            resolve({ city: data.city || "Unknown" });
-          } catch {
-            resolve({ city: "Unknown" });
+          resolve({
+            city,
+          });
+        },
+        (error) => {
+          if (error.code === error.PERMISSION_DENIED) {
+            console.warn("Location permission denied.");
+            alert(
+              "Location permission denied. Clock In/Out will continue without location."
+            );
+          } else {
+            console.error("Error getting location:", error);
           }
+          resolve(null);
         },
         { enableHighAccuracy: true, timeout: 10000 }
       );
@@ -133,13 +133,12 @@ const Header = () => {
   const handleClock = async () => {   // <-- add async here
     setLoading(true);
     const ip = await fetchIpAddress();
-    const location = await fetchLocation();
-    const now = new Date();
-    
+    const location = await fetchLocation(); const tzOffset = now.getTimezoneOffset() * 60000; // offset in ms
+    const localISOTime = new Date(now - tzOffset).toISOString().slice(0, -1); // remove 'Z'
     let data = {
-      location: location.city,
+      location: location?.city || "Unknown",
       ipAddress: ip,
-      timestamp: now.toISOString(),
+      timestamp: localISOTime
     };
     if (!clockedIn) {
       const url = `Attendance/clock-in`;
