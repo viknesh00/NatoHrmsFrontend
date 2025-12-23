@@ -133,7 +133,9 @@ const Header = () => {
   const handleClock = async () => {   // <-- add async here
     setLoading(true);
     const ip = await fetchIpAddress();
-    const location = await fetchLocation(); const tzOffset = now.getTimezoneOffset() * 60000; // offset in ms
+    const now = new Date();
+    const location = await fetchLocation(); 
+    const tzOffset = now.getTimezoneOffset() * 60000; // offset in ms
     const localISOTime = new Date(now - tzOffset).toISOString().slice(0, -1); // remove 'Z'
     let data = {
       location: location?.city || "Unknown",
