@@ -134,9 +134,12 @@ const Header = () => {
     setLoading(true);
     const ip = await fetchIpAddress();
     const location = await fetchLocation();
+    const now = new Date();
+    
     let data = {
       location: location.city,
       ipAddress: ip,
+      timestamp: now.toISOString(),
     };
     if (!clockedIn) {
       const url = `Attendance/clock-in`;
