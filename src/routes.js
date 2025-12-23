@@ -41,6 +41,7 @@ const routes = [
             { path: "employees", element: <Employees /> },
             { path: "attendance", element: <Attendance /> },
             { path: "attendance/working-hours", element: <WorkingHours /> },
+            { path: "attendance/add-working-hours", element: <WorkingHoursForm /> },
             { path: "attendance/edit-working-hours", element: <WorkingHoursForm /> },
             { path: "leave", element: <Leave /> },
             { path: "leave/apply-leave", element: <LeaveForm /> },

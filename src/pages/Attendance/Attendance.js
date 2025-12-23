@@ -267,9 +267,6 @@ export default function Attendance() {
     ToastSuccess("Filters reset");
   };
 
-  const handleDepartmentTimings = () => {
-    navigate("/attendance/working-hours")
-  }
 
   const getStatusClass = (status) => {
     switch (status) {
@@ -360,17 +357,6 @@ export default function Attendance() {
     <Box className={classes.rootBox}>
       <LoadingMask loading={loading} />
       <Breadcrumb items={breadCrumb} />
-      {isAdminOrManager && (
-        <Box className={classes.addButtonContainer}>
-          <Button
-            variant="contained"
-            onClick={handleDepartmentTimings}
-            className={classes.addButton}
-          >
-            <Clock size={20} /> Department Timings
-          </Button>
-        </Box>
-      )}
       <Box className={classes.tabHeader}>
         <Tabs
           value={logType}

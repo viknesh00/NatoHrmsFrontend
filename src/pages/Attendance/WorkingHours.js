@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import moment from "moment";
 import { getRequest } from "../../services/Apiservice";
 import LoadingMask from "../../services/LoadingMask";
+import Breadcrumb from "../../services/Breadcrumb";
 
 const getMuiTheme = () =>
     createTheme({
@@ -114,6 +115,8 @@ export default function WorkingHours() {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [departmentTimeList, setDepartmentTimeList] = useState([]);
+    const breadCrumb = [{ label: "Department List" }]
+
     useEffect(() => {
         getDepartmentTiming();
     }, []);
@@ -134,6 +137,8 @@ export default function WorkingHours() {
                 console.error("Login error:", err);
             });
     };
+
+    const handleCreateDepartment = () => navigate("/attendance/add-working-hours");
 
 
     const handleEdit = (rowData) => {
@@ -182,10 +187,20 @@ export default function WorkingHours() {
     return (
         <Box className={classes.rootBox}>
             <LoadingMask loading={loading} />
+            <Breadcrumb items={breadCrumb} />
+            <Box className={classes.addButtonContainer}>
+                    <Button
+                      variant="contained"
+                      onClick={handleCreateDepartment}
+                      className={classes.addButton}
+                    >
+                      <Plus size={20} /> Create
+                    </Button>
+                  </Box>
             <Box className="reportstablehead">
                 <ThemeProvider theme={getMuiTheme()}>
                     <MUIDataTable
-                        title={"Announcement List"}
+                        title={"Department List"}
                         className={classes.tableBody}
                         data={departmentTimeList}
                         columns={columns}

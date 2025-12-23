@@ -9,13 +9,14 @@ import Autocomplete from "@mui/material/Autocomplete";
 import { postRequest } from "../../services/Apiservice";
 import { ToastSuccess } from "../../services/ToastMsg";
 import LoadingMask from "../../services/LoadingMask";
+import Breadcrumb from "../../services/Breadcrumb";
 
 const useStyles = makeStyles({
   rootBox: {
-    backgroundColor: "#f9f9f9",
-    padding: 24,
-    borderRadius: 12,
-    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 8,
+    boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
   },
   container: {
     maxWidth: 500,
@@ -44,6 +45,7 @@ const WorkingHoursForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const editData = location.state?.editData || null;
+  const breadCrumb = !editData ? [{ label: "Department List", link: "/attendance/working-hours" }, { label: "Create-Department" }] : [{ label: "Department List", link: "/attendance/working-hours" }, { label: "Edit-Department" }];
   const [loading, setLoading] = useState(false);
   const [formValues, setFormValues] = useState({
     deptId: editData?.deptId ?? null,
@@ -90,8 +92,9 @@ const WorkingHoursForm = () => {
   return (
     <Box className={classes.rootBox}>
       <LoadingMask loading={loading} />
+      <Breadcrumb items={breadCrumb} />
       <Box className={classes.container}>
-        <Typography className={classes.title}>
+       <Typography variant="h6" className={classes.title}>
           {editData ? "Edit Department Timings" : "Create Department Timings"}
         </Typography>
 

@@ -5,13 +5,14 @@ import { makeStyles } from "@material-ui/core/styles";
 import Box from "@mui/material/Box";
 import moment from "moment";
 import IconButton from "@mui/material/IconButton";
-import { Pencil, Plus } from "lucide-react";
+import { Pencil, Plus, Clock } from "lucide-react";
 import { ToastError, ToastSuccess } from "../../services/ToastMsg";
 import { Button, Dialog, DialogTitle, DialogContent, DialogActions, RadioGroup, FormControlLabel, Radio } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { getRequest, postRequest } from "../../services/Apiservice";
 import LoadingMask from "../../services/LoadingMask";
 import Breadcrumb from "../../services/Breadcrumb";
+import { getCookie } from "../../services/Cookies";
 
 const getMuiTheme = () =>
   createTheme({
@@ -81,6 +82,7 @@ const useStyles = makeStyles((theme) => ({
     },
   },
   addButtonContainer: {
+    gap:"10px",
     display: "flex",
     justifyContent: "flex-end",
     marginBottom: "10px",
@@ -111,6 +113,8 @@ export default function Employees() {
   const [selectedUserName, setSelectedUserName] = useState("");
   const [openStatusDialog, setOpenStatusDialog] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState(null);
+  const userRole = getCookie("role");
+  const isAdminOrManager = userRole === "Admin" || userRole === "Manager";
 
   useEffect(() => {
     getUsers();
@@ -289,11 +293,23 @@ export default function Employees() {
     rowsPerPageOptions: [10, 15, 50, 100],
   };
 
+  const handleDepartment = () => {
+    navigate("/attendance/working-hours")
+  }
+
   return (
     <Box className={classes.rootBox}>
       <LoadingMask loading={loading} />
       <Breadcrumb items={breadCrumb} />
+      
       <Box className={classes.addButtonContainer}>
+        <Button
+          variant="contained"
+          onClick={handleDepartment}
+          className={classes.addButton}
+        >
+          <Clock size={20} /> Department
+        </Button>
         <Button
           variant="contained"
           onClick={handleAddEmployee}
