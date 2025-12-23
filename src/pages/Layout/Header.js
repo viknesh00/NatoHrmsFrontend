@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Button, Menu, MenuItem, ListItemIcon, Box, Typography, Divider } from "@mui/material";
 import { UserCircle, User, Key, LogOut } from "lucide-react";
-import { makeStyles } from "@mui/styles";
+import { makeStyles } from "@material-ui/core/styles";
 import { cookieKeys, getCookie, setCookie } from "../../services/Cookies";
 import { cookieObj } from "../../models/cookieObj";
 import PasswordChange from "../../services/PasswordChange";
