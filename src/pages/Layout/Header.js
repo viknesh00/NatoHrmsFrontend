@@ -80,46 +80,46 @@ const Header = () => {
 
   const fetchLocation = async () => {
     if (!navigator.geolocation) {
-      console.error("Geolocation is not supported.");
+      console.error("Geolocation not supported");
       return null;
     }
 
     return new Promise((resolve) => {
       navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const latitude = position.coords.latitude;
-          const longitude = position.coords.longitude;
-
-          // Reverse geocode using OpenStreetMap
-          let city = "";
-          //let area = "";
+        async ({ coords }) => {
           try {
             const res = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`
+              `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${coords.latitude}&lon=${coords.longitude}`,
+              {
+                headers: {
+                  "User-Agent": "NatoHRMS/1.0 (admin@natobotics.com)",
+                  "Accept": "application/json",
+                },
+              }
             );
-            const data = await res.json();
-            city = data.address.city || data.address.town || data.address.village || "";
-            //area = data.address.suburb || data.address.neighbourhood || "";
-          } catch (err) {
-            console.error("Error fetching city/area:", err);
-          }
 
-          resolve({
-            city,
-          });
+            const data = await res.json();
+            const addr = data.address || {};
+
+            resolve({
+              city:
+                addr.city ||
+                addr.town ||
+                addr.village ||
+                addr.county ||
+                addr.state_district ||
+                "Unknown location",
+            });
+          } catch (err) {
+            console.error("Reverse geocode failed:", err);
+            resolve({ city: "Unknown location" });
+          }
         },
         (error) => {
-          if (error.code === error.PERMISSION_DENIED) {
-            console.warn("Location permission denied.");
-            alert(
-              "Location permission denied. Clock In/Out will continue without location."
-            );
-          } else {
-            console.error("Error getting location:", error);
-          }
-          resolve(null);
+          console.error("Geolocation error:", error);
+          resolve({ city: "Unknown location" });
         },
-        { enableHighAccuracy: true, timeout: 10000 }
+        { enableHighAccuracy: true, timeout: 15000 }
       );
     });
   };
