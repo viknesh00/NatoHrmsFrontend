@@ -849,7 +849,7 @@ export default function AddEmployee() {
         <Box>
             <LoadingMask />
             <Breadcrumb items={breadCrumb} />
-            <Card elevation={1} sx={{ height: "625px", borderRadius: 3, display: "flex", flexDirection: "column" }}>
+            <Card elevation={1} sx={{ height: "580px", borderRadius: 3, display: "flex", flexDirection: "column" }}>
                 <Box
                     sx={{
                         display: "flex",
