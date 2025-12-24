@@ -68,7 +68,7 @@ const WorkingHoursForm = () => {
       deptId: formValues.deptId,
       startTime: formValues.startTime ? format(formValues.startTime, "HH:mm:ss") : null,
       endTime: formValues.endTime ? format(formValues.endTime, "HH:mm:ss") : null,
-      departmentName: departmentName: formValues.departmentName || "",
+      departmentName: formValues.departmentName || "",
     };
 
     setLoading(true);
