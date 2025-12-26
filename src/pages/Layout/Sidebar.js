@@ -25,7 +25,7 @@ const Sidebar = () => {
   // ];
 
   const organizationMenu = [
-    { to: "/employees", label: "Employees", icon: <Users size={20} />, roles: ["Admin"] },
+    { to: "/employees", label: "Employees", icon: <Users size={20} />, roles: ["Admin", "Manager"] },
     { to: "/timesheet", label: "Timesheet", icon: <ClipboardList size={20} />, roles: ["Admin", "Manager", "Employee"] },
     { to: "/attendance", label: "Attendance", icon: <CalendarCheck2 size={20} />, roles: ["Admin","Manager","Employee"] },
     { to: "/payslip", label: "Payslip", icon: <File size={20} />, roles: ["Admin"] },

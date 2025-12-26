@@ -114,6 +114,7 @@ export default function Employees() {
   const [openStatusDialog, setOpenStatusDialog] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState(null);
   const userRole = getCookie("role");
+  const isAdmin = userRole === "Admin";
   const isAdminOrManager = userRole === "Admin" || userRole === "Manager";
 
   useEffect(() => {
@@ -303,6 +304,7 @@ export default function Employees() {
       <Breadcrumb items={breadCrumb} />
       
       <Box className={classes.addButtonContainer}>
+        {isAdmin && (
         <Button
           variant="contained"
           onClick={handleDepartment}
@@ -310,6 +312,7 @@ export default function Employees() {
         >
           <Clock size={20} /> Department
         </Button>
+        )}
         <Button
           variant="contained"
           onClick={handleAddEmployee}

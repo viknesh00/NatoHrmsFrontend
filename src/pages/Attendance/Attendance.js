@@ -291,7 +291,7 @@ export default function Attendance() {
       name: "userName",
       label: "User Name",
       options: {
-        display: isAdminOrManager,
+        display: (isAdminOrManager ? true : "excluded"),
       }
     },
     { name: "time", label: "Time" },
@@ -325,7 +325,7 @@ export default function Attendance() {
       name: 'userEmail',
       label: 'User Name',
       options: {
-        display: isAdminOrManager,
+        display: (isAdminOrManager ? true : "excluded"),
       }
     },
     { name: 'firstClockIn', label: 'First Clock In' },

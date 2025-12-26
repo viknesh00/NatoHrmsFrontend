@@ -243,7 +243,7 @@ export default function Announcement() {
             name: "isActive",
             label: "Status",
             options: {
-                display: isAdminOrManager,
+                display: (isAdminOrManager ? true : "excluded"),
                 customBodyRenderLite: (dataIndex) => {
                     const value = announcementList[dataIndex]?.isActive;
                     const statusText = value ? "Active" : "Inactive";
@@ -260,6 +260,7 @@ export default function Announcement() {
                 filter: false,
                 sort: false,
                 empty: true,
+                display: (isAdminOrManager ? true : "excluded"),
                 customBodyRender: (value, tableMeta) => {
                     const rowData = announcementList[tableMeta.rowIndex];
                     return (

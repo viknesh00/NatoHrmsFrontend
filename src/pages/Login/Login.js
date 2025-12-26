@@ -60,7 +60,7 @@ const Login = () => {
 
           const roleDefaultRoute = {
             "Admin": "/employees",
-            "Manager": "/timesheet",
+            "Manager": "/employees",
             "Employee": "/timesheet",
           };
 
