@@ -22,6 +22,7 @@ import { ToastError, ToastSuccess } from "../../services/ToastMsg";
 import { format, parseISO } from "date-fns";
 import LoadingMask from "../../services/LoadingMask";
 import Breadcrumb from "../../services/Breadcrumb";
+import { getCookie } from "../../services/Cookies";
 
 const steps = [
     "Personal Details",
@@ -39,8 +40,10 @@ export default function AddEmployee() {
     const [loading, setLoading] = useState(false);
     const [departmentNames, setDepartmentNames] = useState([]);
     const [managerList, setManagerList] = useState([]);
+    const userRole = getCookie("role");
     const isEditMode = !!email;
-    const breadCrumb = !isEditMode ? [{ label: "Employee", link: "/employees" }, { label: "Add-Employee" }] : [{ label: "Employee", link: "/employees" }, { label: "Edit-Employee" }];
+    const isAdminOrManager = userRole === "Admin" || userRole === "Manager";
+    const breadCrumb = !isAdminOrManager ? [{ label: "View Profile", link: "/view-employee" }, { label: "Edit-Employee" }] : !isEditMode ? [{ label: "Employee", link: "/employees" }, { label: "Add-Employee" }] : [{ label: "Employee", link: "/employees" }, { label: "Edit-Employee" }];
     const [formvalues, setFormvalues] = useState({
         firstName: null,
         lastName: null,
@@ -411,6 +414,7 @@ export default function AddEmployee() {
                                 onChange={(e) =>
                                     setFormvalues({ ...formvalues, employeeId: e.target.value })
                                 }
+                                disabled={!isAdminOrManager}
                             />
                             <Autocomplete
                                 fullWidth
@@ -423,6 +427,7 @@ export default function AddEmployee() {
                                 value={formvalues.employeeType} // should be {label, value} object
                                 onChange={(event, newValue) => setFormvalues({ ...formvalues, employeeType: newValue })}
                                 renderInput={(params) => <TextField {...params} label="Employee Type" />}
+                                disabled={!isAdminOrManager}
                             />
                             <TextField
                                 fullWidth
@@ -431,6 +436,7 @@ export default function AddEmployee() {
                                 onChange={(e) =>
                                     setFormvalues({ ...formvalues, designation: e.target.value })
                                 }
+                                disabled={!isAdminOrManager}
                             />
                         </Box>
                         <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
@@ -443,6 +449,7 @@ export default function AddEmployee() {
                                     onChange={(newValue) => setFormvalues({ ...formvalues, doj: newValue })}
                                     renderInput={(params) => <TextField fullWidth  {...params} />}
                                     sx={{ flex: 1 }}
+                                    disabled={!isAdminOrManager}
                                 />
                             </LocalizationProvider>
                             <Autocomplete
@@ -453,6 +460,7 @@ export default function AddEmployee() {
                                 onChange={(event, newValue) => setFormvalues({ ...formvalues, department: newValue })}
                                 renderInput={(params) => <TextField {...params} label={<span>Department <span style={{ color: 'red' }}>*</span></span>} />}
                                 sx={{ flex: 1 }}
+                                disabled={!isAdminOrManager}
                             />
                             <TextField
                                 fullWidth
@@ -462,6 +470,7 @@ export default function AddEmployee() {
                                     setFormvalues({ ...formvalues, workLocation: e.target.value })
                                 }
                                 sx={{ flex: 1 }}
+                                disabled={!isAdminOrManager}
                             />
 
                         </Box>
@@ -477,6 +486,7 @@ export default function AddEmployee() {
                                 value={formvalues.employmentStatus} // should be {label, value} object
                                 onChange={(event, newValue) => setFormvalues({ ...formvalues, employmentStatus: newValue })}
                                 renderInput={(params) => <TextField {...params} label="Employement Status" />}
+                                disabled={!isAdminOrManager}
                             />
                             <Autocomplete
                                 fullWidth
@@ -485,6 +495,7 @@ export default function AddEmployee() {
                                 value={formvalues.reportingManager} // should be {label, value} object
                                 onChange={(event, newValue) => setFormvalues({ ...formvalues, reportingManager: newValue })}
                                 renderInput={(params) => <TextField {...params} label={<span>Reporting Manager <span style={{ color: 'red' }}>*</span></span>} />}
+                                disabled={!isAdminOrManager}
                             />
                             <Autocomplete
                                 fullWidth
@@ -497,6 +508,7 @@ export default function AddEmployee() {
                                 value={formvalues.accessRole} // should be {label, value} object
                                 onChange={(event, newValue) => setFormvalues({ ...formvalues, accessRole: newValue })}
                                 renderInput={(params) => <TextField {...params} label={<span>Access Role <span style={{ color: 'red' }}>*</span></span>} />}
+                                disabled={!isAdminOrManager}
                             />
                         </Box>
                     </>
@@ -513,6 +525,7 @@ export default function AddEmployee() {
                                 onChange={(e) =>
                                     setFormvalues({ ...formvalues, ctc: e.target.value })
                                 }
+                                disabled={!isAdminOrManager}
                             />
                             <TextField
                                 fullWidth
@@ -522,6 +535,7 @@ export default function AddEmployee() {
                                 onChange={(e) =>
                                     setFormvalues({ ...formvalues, basicSalary: e.target.value })
                                 }
+                                disabled={!isAdminOrManager}
                             />
                             <TextField
                                 fullWidth
@@ -531,6 +545,7 @@ export default function AddEmployee() {
                                 onChange={(e) =>
                                     setFormvalues({ ...formvalues, hra: e.target.value })
                                 }
+                                disabled={!isAdminOrManager}
                             />
                         </Box>
                         <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
@@ -542,6 +557,7 @@ export default function AddEmployee() {
                                 onChange={(e) =>
                                     setFormvalues({ ...formvalues, conveyanceAllowance: e.target.value })
                                 }
+                                disabled={!isAdminOrManager}
                             />
                             <TextField
                                 fullWidth
@@ -551,6 +567,7 @@ export default function AddEmployee() {
                                 onChange={(e) =>
                                     setFormvalues({ ...formvalues, medicalAllowance: e.target.value })
                                 }
+                                disabled={!isAdminOrManager}
                             />
                             <TextField
                                 fullWidth
@@ -560,6 +577,7 @@ export default function AddEmployee() {
                                 onChange={(e) =>
                                     setFormvalues({ ...formvalues, specialAllowance: e.target.value })
                                 }
+                                disabled={!isAdminOrManager}
                             />
                         </Box>
                         <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
@@ -571,6 +589,7 @@ export default function AddEmployee() {
                                 onChange={(e) =>
                                     setFormvalues({ ...formvalues, employeePF: e.target.value })
                                 }
+                                disabled={!isAdminOrManager}
                             />
                             <TextField
                                 fullWidth
@@ -580,6 +599,7 @@ export default function AddEmployee() {
                                 onChange={(e) =>
                                     setFormvalues({ ...formvalues, bankName: e.target.value })
                                 }
+                                disabled={!isAdminOrManager}
                             />
                             <TextField
                                 fullWidth
@@ -589,6 +609,7 @@ export default function AddEmployee() {
                                 onChange={(e) =>
                                     setFormvalues({ ...formvalues, accountNumber: e.target.value })
                                 }
+                                disabled={!isAdminOrManager}
                             />
                         </Box>
                         <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
@@ -600,6 +621,7 @@ export default function AddEmployee() {
                                 onChange={(e) =>
                                     setFormvalues({ ...formvalues, ifscCode: e.target.value })
                                 }
+                                disabled={!isAdminOrManager}
                             />
                             <TextField
                                 fullWidth
@@ -609,6 +631,7 @@ export default function AddEmployee() {
                                 onChange={(e) =>
                                     setFormvalues({ ...formvalues, panNumber: e.target.value })
                                 }
+                                disabled={!isAdminOrManager}
                             />
                             <TextField
                                 fullWidth
@@ -618,6 +641,7 @@ export default function AddEmployee() {
                                 onChange={(e) =>
                                     setFormvalues({ ...formvalues, uanNumber: e.target.value })
                                 }
+                                disabled={!isAdminOrManager}
                             />
                         </Box>
                         <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
@@ -630,6 +654,7 @@ export default function AddEmployee() {
                                     setFormvalues({ ...formvalues, pfAccountNumber: e.target.value })
                                 }
                                 sx={{ flex: 1 }}
+                                disabled={!isAdminOrManager}
                             />
                             <TextField
                                 fullWidth
@@ -640,6 +665,7 @@ export default function AddEmployee() {
                                     setFormvalues({ ...formvalues, esiNumber: e.target.value })
                                 }
                                 sx={{ flex: 1 }}
+                                disabled={!isAdminOrManager}
                             />
                             <Box sx={{ flex: 1 }} />
                         </Box>
@@ -695,6 +721,7 @@ export default function AddEmployee() {
                                 onChange={(e) =>
                                     setFormvalues({ ...formvalues, previousCompany: e.target.value })
                                 }
+                                disabled={!isAdminOrManager}
                             />
                             <TextField
                                 fullWidth
@@ -704,6 +731,7 @@ export default function AddEmployee() {
                                 onChange={(e) =>
                                     setFormvalues({ ...formvalues, totalExperience: e.target.value })
                                 }
+                                disabled={!isAdminOrManager}
                             />
                         </Box>
                     </>

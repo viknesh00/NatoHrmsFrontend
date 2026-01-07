@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { Card, CardContent, Typography, Box, Avatar, Divider } from "@mui/material";
+import { Card, CardContent, Typography, Box, Avatar, Divider, Button } from "@mui/material";
 import { File } from "lucide-react"
 import { makeStyles } from "@material-ui/core/styles";
 import { getCookie } from "../../services/Cookies";
 import { getRequest } from "../../services/Apiservice";
 import Breadcrumb from "../../services/Breadcrumb";
+import { Edit } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const useStyles = makeStyles((theme) => ({
     rootBox: {
@@ -16,6 +18,7 @@ const useStyles = makeStyles((theme) => ({
 }));
 const ViewEmployee = ({ employee }) => {
     const classes = useStyles();
+    const navigate = useNavigate();
     const email = getCookie("email");
     const breadCrumb = [{ label: "View Profile" }]
     const [formvalues, setFormvalues] = useState({
@@ -125,6 +128,11 @@ const ViewEmployee = ({ employee }) => {
             });
     };
 
+    const handleUpdateProfile = (email) => {
+        navigate(`/employees/edit-employee/${email}`);
+    };
+
+
     const emp = employee || formvalues;
 
     return (
@@ -132,7 +140,26 @@ const ViewEmployee = ({ employee }) => {
             <Breadcrumb items={breadCrumb} />
             <Card>
                 <CardContent>
-                    <Typography variant="h6" gutterBottom>Personal Details</Typography>
+                    <Box
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="space-between"
+                        mb={1}
+                    >
+                        <Typography variant="h6">
+                            Personal Details
+                        </Typography>
+
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            startIcon={<Edit size={18} />}
+                           onClick={() => handleUpdateProfile(email)}
+                        >
+                            Update Profile
+                        </Button>
+                    </Box>
+
                     <Divider sx={{ mb: 2 }} />
 
                     <Box display="flex" gap={2} flexWrap="wrap">

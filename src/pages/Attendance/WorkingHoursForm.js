@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Box, TextField, Button, Typography } from "@mui/material";
+import { Box, TextField, Button, Typography, Checkbox, FormControlLabel } from "@mui/material";
 import { LocalizationProvider, TimePicker } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { format, parse } from "date-fns";
@@ -49,11 +49,17 @@ const WorkingHoursForm = () => {
   const [loading, setLoading] = useState(false);
   const [formValues, setFormValues] = useState({
     deptId: editData?.deptId ?? null,
-    //departmentName: editData?.departmentName ? { label: editData.departmentName, value: editData.departmentName }: null,
-    departmentName:editData?.departmentName??null,
-    startTime: editData?.startTime ? parse(editData.startTime, "HH:mm:ss", new Date()) : null,
-    endTime: editData?.endTime ? parse(editData.endTime, "HH:mm:ss", new Date()) : null,
+    departmentName: editData?.departmentName ?? "",
+    startTime: editData?.startTime
+      ? parse(editData.startTime, "HH:mm:ss", new Date())
+      : null,
+    endTime: editData?.endTime
+      ? parse(editData.endTime, "HH:mm:ss", new Date())
+      : null,
+    includeSaturday: editData?.includeSaturday ?? false,
+    includeSunday: editData?.includeSunday ?? false,
   });
+
 
   const departmentOptions = [
     { label: "HR", value: "HR" },
@@ -64,11 +70,16 @@ const WorkingHoursForm = () => {
 
   const handleSave = () => {
     const saveData = {
-      ...formValues,
       deptId: formValues.deptId,
-      startTime: formValues.startTime ? format(formValues.startTime, "HH:mm:ss") : null,
-      endTime: formValues.endTime ? format(formValues.endTime, "HH:mm:ss") : null,
       departmentName: formValues.departmentName || "",
+      startTime: formValues.startTime
+        ? format(formValues.startTime, "HH:mm:ss")
+        : null,
+      endTime: formValues.endTime
+        ? format(formValues.endTime, "HH:mm:ss")
+        : null,
+      includeSaturday: formValues.includeSaturday,
+      includeSunday: formValues.includeSunday,
     };
 
     setLoading(true);
@@ -85,6 +96,7 @@ const WorkingHoursForm = () => {
         console.error(err);
       });
   };
+
 
   const handleCancel = () => navigate("/employees/working-hours");
 
@@ -142,6 +154,41 @@ const WorkingHoursForm = () => {
             renderInput={(params) => <TextField {...params} fullWidth />}
           />
         </LocalizationProvider>
+        
+        <Box display="flex" alignItems="center" gap={4} flexWrap="nowrap">
+  <strong>Include Weekends:</strong>
+
+  <FormControlLabel
+    control={
+      <Checkbox
+        checked={formValues.includeSaturday}
+        onChange={(e) =>
+          setFormValues({
+            ...formValues,
+            includeSaturday: e.target.checked,
+          })
+        }
+      />
+    }
+    label="Saturday"
+  />
+
+  <FormControlLabel
+    control={
+      <Checkbox
+        checked={formValues.includeSunday}
+        onChange={(e) =>
+          setFormValues({
+            ...formValues,
+            includeSunday: e.target.checked,
+          })
+        }
+      />
+    }
+    label="Sunday"
+  />
+</Box>
+
 
         {/* Buttons */}
         <Box className={classes.buttonsContainer}>

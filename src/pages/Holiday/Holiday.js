@@ -184,29 +184,34 @@ export default function Holiday() {
                     size={32}
                     style={{ cursor: "pointer" }}
                 />
-                <Typography variant="h5" style={{ minWidth: 180, textAlign: "center" }}>
+
+                <Typography variant="h5" sx={{ minWidth: 180, textAlign: "center" }}>
                     {currentMonth.format("MMMM YYYY")}
                 </Typography>
+
                 <ArrowRight
                     onClick={() => {
                         const next = currentMonth.add(1, "month");
-                        if (next.isSame(dayjs(), "month") || next.isBefore(dayjs(), "month")) {
+                        if (next.isSameOrBefore(dayjs().endOf("year"), "month")) {
                             setCurrentMonth(next);
                         }
                     }}
                     size={32}
                     style={{
-                        cursor:
-                            currentMonth.add(1, "month").isAfter(dayjs(), "month")
-                                ? "not-allowed"
-                                : "pointer",
-                        opacity:
-                            currentMonth.add(1, "month").isAfter(dayjs(), "month")
-                                ? 0.4
-                                : 1,
+                        cursor: currentMonth
+                            .add(1, "month")
+                            .isAfter(dayjs().endOf("year"), "month")
+                            ? "not-allowed"
+                            : "pointer",
+                        opacity: currentMonth
+                            .add(1, "month")
+                            .isAfter(dayjs().endOf("year"), "month")
+                            ? 0.4
+                            : 1,
                     }}
                 />
             </Box>
+
 
             {/* CALENDAR */}
             <div className={classes.calendarWrapper}>
