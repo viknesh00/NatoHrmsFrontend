@@ -270,6 +270,8 @@ export default function Attendance() {
 
   const getStatusClass = (status) => {
     switch (status) {
+      case "Holiday":
+        return `${classes.statusChip} ${classes.statusWo}`;
       case "WO":
         return `${classes.statusChip} ${classes.statusWo}`;
       case "Anomaly":
