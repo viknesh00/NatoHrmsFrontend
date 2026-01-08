@@ -81,7 +81,7 @@ const Header = () => {
   const fetchLocation = async () => {
     if (!navigator.geolocation) {
       console.error("Geolocation not supported");
-      return null;
+      return { city: "Unknown" };
     }
 
     return new Promise((resolve) => {
@@ -91,27 +91,17 @@ const Header = () => {
 
           try {
             const res = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`,
-              {
-                headers: {
-                  "User-Agent": "NatoboticsHRMS/1.0 (contact@natobotics.com)",
-                  "Accept": "application/json"
-                }
-              }
+              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
             );
+
+            if (!res.ok) throw new Error("Geocode failed");
 
             const data = await res.json();
 
-            const address = data.address || {};
-
             const city =
-              address.city ||
-              address.town ||
-              address.village ||
-              address.municipality ||
-              address.county ||
-              address.state_district ||
-              address.suburb ||
+              data.city ||
+              data.locality ||
+              data.principalSubdivision ||
               "Unknown";
 
             resolve({ city });
