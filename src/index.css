@@ -310,3 +310,29 @@
 .reportstablehead table thead th .MuiTableSortLabel-root .MuiTableSortLabel-icon {
   color: #1d4ed8 !important;
 }
+
+/* ===== Increase filter dialog width ===== */
+.MuiPopover-root .MuiPopover-paper {
+  width: 650px !important;
+  max-width: 90vw !important;
+}
+
+/* ===== Force 2 filters per row ===== */
+.MuiPopover-root .MuiGrid-container {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  column-gap: 24px;
+  row-gap: 24px;
+}
+
+/* ===== Ensure each filter takes full column width ===== */
+.MuiPopover-root .MuiGrid-item {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* ===== Prevent label truncation ===== */
+.MuiPopover-root .MuiFormControlLabel-label {
+  max-width: none !important;
+  white-space: normal !important;
+}
