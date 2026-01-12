@@ -395,7 +395,7 @@ export default function Leave() {
             <LoadingMask loading={loading} />
             <Breadcrumb items={breadCrumb} />
             <Box className={classes.addButtonContainer}>
-                {!isAdmin && (
+               
                     <Button
                         variant="contained"
                         onClick={handleAddEmployee}
@@ -403,7 +403,7 @@ export default function Leave() {
                     >
                         <Plus size={20} /> Apply Leave
                     </Button>
-                )}
+                
             </Box>
 
             <Box className="reportstablehead">
