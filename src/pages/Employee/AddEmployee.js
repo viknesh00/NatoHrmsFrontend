@@ -256,7 +256,7 @@ export default function AddEmployee() {
             postRequest(url, data)
                 .then((res) => {
                     if (res.status === 200) {
-                        navigate("/employees");
+                        !isAdminOrManager ?navigate("/view-employee") :navigate("/employees");
                         ToastSuccess(isEditMode ? "User Updated Successfully" : "User Added Successfully");
                     }
                 })
