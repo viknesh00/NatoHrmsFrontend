@@ -274,7 +274,7 @@ export default function AddEmployee() {
 
 
     const handleCancel = () => {
-        navigate("/employees");
+        !isAdminOrManager ?navigate("/view-employee") :navigate("/employees");
     };
 
     const handleBack = () => setActiveStep((prev) => prev - 1);
