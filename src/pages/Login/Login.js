@@ -22,6 +22,16 @@ const Login = () => {
 
   const navigate = useNavigate();
 
+  const isToday = (dateStr) => {
+    if (!dateStr) return false;
+
+    const clockInDate = new Date(dateStr);
+    const today = new Date();
+
+    return clockInDate.toDateString() === today.toDateString();
+  };
+
+
   const handleLogin = (e) => {
     e.preventDefault();
 
@@ -44,6 +54,8 @@ const Login = () => {
           console.log("Login Successful")
           localStorage.setItem("isLoggedIn", "true");
 
+          const todayClockInTime = isToday(res.data.clockIn) ? res.data.clockIn : "";
+
           const userData = {
             token: res.data.token,
             isLoggedIn: true,
@@ -53,7 +65,7 @@ const Login = () => {
             firstName: res.data.firstName,
             lastName: res.data.lastName,
             employeeId: res.data.employeeId,
-            clockInTime:res.data.clockIn??"",
+            clockInTime:todayClockInTime,
           };
           const mergedCookies = { ...cookieObj, ...userData };
           cookieKeys(mergedCookies, new Date(res.data.expiration));
