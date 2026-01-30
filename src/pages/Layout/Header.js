@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Button, Menu, MenuItem, ListItemIcon, Box, Typography, Divider } from "@mui/material";
-import { UserCircle, User, Key, LogOut } from "lucide-react";
+import { Button, Menu, MenuItem, ListItemIcon, Box, Typography, Divider, Avatar } from "@mui/material";
+import { User, Key, LogOut } from "lucide-react";
 import { makeStyles } from "@material-ui/core/styles";
 import { cookieKeys, getCookie, setCookie } from "../../services/Cookies";
 import { cookieObj } from "../../models/cookieObj";
@@ -8,7 +8,6 @@ import PasswordChange from "../../services/PasswordChange";
 import { useNavigate } from "react-router-dom";
 import { postRequest } from "../../services/Apiservice";
 import LoadingMask from "../../services/LoadingMask";
-import { Avatar } from "@mui/material";
 import { ToastError, ToastSuccess } from "../../services/ToastMsg";
 
 const useStyles = makeStyles({
@@ -33,22 +32,27 @@ const useStyles = makeStyles({
 
 const Header = () => {
   const classes = useStyles();
+  const navigate = useNavigate();
   const [clockedIn, setClockedIn] = useState(false);
   const [timer, setTimer] = useState(0);
   const [clockInTime, setClockInTime] = useState(null);
   const intervalRef = useRef(null);
-  const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(getCookie("isDefaultPasswordChanged") === "false");
-  const [isManualChange, setIsManualChange] = useState(false); // true when user clicks menu
+  const [isManualChange, setIsManualChange] = useState(false);
 
-  // Get user details from cookies
   const firstName = getCookie("firstName") || "";
   const lastName = getCookie("lastName") || "";
   const employeeId = getCookie("employeeId") || "";
   const employeeRole = getCookie("role") || "";
 
+  /* ================= TIMER CORE LOGIC ================= */
+
+  const updateTimer = (clockTime) => {
+    const elapsedSeconds = Math.floor((new Date() - clockTime) / 1000);
+    setTimer(elapsedSeconds);
+  };
 
   useEffect(() => {
     const cookieClockIn = getCookie("clockInTime");
@@ -56,16 +60,29 @@ const Header = () => {
       const clockTime = new Date(cookieClockIn);
       setClockedIn(true);
       setClockInTime(clockTime);
+      updateTimer(clockTime);
 
-      const elapsedSeconds = Math.floor((new Date() - clockTime) / 1000);
-      setTimer(elapsedSeconds);
-
-      intervalRef.current = setInterval(() => setTimer(prev => prev + 1), 1000);
+      intervalRef.current = setInterval(() => {
+        updateTimer(clockTime);
+      }, 1000);
     }
 
     return () => clearInterval(intervalRef.current);
   }, []);
 
+  /* Sync timer immediately when user returns to tab */
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && clockInTime) {
+        updateTimer(clockInTime);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [clockInTime]);
+
+  /* ================= GEO + IP ================= */
 
   const fetchIpAddress = async () => {
     try {
@@ -73,120 +90,88 @@ const Header = () => {
       const data = await res.json();
       return data.ip;
     } catch (err) {
-      console.error("Error fetching IP:", err);
+      console.error("IP fetch error:", err);
       return null;
     }
   };
 
   const fetchLocation = async () => {
-    if (!navigator.geolocation) {
-      console.error("Geolocation not supported");
-      return { city: "Unknown" };
-    }
+    if (!navigator.geolocation) return { city: "Unknown" };
 
     return new Promise((resolve) => {
       navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
-
+        async (pos) => {
           try {
+            const { latitude, longitude } = pos.coords;
             const res = await fetch(
               `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
             );
-
-            if (!res.ok) throw new Error("Geocode failed");
-
             const data = await res.json();
-
-            const city =
-              data.city ||
-              data.locality ||
-              data.principalSubdivision ||
-              "Unknown";
-
-            resolve({ city });
-          } catch (err) {
-            console.error("Reverse geocoding failed:", err);
+            resolve({ city: data.city || data.locality || "Unknown" });
+          } catch {
             resolve({ city: "Unknown" });
           }
         },
-        (error) => {
-          console.warn("Geolocation error:", error.message);
-          resolve({ city: "Unknown" });
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
-        }
+        () => resolve({ city: "Unknown" }),
+        { enableHighAccuracy: true, timeout: 10000 }
       );
     });
   };
 
+  /* ================= CLOCK IN / OUT ================= */
 
-
-
-
-  // Clock In/Out
-  // Clock In/Out
-  const handleClock = async () => {   // <-- add async here
+  const handleClock = async () => {
     setLoading(true);
-    const ip = await fetchIpAddress();
-    const now = new Date();
-    const location = await fetchLocation(); 
-    const tzOffset = now.getTimezoneOffset() * 60000; // offset in ms
-    const localISOTime = new Date(now - tzOffset).toISOString().slice(0, -1); // remove 'Z'
-    let data = {
-      location: location?.city || "Unknown",
-      ipAddress: ip,
-      timestamp: localISOTime
-    };
-    if (!clockedIn) {
-      const url = `Attendance/clock-in`;
-      postRequest(url, data)
-        .then((res) => {
-          if (res.status === 200) {
-            const now = new Date();
-            setClockedIn(true);
-            setClockInTime(now);
-            setTimer(0);
-            intervalRef.current = setInterval(() => setTimer(prev => prev + 1), 1000);
-            ToastSuccess("Clock-In successful!"); 
-            setLoading(false);
-            setCookie(
-              "clockInTime",
-              now,
-              new Date(new Date().setDate(new Date().getDate() + 1))
-            );
-          }
-        })
-        .catch((err) => {
-          setLoading(false);
-          console.error("Login error:", err);
-          ToastError("Clock-In failed!"); 
-        });
-    } else {
-      const url = `Attendance/clock-out`;
-      postRequest(url, data)
-        .then((res) => {
-          if (res.status === 200) {
-            setClockedIn(false);
-            setClockInTime(null);
-            setTimer(0);
-            clearInterval(intervalRef.current);
-            ToastSuccess("Clock-Out successful!"); 
-            setLoading(false);
-            setCookie("clockInTime", null, new Date(0));
-          }
-        })
-        .catch((err) => {
-          setLoading(false);
-          console.error("Login error:", err);
-          ToastError("Clock-Out failed!"); 
-        });
+
+    try {
+      const ip = await fetchIpAddress();
+      const location = await fetchLocation();
+      const now = new Date();
+
+      const tzOffset = now.getTimezoneOffset() * 60000;
+      const localISOTime = new Date(now - tzOffset).toISOString().slice(0, -1);
+
+      const payload = {
+        location: location?.city || "Unknown",
+        ipAddress: ip,
+        timestamp: localISOTime
+      };
+
+      const url = clockedIn ? "Attendance/clock-out" : "Attendance/clock-in";
+
+      const res = await postRequest(url, payload);
+
+      if (res.status === 200) {
+        if (!clockedIn) {
+          setClockedIn(true);
+          setClockInTime(now);
+          updateTimer(now);
+
+          intervalRef.current = setInterval(() => {
+            updateTimer(now);
+          }, 1000);
+
+          setCookie("clockInTime", now, new Date(new Date().setDate(new Date().getDate() + 1)));
+          ToastSuccess("Clock-In successful!");
+        } else {
+          clearInterval(intervalRef.current);
+          setClockedIn(false);
+          setClockInTime(null);
+          setTimer(0);
+
+          setCookie("clockInTime", null, new Date(0));
+          ToastSuccess("Clock-Out successful!");
+        }
+      }
+    } catch (err) {
+      console.error("Clock error:", err);
+      ToastError("Attendance action failed!");
+    } finally {
+      setLoading(false);
     }
   };
 
+  /* ================= HELPERS ================= */
 
   const formatTime = (seconds) => {
     const hrs = Math.floor(seconds / 3600);
@@ -196,15 +181,18 @@ const Header = () => {
   };
 
   const formatDate = (date) => {
-    if (!date) return "";
-    return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+    return date?.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    }) || "";
   };
 
-  // Account menu handlers
-  const handleAccountClick = (event) => setAnchorEl(event.currentTarget);
+  /* ================= ACCOUNT ================= */
+
+  const handleAccountClick = (e) => setAnchorEl(e.currentTarget);
   const handleAccountClose = () => setAnchorEl(null);
 
-  // When user clicks "Change Password" in menu
   const handleManualPasswordChange = () => {
     setIsManualChange(true);
     setShowPassword(true);
@@ -216,10 +204,12 @@ const Header = () => {
     navigate("/login");
   };
 
+  /* ================= UI ================= */
+
   return (
     <header className="header">
       <LoadingMask loading={loading} />
-      {/* PasswordChange modal */}
+
       {showPassword && (
         <PasswordChange
           isManualChange={isManualChange}
@@ -242,7 +232,6 @@ const Header = () => {
       </div>
 
       <div className="header-right">
-        {/* Clock In Button */}
         <Button
           variant="contained"
           color={clockedIn ? "success" : "primary"}
