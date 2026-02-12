@@ -12,12 +12,22 @@ function getHeaders(token) {
   };
 }
 
-export const getRequest = async (endpoint) => {
+export const getRequest = async (endpoint, config = {}, isBlob = false) => {
   const token = getCookie("token");
   const url = `${BASE_URL}${endpoint}`;
 
+  const safeConfig = config || {};   // ✅ prevent null crash
+
   try {
-    const options = token ? { headers: getHeaders(token) } : {};
+    const options = {
+      ...safeConfig,
+      responseType: isBlob ? "blob" : "json",
+      headers: {
+        ...(token && getHeaders(token)),
+        ...(safeConfig.headers || {}),
+      },
+    };
+
     return await axios.get(url, options);
   } catch (error) {
     if (error.response?.status === 401) {
@@ -28,14 +38,21 @@ export const getRequest = async (endpoint) => {
   }
 };
 
+
+
+
 export const postRequest = async (endpoint, data, isBlob = false) => {
   const token = getCookie("token");
   const url = `${BASE_URL}${endpoint}`;
-  const options = token ? { headers: getHeaders(token) } : {};
-
-  if (isBlob) options.responseType = "blob";
 
   try {
+    const options = {
+      responseType: isBlob ? "blob" : "json",
+      headers: {
+        ...(token && getHeaders(token)),
+      },
+    };
+
     return await axios.post(url, data, options);
   } catch (error) {
     if (error.response?.status === 401) {
@@ -45,6 +62,7 @@ export const postRequest = async (endpoint, data, isBlob = false) => {
     throw error;
   }
 };
+
 
 export const putRequest = async (endpoint, data) => {
   const token = getCookie("token");

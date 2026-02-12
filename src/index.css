@@ -301,10 +301,9 @@
   color: #374151;
   white-space: nowrap;
   text-align: left;
-  position: relative;
-  left: 10px;
-  padding: 8px 12px !important;  /* Same padding → aligns perfectly */
+  padding: 8px 12px !important;
 }
+
 
 /* Sort icon color */
 .reportstablehead table thead th .MuiTableSortLabel-root .MuiTableSortLabel-icon {

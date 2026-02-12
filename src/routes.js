@@ -21,6 +21,8 @@ import TimesheetCalendar from "./pages/TimeSheet/TimesheetCalendar";
 import RoleBasedRedirect from "./services/RoleBasedRedirect";
 import Holiday from "./pages/Holiday/Holiday";
 import CreateHoliday from "./pages/Holiday/CreateHoliday";
+import CompanyDocument from "./pages/CompanyDocument.js/CompanyDocument";
+import DocumentUploadForm from "./pages/CompanyDocument.js/DocumentUploadForm";
 
 const routes = [
     // Public Route
@@ -57,6 +59,9 @@ const routes = [
             { path: "calendar", element: <Holiday/>},
             { path: "calendar/create-event", element: <CreateHoliday/>},
             { path: "calendar/edit-event", element: <CreateHoliday/>},
+            { path: "company-documents", element: <CompanyDocument/>},
+            { path: "company-documents/upload", element: <DocumentUploadForm/>},
+            { path: "company-documents/edit", element: <DocumentUploadForm/>},
             { path: "*", element: <RoleBasedRedirect /> },
         ],
     },

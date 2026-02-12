@@ -12,6 +12,7 @@ import {
   UserMinus,
   ClipboardList,
   Calendar,
+  Receipt,
 } from "lucide-react";
 import { cookieKeys, getCookie } from "../../services/Cookies";
 import { cookieObj } from "../../models/cookieObj";
@@ -28,7 +29,8 @@ const Sidebar = () => {
     { to: "/employees", label: "Employees", icon: <Users size={20} />, roles: ["Admin", "Manager"] },
     { to: "/timesheet", label: "Timesheet", icon: <ClipboardList size={20} />, roles: ["Admin", "Manager", "Employee"] },
     { to: "/attendance", label: "Attendance", icon: <CalendarCheck2 size={20} />, roles: ["Admin","Manager","Employee"] },
-    { to: "/payslip", label: "Payslip", icon: <File size={20} />, roles: ["Admin"] },
+    { to: "/payslip", label: "Payslip", icon: <Receipt size={20} />, roles: ["Admin"] },
+    { to: "/company-documents", label: "Company Documents", icon: <File size={20} />, roles: ["Admin", "Manager", "Employee"] },
     { to: "/announcement", label: "Announcement", icon: <Megaphone size={20} />, roles: ["Admin", "Manager", "Employee"] },
     { to: "/leave", label: "Leave", icon: <UserMinus size={20} />, roles: ["Admin","Manager","Employee"] },
     { to: "/Calendar", label: "Calendar", icon: <Calendar size={20} />, roles: ["Admin", "Manager", "Employee"] },
