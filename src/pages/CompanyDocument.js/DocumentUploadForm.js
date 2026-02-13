@@ -11,7 +11,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import PreviewIcon from "@mui/icons-material/Visibility";
 import { LocalizationProvider, DatePicker } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-import { makeStyles } from "@mui/styles";
+import { makeStyles } from "@material-ui/core/styles";
 import Autocomplete from "@mui/material/Autocomplete";
 import { getRequest, postRequest } from "../../services/Apiservice";
 import { ToastSuccess } from "../../services/ToastMsg";
