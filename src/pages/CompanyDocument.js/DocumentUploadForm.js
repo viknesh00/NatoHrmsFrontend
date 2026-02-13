@@ -131,6 +131,42 @@ const DocumentUploadForm = () => {
             .finally(() => setLoading(false));
     };
 
+    const validateForm = () => {
+        const newErrors = {};
+
+        if (!formValues.documentName?.trim()) {
+            newErrors.documentName = "Document name is required";
+        }
+
+        if (!formValues.tags?.trim()) {
+            newErrors.tags = "Tags are required";
+        }
+
+        if (!formValues.assignedPeople || formValues.assignedPeople.length === 0) {
+            newErrors.assignedPeople = "Please assign at least one person";
+        }
+
+        if (!formValues.reviewDate) {
+            newErrors.reviewDate = "Review date is required";
+        }
+
+        if (!formValues.isCurrent) {
+            newErrors.isCurrent = "Please select current status";
+        }
+
+        // File validation
+        const mustHaveFile =
+            !editData || removedExistingFile; // new OR removed existing
+
+        if (mustHaveFile && !uploadedFile) {
+            newErrors.file = "Document file is required";
+        }
+
+
+        return Object.keys(newErrors).length === 0;
+    };
+
+
     /* ---------- FILE HANDLERS ---------- */
     const handleFileSelect = (file) => {
         if (!file) return;
@@ -178,6 +214,10 @@ const DocumentUploadForm = () => {
 
     /* ---------- SAVE / UPDATE ---------- */
     const handleSave = () => {
+        if (!validateForm()) {
+            ToastSuccess("Please fill all mandatory fields");
+            return;
+        }
         const formData = new FormData();
 
         formData.append("id", formValues.id ?? "");
@@ -237,7 +277,7 @@ const DocumentUploadForm = () => {
                 </Typography>
 
                 <TextField
-                    label="Document Name"
+                    label={<span>Document Name <span style={{ color: 'red' }}>*</span></span>}                   
                     value={formValues.documentName}
                     onChange={(e) =>
                         setFormValues({ ...formValues, documentName: e.target.value })
@@ -246,7 +286,7 @@ const DocumentUploadForm = () => {
                 />
 
                 <TextField
-                    label="Tags (comma separated)"
+                    label={<span>Tags (comma separated) <span style={{ color: 'red' }}>*</span></span>}
                     value={formValues.tags}
                     onChange={(e) =>
                         setFormValues({ ...formValues, tags: e.target.value })
@@ -285,14 +325,14 @@ const DocumentUploadForm = () => {
                         option.value !== "ALL"
                     }
                     renderInput={(params) => (
-                        <TextField {...params} label="Assign People" />
+                        <TextField {...params} label={<span>Assign People <span style={{ color: 'red' }}>*</span></span>} />
                     )}
                 />
 
 
                 <LocalizationProvider dateAdapter={AdapterDateFns}>
                     <DatePicker
-                        label="Review Date"
+                        label={<span>Review Date <span style={{ color: 'red' }}>*</span></span>}
                         value={formValues.reviewDate}
                         onChange={(v) =>
                             setFormValues({ ...formValues, reviewDate: v })
@@ -311,7 +351,7 @@ const DocumentUploadForm = () => {
                         setFormValues({ ...formValues, isCurrent: v })
                     }
                     renderInput={(params) => (
-                        <TextField {...params} label="Current" />
+                        <TextField {...params}label={<span>Current <span style={{ color: 'red' }}>*</span></span>} />
                     )}
                 />
 
@@ -323,7 +363,7 @@ const DocumentUploadForm = () => {
                     onClick={() => document.getElementById("fileInput").click()}
                 >
                     <Typography variant="body2">
-                        Drag & drop document here or click to upload
+                        Drag & drop document here or click to upload <span style={{ color: 'red' }}>*</span>
                     </Typography>
                     <input
                         id="fileInput"
