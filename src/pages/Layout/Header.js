@@ -6,7 +6,7 @@ import { cookieKeys, getCookie, setCookie } from "../../services/Cookies";
 import { cookieObj } from "../../models/cookieObj";
 import PasswordChange from "../../services/PasswordChange";
 import { useNavigate } from "react-router-dom";
-import { postRequest } from "../../services/Apiservice";
+import { getRequest, postRequest } from "../../services/Apiservice";
 import LoadingMask from "../../services/LoadingMask";
 import { ToastError, ToastSuccess } from "../../services/ToastMsg";
 
@@ -55,17 +55,31 @@ const Header = () => {
   };
 
   useEffect(() => {
-    const cookieClockIn = getCookie("clockInTime");
-    if (cookieClockIn) {
-      const clockTime = new Date(cookieClockIn);
-      setClockedIn(true);
-      setClockInTime(clockTime);
-      updateTimer(clockTime);
+    const fetchClockStatus = async () => {
+      const url = "Attendance/CheckClock-In";
+      const res = await getRequest(url);
 
-      intervalRef.current = setInterval(() => {
-        updateTimer(clockTime);
-      }, 1000);
-    }
+      if (res.status === 200 && res.data.clockIn) {
+        const serverClockTime = new Date(res.data.clockIn);
+
+        setClockedIn(true);
+        setClockInTime(serverClockTime);
+        updateTimer(serverClockTime);
+
+        clearInterval(intervalRef.current);
+
+        intervalRef.current = setInterval(() => {
+          updateTimer(serverClockTime);
+        }, 1000);
+      } else {
+        clearInterval(intervalRef.current);
+        setClockedIn(false);
+        setClockInTime(null);
+        setTimer(0);
+      }
+    };
+
+    fetchClockStatus();
 
     return () => clearInterval(intervalRef.current);
   }, []);
