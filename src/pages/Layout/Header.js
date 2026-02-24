@@ -81,7 +81,18 @@ const Header = () => {
 
     fetchClockStatus();
 
-    return () => clearInterval(intervalRef.current);
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchClockStatus();   // 🔥 API called when tab becomes active
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      clearInterval(intervalRef.current);
+    };
   }, []);
 
   /* Sync timer immediately when user returns to tab */
