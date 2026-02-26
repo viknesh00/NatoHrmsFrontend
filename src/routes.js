@@ -23,12 +23,14 @@ import Holiday from "./pages/Holiday/Holiday";
 import CreateHoliday from "./pages/Holiday/CreateHoliday";
 import CompanyDocument from "./pages/CompanyDocument.js/CompanyDocument";
 import DocumentUploadForm from "./pages/CompanyDocument.js/DocumentUploadForm";
+import ForgotPassword from "./pages/Login/ForgotPassword";
 
 const routes = [
     // Public Route
     { path: "/", element: <Login /> },
     { path: "/login", element: <Login /> },
     { path: "/sign-in", element: <Login /> },
+    { path: "/forgot-password", element: <ForgotPassword/>},
 
     // Protected Routes
     {

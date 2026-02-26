@@ -140,7 +140,25 @@ const Login = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-
+          <Typography
+            onClick={() => navigate("/forgot-password")}
+            sx={{
+              mt: 1,
+              textAlign: "right",
+              cursor: "pointer",
+              fontSize: "14px",
+              fontWeight: 500,
+              color: "#1565c0",
+              position: "relative",
+              transition: "color 0.3s ease",
+              "&:hover": {
+                color: "#0d47a1",
+                textDecoration: "underline",
+              },
+            }}
+          >
+            Forgot Password?
+          </Typography>
           <Button
             type="submit"
             variant="contained"
