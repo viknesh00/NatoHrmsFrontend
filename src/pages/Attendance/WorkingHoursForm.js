@@ -129,6 +129,7 @@ const WorkingHoursForm = () => {
           onChange={(e) =>
             setFormValues({ ...formValues, departmentName: e.target.value })
           }
+          disabled={!!editData}
         />
 
         {/* Start Time */}
