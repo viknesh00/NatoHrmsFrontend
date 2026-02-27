@@ -468,16 +468,17 @@ const TimesheetCalendar = () => {
             LeaveType: entries[date]?.leaveType || "-",
         }));
 
-        // Calculate total hours (only valid numbers)
-        const totalHours = Object.values(entries).reduce((sum, entry) => {
-            return sum + (entry.hours ? parseFloat(entry.hours) : 0);
+        // 🔥 Correct total calculation
+        const totalMinutes = Object.values(entries).reduce((sum, entry) => {
+            return sum + convertHHMMToMinutes(entry.hours);
         }, 0);
 
-        // Add total at bottom
+        const totalHours = convertMinutesToHHMM(totalMinutes);
+
         monthEntries.push({
             Date: "TOTAL",
             Task: "",
-            Hours: totalHours,   // 🔥 Total Hours here
+            Hours: totalHours,
             LeaveType: ""
         });
 
