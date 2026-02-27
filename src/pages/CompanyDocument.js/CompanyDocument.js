@@ -293,7 +293,7 @@ export default function CompanyDocument() {
 
     const options = {
         customToolbarSelect: () => { },
-        selectToolbarPlacement: "none",
+        selectToolbarPlacement:"above",
         selectableRows: "multiple",
         customToolbar: custom,
         responsive: "standard",

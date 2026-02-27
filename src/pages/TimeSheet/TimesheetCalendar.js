@@ -271,8 +271,40 @@ const TimesheetCalendar = () => {
     const weeks = [];
     for (let i = 0; i < totalDays.length; i += 7) weeks.push(totalDays.slice(i, i + 7));
 
-    const getWeeklyTotal = (week) =>
-        week.reduce((sum, d) => sum + (entries[d.format("YYYY-MM-DD")]?.hours || 0), 0);
+    const convertHHMMToMinutes = (value) => {
+        if (!value) return 0;
+
+        const parts = value.toString().split(".");
+        const hrs = parseInt(parts[0] || 0);
+        const mins = parseInt(parts[1] || 0);
+
+        return (hrs * 60) + mins;
+    };
+
+    const convertMinutesToHHMM = (totalMinutes) => {
+        const hrs = Math.floor(totalMinutes / 60);
+        const mins = totalMinutes % 60;
+
+        // If minutes = 0 → return only hours
+        if (mins === 0) {
+            return `${hrs}`;
+        }
+
+        return `${hrs}.${mins.toString().padStart(2, "0")}`;
+    };
+
+    const getWeeklyTotal = (week) => {
+        let totalMinutes = 0;
+
+        week.forEach((d) => {
+            const entry = entries[d.format("YYYY-MM-DD")];
+            if (entry?.hours) {
+                totalMinutes += convertHHMMToMinutes(entry.hours);
+            }
+        });
+
+        return convertMinutesToHHMM(totalMinutes);
+    };
 
     const handleCellClick = (date) => {
         const today = dayjs();
@@ -627,24 +659,32 @@ const TimesheetCalendar = () => {
                                 label="Working Hours"
                                 variant="outlined"
                                 type="number"
-                                inputProps={{ min: 0, max: 8 }} // ✅ max set to 8
+                                inputProps={{ min: 0, max: 24 }} // ✅ max set to 8
                                 value={hours}
                                 onChange={(e) => {
                                     let val = e.target.value;
 
-                                    // Clear leaveType if changing hours
                                     setLeaveType(null);
 
-                                    // Prevent entering values > 8
-                                    if (val === "") {
+                                    if (!val) {
                                         setHours("");
-                                    } else if (Number(val) > 8) {
-                                        setHours(8);
-                                    } else if (Number(val) < 0) {
-                                        setHours(0);
-                                    } else {
-                                        setHours(Number(val));
+                                        return;
                                     }
+
+                                    // Allow only numbers and one dot
+                                    if (!/^\d{0,2}(\.\d{0,2})?$/.test(val)) return;
+
+                                    const parts = val.split(".");
+                                    const hrs = parseInt(parts[0] || 0);
+                                    const mins = parseInt(parts[1] || 0);
+
+                                    if (hrs > 24) return;
+                                    if (mins >= 60) return;
+
+                                    // Restrict max 24:00
+                                    if (hrs === 24 && mins > 0) return;
+
+                                    setHours(val);
                                 }}
                                 fullWidth
                             />

@@ -96,6 +96,15 @@ export default function TimeSheetOverview() {
         getTimeSheetEntries(singleDate);
     }, [singleDate]);
 
+    const decimalHoursToHHMM = (hours) => {
+        if (!hours || isNaN(hours)) return "0.00";
+
+        const h = Math.floor(hours);
+        const m = Math.round((hours - h) * 60);
+
+        return `${h}.${String(m).padStart(2, "0")}`;
+    };
+  
     const groupByUser = (data) => {
         const grouped = {};
 
@@ -119,10 +128,11 @@ export default function TimeSheetOverview() {
             grouped[uid].totalWorkingHours += Number(item.workingHours || 0);
         });
 
-        return Object.values(grouped);
+        return Object.values(grouped).map((item) => ({
+            ...item,
+            totalWorkingHours: decimalHoursToHHMM(item.totalWorkingHours),
+        }));
     };
-
-
 
     const getTimeSheetEntries = (monthObj) => {
         if (!monthObj) return;
@@ -147,8 +157,10 @@ export default function TimeSheetOverview() {
     };
 
     const handleReset = () => {
-        setSingleDate(null);
-        setTableData([]);
+        const today = dayjs();
+        setSingleDate(today);
+        getTimeSheetEntries(today);
+        setSelectedRowsData([]);
     };
 
     const handleFilter = () => {
@@ -182,6 +194,7 @@ export default function TimeSheetOverview() {
 
     const options = {
         customToolbarSelect: () => { },
+        selectToolbarPlacement:"above",
         selectableRows: "multiple",
         responsive: "standard",
         filterType: 'multiselect',
@@ -228,11 +241,11 @@ export default function TimeSheetOverview() {
                         t => dayjs(t.entryDate).format("DD-MM-YYYY") === dateStr
                     );
                     const hours = entry ? entry.workingHours : 0;
-                    row[dateStr] = hours;
+                    row[dateStr] = decimalHoursToHHMM(hours);
                     totalHours += hours;
                 });
 
-                row["TOTAL"] = totalHours;
+                row["TOTAL"] = decimalHoursToHHMM(totalHours);
                 return row;
             });
 
@@ -251,9 +264,13 @@ export default function TimeSheetOverview() {
                     );
                     sum += entry ? entry.workingHours : 0;
                 });
-                finalTotalRow[dateStr] = sum;
+                finalTotalRow[dateStr] = decimalHoursToHHMM(sum);
             });
-            finalTotalRow["TOTAL"] = Object.values(finalTotalRow).slice(3).reduce((a, b) => a + b, 0);
+            const grandTotal = Object.values(finalTotalRow)
+                .slice(3)
+                .reduce((a, b) => a + (parseFloat(b) || 0), 0);
+
+            finalTotalRow["TOTAL"] = decimalHoursToHHMM(grandTotal);
             excelData.push(finalTotalRow);
 
             // Build CSV string
