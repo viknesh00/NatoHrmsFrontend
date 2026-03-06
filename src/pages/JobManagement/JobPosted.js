@@ -16,11 +16,12 @@ import {
     DialogActions,
     MenuItem
 } from "@mui/material";
-
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 import moment from "moment";
-import { Plus, Pencil, Trash2, ChevronDown, ChevronUp, MapPin, Calendar, Banknote } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronDown, Hash, Download, ChevronUp, MapPin, Calendar, Banknote } from "lucide-react";
 import { deleteRequest, getRequest, postRequest, putRequest } from "../../services/Apiservice";
-import { ToastSuccess } from "../../services/ToastMsg";
+import { ToastError, ToastSuccess } from "../../services/ToastMsg";
 import { getCookie } from "../../services/Cookies";
 import LoadingMask from "../../services/LoadingMask";
 
@@ -137,6 +138,7 @@ export default function JobPosted() {
     const [jobs, setJobs] = useState([]);
 
     const defaultForm = {
+        jobCode: "",
         title: "",
         role: "",
         location: "",
@@ -197,9 +199,42 @@ export default function JobPosted() {
 
     };
 
+    const downloadExcel = () => {
+
+        const exportData = jobs.map(j => ({
+            "Job Code": j.jobCode,
+            "Job Title": j.title,
+            "Role": j.role,
+            "Location": j.location,
+            "Salary": j.salary,
+            "Job Type": j.jobType,
+            "Posted Date": moment(j.date).format("DD-MM-YYYY"),
+            "Description": j.description,
+            "Responsibilities": j.responsibilities.join(", "),
+            "Qualifications": j.qualifications.join(", ")
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(exportData);
+        const workbook = XLSX.utils.book_new();
+
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Jobs");
+
+        const excelBuffer = XLSX.write(workbook, {
+            bookType: "xlsx",
+            type: "array"
+        });
+
+        const data = new Blob([excelBuffer], {
+            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        });
+
+        saveAs(data, "Jobs.xlsx");
+    };
+
     const handleCreateJob = () => {
 
         const payload = {
+            jobCode: form.jobCode,
             jobTitle: form.title,
             role: form.role,
             location: form.location,
@@ -229,6 +264,7 @@ export default function JobPosted() {
                 })
                 .catch((err) => {
                     console.error("Update job error:", err);
+                    ToastError(err.response?.data || "Job Code already exists")
                 });
 
         }
@@ -247,6 +283,7 @@ export default function JobPosted() {
                 })
                 .catch((err) => {
                     console.error("Create job error:", err);
+                    ToastError(err.response?.data || "Job Code already exists")
                 });
 
         }
@@ -258,6 +295,7 @@ export default function JobPosted() {
         setEditId(job.id);
 
         setForm({
+            jobCode: job.jobCode || "",
             title: job.title,
             role: job.role,
             location: job.location,
@@ -303,6 +341,7 @@ export default function JobPosted() {
         const keyword = search.toLowerCase();
 
         return (
+            (job.jobCode && job.jobCode.toLowerCase().includes(keyword)) ||
             (job.title && job.title.toLowerCase().includes(keyword)) ||
             (job.role && job.role.toLowerCase().includes(keyword)) ||
             (job.location && job.location.toLowerCase().includes(keyword)) ||
@@ -323,6 +362,7 @@ export default function JobPosted() {
 
     const isFormValid = () => {
         return (
+            form.jobCode.trim() &&
             form.title.trim() &&
             form.role.trim() &&
             form.location.trim() &&
@@ -365,10 +405,16 @@ export default function JobPosted() {
             </Box>
 
             {/* Job Count */}
-            <Box className={classes.rightSection}>
+            <Box className={classes.rightSection} style={{ alignItems: "center", gap: "10px" }}>
+
                 <div className={classes.jobCount}>
                     Jobs Posted ({filteredJobs.length})
                 </div>
+
+                <IconButton onClick={downloadExcel}>
+                    <Download size={20} />
+                </IconButton>
+
             </Box>
 
             {/* Job Cards */}
@@ -386,13 +432,17 @@ export default function JobPosted() {
                                     {expanded === job.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                                 </IconButton>
 
-                                <IconButton onClick={() => handleEdit(job)}>
-                                    <Pencil size={18} />
-                                </IconButton>
+                                {isAdmin && (
+                                    <>
+                                        <IconButton onClick={() => handleEdit(job)}>
+                                            <Pencil size={18} />
+                                        </IconButton>
 
-                                <IconButton onClick={() => handleDelete(job.id)}>
-                                    <Trash2 size={18} color="#dc2626" />
-                                </IconButton>
+                                        <IconButton onClick={() => handleDelete(job.id)}>
+                                            <Trash2 size={18} color="#dc2626" />
+                                        </IconButton>
+                                    </>
+                                )}
 
                             </Box>
 
@@ -404,6 +454,7 @@ export default function JobPosted() {
                             </div>
 
                             <Box className={classes.chipRow}>
+                                <Chip icon={<Hash size={14} />} label={job.jobCode} />
                                 <Chip icon={<MapPin size={14} />} label={job.location} />
                                 <Chip icon={<Banknote size={14} />} label={job.salary} />
                                 <Chip
@@ -494,6 +545,13 @@ export default function JobPosted() {
                         }}
                     >
 
+                        <TextField
+                            label={<span>Job Code <span style={{ color: 'red' }}>*</span></span>}
+                            name="jobCode"
+                            value={form.jobCode}
+                            onChange={handleChange}
+                            fullWidth
+                        />
                         <TextField
                             label={<span>Job Title<span style={{ color: 'red' }}>*</span></span>}
                             name="title"

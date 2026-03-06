@@ -375,6 +375,10 @@ export default function Jobapplied() {
     // Columns
     const columns = [
         {
+            name: "jobCode",
+            label: "Job Code",
+        },
+        {
             name: "jobTitle",
             label: "Job Title",
         },
