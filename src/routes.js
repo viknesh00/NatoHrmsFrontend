@@ -24,6 +24,7 @@ import CreateHoliday from "./pages/Holiday/CreateHoliday";
 import CompanyDocument from "./pages/CompanyDocument.js/CompanyDocument";
 import DocumentUploadForm from "./pages/CompanyDocument.js/DocumentUploadForm";
 import ForgotPassword from "./pages/Login/ForgotPassword";
+import JobManagement from "./pages/JobManagement/JobManagement";
 
 const routes = [
     // Public Route
@@ -43,6 +44,7 @@ const routes = [
         children: [
             { path: "dashboard", element: <Dashboard /> },
             { path: "employees", element: <Employees /> },
+            { path: "job-management", element: <JobManagement/> },
             { path: "attendance", element: <Attendance /> },
             { path: "employees/working-hours", element: <WorkingHours /> },
             { path: "employees/add-working-hours", element: <WorkingHoursForm /> },

@@ -13,6 +13,7 @@ import {
   ClipboardList,
   Calendar,
   Receipt,
+  Briefcase,
 } from "lucide-react";
 import { cookieKeys, getCookie } from "../../services/Cookies";
 import { cookieObj } from "../../models/cookieObj";
@@ -27,6 +28,7 @@ const Sidebar = () => {
 
   const organizationMenu = [
     { to: "/employees", label: "Employees", icon: <Users size={20} />, roles: ["Admin", "Manager"] },
+    // { to: "/job-management", label: "Job-Management", icon: <Briefcase  size={20} />, roles: ["Admin", "Manager", "Employee"] },
     { to: "/timesheet", label: "Timesheet", icon: <ClipboardList size={20} />, roles: ["Admin", "Manager", "Employee"] },
     { to: "/attendance", label: "Attendance", icon: <CalendarCheck2 size={20} />, roles: ["Admin","Manager","Employee"] },
     { to: "/payslip", label: "Payslip", icon: <Receipt size={20} />, roles: ["Admin"] },
