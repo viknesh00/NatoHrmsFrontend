@@ -25,6 +25,8 @@ import CompanyDocument from "./pages/CompanyDocument.js/CompanyDocument";
 import DocumentUploadForm from "./pages/CompanyDocument.js/DocumentUploadForm";
 import ForgotPassword from "./pages/Login/ForgotPassword";
 import JobManagement from "./pages/JobManagement/JobManagement";
+import AddProfile from "./pages/JobManagement/AddProfile";
+import CreateJob from "./pages/JobManagement/CreateJob";
 
 const routes = [
     // Public Route
@@ -45,6 +47,9 @@ const routes = [
             { path: "dashboard", element: <Dashboard /> },
             { path: "employees", element: <Employees /> },
             { path: "job-management", element: <JobManagement/> },
+            { path: "job-management/add-profile", element: <AddProfile/> },
+            { path: "job-management/create-job", element: <CreateJob/> },
+            { path: "job-management/update-job", element: <CreateJob/> },
             { path: "attendance", element: <Attendance /> },
             { path: "employees/working-hours", element: <WorkingHours /> },
             { path: "employees/add-working-hours", element: <WorkingHoursForm /> },

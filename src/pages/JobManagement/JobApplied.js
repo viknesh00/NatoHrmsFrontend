@@ -5,14 +5,12 @@ import { makeStyles } from "@material-ui/core/styles";
 import Box from "@mui/material/Box";
 import { IconButton, Tooltip, Button } from "@mui/material";
 import { Download, Plus } from "lucide-react";
-import DeleteIcon from "@mui/icons-material/Delete";
-import PreviewIcon from "@mui/icons-material/Visibility";
 import { useNavigate } from "react-router-dom";
 import moment from "moment";
 import { getRequest, postRequest } from "../../services/Apiservice";
 import LoadingMask from "../../services/LoadingMask";
 import { getCookie } from "../../services/Cookies";
-import { Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, TextField, Typography, MenuItem } from "@mui/material";
+import { Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, TextField, Typography } from "@mui/material";
 import { ToastError, ToastSuccess } from "../../services/ToastMsg";
 
 const getMuiTheme = () =>
@@ -102,30 +100,11 @@ export default function Jobapplied() {
     const [applications, setApplications] = useState([]);
     const [selectedRowsData, setSelectedRowsData] = useState([]);
     const [employeesList, setEmployeesList] = useState([]);
-    const [jobs, setJobs] = useState([]);
     const [openStatusDialog, setOpenStatusDialog] = useState(false);
     const [selectedStatus, setSelectedStatus] = useState("New");
     const [assignedUserId, setAssignedUserId] = useState(null);
     const [selectedApplication, setSelectedApplication] = useState(null);
-    const [openCreate, setOpenCreate] = useState(false);
-    const [uploadedFile, setUploadedFile] = useState(null);
-    const [removedExistingFile, setRemovedExistingFile] = useState(false);
-    const defaultForm = {
-        jobId: null,      // new field
-        jobCode: "",
-        title: "",
-        role: "",
-        location: "",
-        salary: "",
-        jobType: "",
-        firstName: "",
-        lastName: "",
-        candidateStatus: "",
-        email: "",
-        phone: "",
-        skill: "",
-    };
-    const [form, setForm] = useState(defaultForm);
+
     const statusOptions = [
         { label: "New", value: "New" },
         { label: "Still Searching", value: "Still Searching" },
@@ -140,7 +119,6 @@ export default function Jobapplied() {
         if (calledOnce.current) return;  // skip if already called
         getJobApplications();
         getUsers();
-        getJobs();
         calledOnce.current = true;
     }, []);
 
@@ -195,35 +173,6 @@ export default function Jobapplied() {
                 console.error(err);
                 setLoading(false);
             });
-    };
-
-    const getJobs = () => {
-
-        const url = `Jobs/GetJobs`;
-
-        setLoading(true);
-
-        getRequest(url)
-            .then((res) => {
-
-                if (res.data) {
-
-                    res.data.forEach((j) => {
-                        j.id = j.jobId;
-                        j.title = j.jobTitle;
-                    });
-
-                    setJobs(res.data);
-                    setLoading(false);
-
-                }
-
-            })
-            .catch((err) => {
-                setLoading(false);
-                console.error("Jobs error:", err);
-            });
-
     };
 
     const downloadSingle = (id, fileName) => {
@@ -371,78 +320,6 @@ export default function Jobapplied() {
             ToastError("You are not authorized to update this candidate status");
 
         }
-    };
-
-    const handleSaveProfile = () => {
-        if (!form.jobCode || !form.firstName ||
-            !form.email || !form.firstName ||
-            !form.lastName || !form.phone ||
-            !form.skill || !uploadedFile) {
-            ToastError("Please fill all required fields and upload a file");
-            return;
-        }
-
-        // build FormData for file upload
-        const payload = new FormData();
-
-        payload.append("JobId", form.jobId);
-        payload.append("FirstName", form.firstName);
-        payload.append("LastName", form.lastName);
-        payload.append("Email", form.email);
-        payload.append("Phone", form.phone || "");
-        payload.append("Skills", form.skill || "");
-        payload.append("ResumeFileName", uploadedFile?.name || "");
-        payload.append("ResumeFileType", uploadedFile?.type || "");
-        payload.append("CandidateStatus", form.candidateStatus || "New");
-
-        if (uploadedFile) payload.append("Resume", uploadedFile); // actual file
-
-        const url = "Jobs/AddApplication";
-        setLoading(true);
-        postRequest(url, payload, {
-            headers: { "Content-Type": "multipart/form-data" },
-        })
-            .then(res => {
-                ToastSuccess("Profile added successfully");
-                setForm(defaultForm);
-                setUploadedFile(null);
-                setRemovedExistingFile(false);
-                setOpenCreate(false);
-                getJobApplications();
-            })
-            .catch(err => {
-                ToastError("This Profile is already applied for this job");
-                console.error(err);
-            })
-            .finally(() => setLoading(false));
-    };
-
-    const handleChange = (e) => {
-        setForm({
-            ...form,
-            [e.target.name]: e.target.value
-        });
-    };
-
-    const handleFileSelect = (file) => {
-        if (!file) return;
-        setUploadedFile(file);
-        setRemovedExistingFile(true);
-    };
-
-    const handleDrop = (e) => {
-        e.preventDefault();
-        handleFileSelect(e.dataTransfer.files[0]);
-    };
-
-    const removeFile = () => {
-        setUploadedFile(null);
-        setRemovedExistingFile(true);
-    };
-
-    const previewNewFile = () => {
-        const fileURL = URL.createObjectURL(uploadedFile);
-        window.open(fileURL, "_blank");
     };
 
     const getStatusColor = (status) => {
@@ -601,7 +478,7 @@ export default function Jobapplied() {
     const custom = () => {
         return (
             <>
-                <Tooltip title="Download Resumes">
+                <Tooltip title="Download Resumes" arrow placement="bottom">
                     <IconButton onClick={() => handleDownload(selectedRowsData)} className="tss-10rusft-MUIDataTableToolbar-icon">
                         <Download size={20} />
                     </IconButton>
@@ -639,7 +516,7 @@ export default function Jobapplied() {
                 <Button
                     variant="contained"
                     className={classes.addButton}
-                    onClick={() => setOpenCreate(true)}
+                    onClick={() => navigate("/job-management/add-profile")}
                 >
                     <Plus size={20} /> Add Profile
                 </Button>
@@ -766,210 +643,6 @@ export default function Jobapplied() {
                 </DialogActions>
             </Dialog>
             {/* Create Job Modal */}
-
-            <Dialog
-                open={openCreate}
-                onClose={() => {
-                    setOpenCreate(false);
-                    setForm(defaultForm);
-                }}
-                fullWidth
-                maxWidth="md"
-            >
-
-                <DialogTitle>
-                    Add New Profile
-                </DialogTitle>
-
-                <DialogContent>
-
-                    <Box
-                        sx={{
-                            display: "grid",
-                            gridTemplateColumns: "1fr 1fr",
-                            gap: 2,
-                            mt: 1
-                        }}
-                    >
-
-                        <Autocomplete
-                            options={jobs || []}
-                            getOptionLabel={(option) => option.jobCode || ""}
-                            value={jobs.find(j => j.jobCode === form.jobCode) || null}
-                            onChange={(event, newValue) => {
-
-                                if (newValue) {
-                                    setForm({
-                                        jobId: newValue.jobId,
-                                        jobCode: newValue.jobCode,
-                                        title: newValue.jobTitle,
-                                        role: newValue.role,
-                                        location: newValue.location,
-                                        salary: newValue.salary,
-                                        jobType: newValue.jobType
-                                    });
-                                } else {
-                                    setForm(defaultForm);
-                                }
-
-                            }}
-                            renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    label={
-                                        <span>
-                                            Job Code <span style={{ color: "red" }}>*</span>
-                                        </span>
-                                    }
-                                    variant="outlined"
-                                    fullWidth
-                                />
-                            )}
-                        />
-                        <TextField label="Job Title" value={form.title} fullWidth disabled />
-                        <TextField label="Role" value={form.role} fullWidth disabled />
-                        <TextField label="Location" value={form.location} fullWidth disabled />
-                        <TextField label="Salary" value={form.salary} fullWidth disabled />
-                        <TextField label="Job Type" value={form.jobType} fullWidth disabled />
-
-                        <TextField
-                            label={
-                                <span>
-                                    First Name <span style={{ color: "red" }}>*</span>
-                                </span>
-                            }
-                            name="firstName"
-                            value={form.firstName}
-                            onChange={handleChange}
-                            fullWidth
-                        />
-
-                        <TextField
-                            label={
-                                <span>
-                                    Last Name <span style={{ color: "red" }}>*</span>
-                                </span>
-                            }
-                            name="lastName"
-                            value={form.lastName}
-                            onChange={handleChange}
-                            fullWidth
-                        />
-
-                        <TextField
-                            label={
-                                <span>
-                                    Email <span style={{ color: "red" }}>*</span>
-                                </span>
-                            }
-                            name="email"
-                            value={form.email}
-                            onChange={handleChange}
-                            fullWidth
-                        />
-
-                        <TextField
-                            label={
-                                <span>
-                                    Phone Number <span style={{ color: "red" }}>*</span>
-                                </span>
-                            }
-                            name="phone"
-                            value={form.phone}
-                            onChange={handleChange}
-                            fullWidth
-                        />
-                        <TextField
-                            label={
-                                <span>
-                                    Primary Skill Set <span style={{ color: "red" }}>*</span>
-                                </span>
-                            }
-                            name="skill"
-                            value={form.skill}
-                            onChange={handleChange}
-                            fullWidth
-                        />
-                        <Autocomplete
-                            options={statusOptions}
-                            getOptionLabel={(option) => option.label}
-                            value={
-                                statusOptions.find(
-                                    (s) => s.value === form.candidateStatus
-                                ) || null
-                            }
-                            onChange={(event, newValue) => {
-                                setForm({
-                                    ...form,
-                                    candidateStatus: newValue ? newValue.value : ""
-                                });
-                            }}
-                            renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    label={<span>Candidate Status <span style={{ color: 'red' }}>*</span></span>}
-                                    variant="outlined"
-                                    fullWidth
-                                />
-                            )}
-                        />
-
-
-                    </Box>
-                    <Box
-                        className={classes.uploadBox}
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={handleDrop}
-                        onClick={() => document.getElementById("fileInput").click()}
-                    >
-                        <Typography variant="body2">
-                            Drag & drop document here or click to upload <span style={{ color: 'red' }}>*</span>
-                        </Typography>
-                        <input
-                            id="fileInput"
-                            type="file"
-                            hidden
-                            accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg"
-                            onChange={(e) => handleFileSelect(e.target.files[0])}
-                        />
-                    </Box>
-                    {/* ---------- NEW FILE ---------- */}
-                    {uploadedFile && (
-                        <Box className={classes.fileRow}>
-                            <Typography variant="body2">{uploadedFile.name}</Typography>
-                            <Box>
-                                <IconButton onClick={previewNewFile}>
-                                    <PreviewIcon />
-                                </IconButton>
-                                <IconButton onClick={removeFile}>
-                                    <DeleteIcon />
-                                </IconButton>
-                            </Box>
-                        </Box>
-                    )}
-                </DialogContent>
-
-                <DialogActions>
-
-                    <Button onClick={() => {
-                        setForm(defaultForm);
-                        setUploadedFile(null);   // clear file
-                        setRemovedExistingFile(false); // reset file flag
-                        setOpenCreate(false);
-                    }}>
-                        Cancel
-                    </Button>
-
-                    <Button
-                        variant="contained"
-                        onClick={handleSaveProfile}
-                    >
-                        Save Profile
-                    </Button>
-
-                </DialogActions>
-
-            </Dialog>
         </Box>
     );
 }

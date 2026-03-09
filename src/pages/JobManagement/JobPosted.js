@@ -10,20 +10,17 @@ import {
     Collapse,
     Chip,
     Pagination,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    MenuItem
+    Tooltip
 } from "@mui/material";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import moment from "moment";
 import { Plus, Pencil, Trash2, ChevronDown, Hash, Download, ChevronUp, MapPin, Calendar, Banknote } from "lucide-react";
-import { deleteRequest, getRequest, postRequest, putRequest } from "../../services/Apiservice";
-import { ToastError, ToastSuccess } from "../../services/ToastMsg";
+import { deleteRequest, getRequest, } from "../../services/Apiservice";
+import { ToastSuccess } from "../../services/ToastMsg";
 import { getCookie } from "../../services/Cookies";
 import LoadingMask from "../../services/LoadingMask";
+import { useNavigate } from "react-router-dom";
 
 const useStyles = makeStyles(() => ({
 
@@ -126,30 +123,15 @@ const useStyles = makeStyles(() => ({
 export default function JobPosted() {
 
     const classes = useStyles();
-    const [editId, setEditId] = useState(null);
+    const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [expanded, setExpanded] = useState(null);
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
-    const [openCreate, setOpenCreate] = useState(false);
     const userRole = getCookie("role");
     const isAdmin = userRole === "Admin";
 
     const [jobs, setJobs] = useState([]);
-
-    const defaultForm = {
-        jobCode: "",
-        title: "",
-        role: "",
-        location: "",
-        salary: "",
-        jobType: "",
-        date: moment().format("YYYY-MM-DD"),
-        description: "",
-        responsibilities: "",
-        qualifications: ""
-    };
-    const [form, setForm] = useState(defaultForm);
 
     const jobsPerPage = 5;
 
@@ -231,86 +213,6 @@ export default function JobPosted() {
         saveAs(data, "Jobs.xlsx");
     };
 
-    const handleCreateJob = () => {
-
-        const payload = {
-            jobCode: form.jobCode,
-            jobTitle: form.title,
-            role: form.role,
-            location: form.location,
-            salary: form.salary,
-            jobType: form.jobType,
-            skills: "",
-            description: form.description,
-            responsibilities: form.responsibilities,
-            qualifications: form.qualifications
-        };
-
-        if (editId) {
-
-            payload.jobId = editId;
-
-            const url = `Jobs/UpdateJob`;
-
-            putRequest(url, payload)
-                .then((res) => {
-
-                    getJobs();
-                    setOpenCreate(false);
-                    setEditId(null);
-                    setForm(defaultForm);
-                    ToastSuccess("Job Updated Successfully")
-
-                })
-                .catch((err) => {
-                    console.error("Update job error:", err);
-                    ToastError(err.response?.data || "Job Code already exists")
-                });
-
-        }
-        else {
-
-            const url = `Jobs/CreateJob`;
-
-            postRequest(url, payload)
-                .then((res) => {
-
-                    getJobs();
-                    setForm(defaultForm);
-                    setOpenCreate(false);
-                    ToastSuccess("Job Created Successfully")
-
-                })
-                .catch((err) => {
-                    console.error("Create job error:", err);
-                    ToastError(err.response?.data || "Job Code already exists")
-                });
-
-        }
-
-    };
-
-    const handleEdit = (job) => {
-
-        setEditId(job.id);
-
-        setForm({
-            jobCode: job.jobCode || "",
-            title: job.title,
-            role: job.role,
-            location: job.location,
-            salary: job.salary,
-            jobType: job.jobType,
-            date: job.date,
-            description: job.description,
-            responsibilities: job.responsibilities.join(","),
-            qualifications: job.qualifications.join(",")
-        });
-
-        setOpenCreate(true);
-
-    };
-
     const handleDelete = (id) => {
         const url = `Jobs/DeleteJob?jobId=${id}`;
         deleteRequest(url)
@@ -322,15 +224,6 @@ export default function JobPosted() {
                 console.error("Delete job error:", err);
             });
 
-    };
-
-
-
-    const handleChange = (e) => {
-        setForm({
-            ...form,
-            [e.target.name]: e.target.value
-        });
     };
 
     const toggleExpand = (id) => {
@@ -360,21 +253,6 @@ export default function JobPosted() {
         page * jobsPerPage
     );
 
-    const isFormValid = () => {
-        return (
-            form.jobCode.trim() &&
-            form.title.trim() &&
-            form.role.trim() &&
-            form.location.trim() &&
-            form.salary.trim() &&
-            form.jobType.trim() &&
-            form.date.trim() &&
-            form.description.trim() &&
-            form.responsibilities.trim() &&
-            form.qualifications.trim()
-        );
-    };
-
     return (
         <Box>
 
@@ -395,7 +273,7 @@ export default function JobPosted() {
                     <Button
                         variant="contained"
                         className={classes.addButton}
-                        onClick={() => setOpenCreate(true)}
+                        onClick={() => navigate("/job-management/create-job")}
                     >
                         <Plus size={18} />
                         Create Job
@@ -410,10 +288,11 @@ export default function JobPosted() {
                 <div className={classes.jobCount}>
                     Jobs Posted ({filteredJobs.length})
                 </div>
-
+                <Tooltip title="Download Excel" arrow placement="bottom">
                 <IconButton onClick={downloadExcel}>
                     <Download size={20} />
                 </IconButton>
+                </Tooltip>
 
             </Box>
 
@@ -434,7 +313,12 @@ export default function JobPosted() {
 
                                 {isAdmin && (
                                     <>
-                                        <IconButton onClick={() => handleEdit(job)}>
+                                        <IconButton 
+                                        onClick={() =>
+                                navigate("/job-management/update-job", {
+                                    state: { editData: job },
+                                })
+                            }>
                                             <Pencil size={18} />
                                         </IconButton>
 
@@ -516,156 +400,6 @@ export default function JobPosted() {
                 />
 
             </Box>
-
-            {/* Create Job Modal */}
-
-            <Dialog
-                open={openCreate}
-                onClose={() => {
-                    setOpenCreate(false);
-                    setEditId(null);
-                    setForm(defaultForm);
-                }}
-                fullWidth
-                maxWidth="md"
-            >
-
-                <DialogTitle>
-                    {editId ? "Update Job" : "Create Job"}
-                </DialogTitle>
-
-                <DialogContent>
-
-                    <Box
-                        sx={{
-                            display: "grid",
-                            gridTemplateColumns: "1fr 1fr",
-                            gap: 2,
-                            mt: 1
-                        }}
-                    >
-
-                        <TextField
-                            label={<span>Job Code <span style={{ color: 'red' }}>*</span></span>}
-                            name="jobCode"
-                            value={form.jobCode}
-                            onChange={handleChange}
-                            fullWidth
-                        />
-                        <TextField
-                            label={<span>Job Title<span style={{ color: 'red' }}>*</span></span>}
-                            name="title"
-                            value={form.title}
-                            onChange={handleChange}
-                            fullWidth
-                        />
-
-                        <TextField
-                            label={<span>Role <span style={{ color: 'red' }}>*</span></span>}
-                            name="role"
-                            value={form.role}
-                            onChange={handleChange}
-                            fullWidth
-                        />
-
-                        <TextField
-                            label={<span>Location <span style={{ color: 'red' }}>*</span></span>}
-                            name="location"
-                            value={form.location}
-                            onChange={handleChange}
-                            fullWidth
-                        />
-
-                        <TextField
-                            label={<span>Salary <span style={{ color: 'red' }}>*</span></span>}
-                            name="salary"
-                            value={form.salary}
-                            onChange={handleChange}
-                            fullWidth
-                        />
-
-                        <TextField
-                            label={<span>Job Type <span style={{ color: 'red' }}>*</span></span>}
-                            name="jobType"
-                            select
-                            value={form.jobType}
-                            onChange={handleChange}
-                            fullWidth
-                        >
-                            <MenuItem value="Fulltime">Fulltime</MenuItem>
-                            <MenuItem value="Parttime">Parttime</MenuItem>
-                            <MenuItem value="Contract">Contract</MenuItem>
-                        </TextField>
-
-                        <TextField
-                            label={<span>Date Posted <span style={{ color: 'red' }}>*</span></span>}
-                            type="date"
-                            name="date"
-                            InputLabelProps={{ shrink: true }}
-                            value={form.date}
-                            onChange={handleChange}
-                            fullWidth
-                        />
-
-                    </Box>
-
-                    <TextField
-                        label={<span>Description <span style={{ color: 'red' }}>*</span></span>}
-                        name="description"
-                        multiline
-                        rows={3}
-                        value={form.description}
-                        onChange={handleChange}
-                        fullWidth
-                        sx={{ mt: 2 }}
-                    />
-
-                    <TextField
-                        label={<span>Key Responsibilities (comma separated) <span style={{ color: 'red' }}>*</span></span>}
-                        name="responsibilities"
-                        multiline
-                        rows={3}
-                        value={form.responsibilities}
-                        onChange={handleChange}
-                        fullWidth
-                        sx={{ mt: 2 }}
-                    />
-
-                    <TextField
-                        label={<span>Qualifications (comma separated) <span style={{ color: 'red' }}>*</span></span>}
-                        name="qualifications"
-                        multiline
-                        rows={3}
-                        value={form.qualifications}
-                        onChange={handleChange}
-                        fullWidth
-                        sx={{ mt: 2 }}
-                    />
-
-                </DialogContent>
-
-                <DialogActions>
-
-                    <Button onClick={() => {
-                        setForm(defaultForm);
-                        setEditId(null);
-                        setOpenCreate(false);
-                    }}>
-                        Cancel
-                    </Button>
-
-                    <Button
-                        variant="contained"
-                        onClick={handleCreateJob}
-                        disabled={!isFormValid()}
-                    >
-                        {editId ? "Update Job" : "Save Job"}
-                    </Button>
-
-                </DialogActions>
-
-            </Dialog>
-
         </Box>
     );
 }

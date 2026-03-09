@@ -2,22 +2,11 @@ import React, { useState } from "react";
 import { makeStyles } from "@material-ui/core/styles";
 import {
     Box,
-    Button,
-    Card,
-    CardContent,
-    Typography,
-    IconButton,
-    TextField,
-    Collapse,
-    Chip,
     Tabs,
     Tab,
 } from "@mui/material";
-
-import { Plus, Trash2, ChevronDown, ChevronUp, MapPin, Calendar, Banknote } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import Breadcrumb from "../../services/Breadcrumb";
-import LoadingMask from "../../services/LoadingMask";
 import JobPosted from "./JobPosted";
 import Jobapplied from "./JobApplied";
 
@@ -37,8 +26,10 @@ const useStyles = makeStyles(() => ({
 export default function JobManagement() {
 
     const classes = useStyles();
+    const location = useLocation();
 
-    const [viewTab, setViewTab] = useState("jobPosted");
+    const [viewTab, setViewTab] = useState(location.state?.tab || "jobPosted");
+
 
     const handleTabChange = (event, newValue) => {
         setViewTab(newValue);
