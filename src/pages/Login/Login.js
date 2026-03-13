@@ -86,7 +86,11 @@ const Login = () => {
         }
       })
       .catch((err) => {
-        ToastError(err.response.data.message);
+        const message =
+          err?.response?.data?.message ||
+          "Unable to connect to server. Please try again.";
+
+        ToastError(message);
       })
       .finally(() => setLoading(false));
   };
