@@ -18,6 +18,7 @@ export default function TimeSheetOverview() {
   const navigate = useNavigate();
   const [loading, setLoading]           = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(dayjs().format("YYYY-MM"));
+  const [appliedMonth, setAppliedMonth]   = useState(null); // null = no filter applied yet
   const [tableData, setTableData]       = useState([]);
 
   useEffect(() => { fetchTimesheet(selectedMonth); }, []);
@@ -40,11 +41,12 @@ export default function TimeSheetOverview() {
       .catch(console.error).finally(() => setLoading(false));
   };
 
-  const handleApply = () => fetchTimesheet(selectedMonth);
+  const handleApply = () => { fetchTimesheet(selectedMonth); setAppliedMonth(selectedMonth); };
 
   const handleReset = () => {
     const m = dayjs().format("YYYY-MM");
     setSelectedMonth(m);
+    setAppliedMonth(null);
     fetchTimesheet(m);
   };
 
@@ -120,7 +122,7 @@ export default function TimeSheetOverview() {
         onResetFilters={handleReset}
         onExport={handleExport}
         externalFilters={[
-          { label: "Month", value: dayjs(selectedMonth + "-01").format("MMM YYYY") },
+          { label: "Month", value: appliedMonth ? dayjs(appliedMonth + "-01").format("MMM YYYY") : null },
         ]}
       />
     </div>

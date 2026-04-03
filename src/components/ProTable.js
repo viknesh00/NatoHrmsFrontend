@@ -178,7 +178,7 @@ const PANEL_CSS = `
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  padding: 0 0 14px 0;
+  padding: 8px 16px 14px 16px;
   align-items: center;
 }
 .pt-chip {
