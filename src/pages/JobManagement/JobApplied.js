@@ -236,13 +236,14 @@ export default function JobApplied() {
       field:      "candidateStatus",
       label:      "Status",
       filterable: true,
+      options:    STATUS_OPTS,
       renderCell: (row) => (
         <span onClick={() => handleStatusClick(row)}>
           <CandidateChip status={row.candidateStatus} />
         </span>
       ),
     },
-    { field: "assignedTo", label: "Assigned To" },
+    { field: "assignedTo", label: "Assigned To", filterable: true },
     {
       field:      "actions",
       label:      "Resume",

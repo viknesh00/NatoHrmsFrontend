@@ -290,6 +290,7 @@ export default function ProTable({
   filterComponents,      // custom JSX filter fields (from parent)
   onApplyFilters,        // called when user clicks Apply Filters
   onResetFilters,        // called when user clicks Clear
+  externalFilters = [],  // [{ label, value }] active filters owned by parent (shown as chips)
   defaultRowsPerPage = 10,
   onExport,
   multiSelect = true,
@@ -330,7 +331,7 @@ export default function ProTable({
 
   const hasAutoFilters   = Object.keys(filterMeta).length > 0;
   const hasAnyFilter     = filterComponents || hasAutoFilters;
-  const activeFilterCount = Object.values(columnFilters).filter(Boolean).length;
+  const activeFilterCount = Object.values(columnFilters).filter(Boolean).length + externalFilters.filter(f => f.value).length;
 
   /* sync draft when panel opens */
   useEffect(() => {
@@ -515,7 +516,7 @@ export default function ProTable({
       </div>
 
       {/* ── Active filter chips ── */}
-      {activeChips.length > 0 && (
+      {(activeChips.length > 0 || externalFilters.some(f => f.value)) && (
         <div className="pt-chip-row">
           {activeChips.map(([field, val]) => {
             const col = visibleCols.find(c => c.field === field);
@@ -529,6 +530,12 @@ export default function ProTable({
               </span>
             );
           })}
+          {externalFilters.filter(f => f.value).map(f => (
+            <span key={f.label} className="pt-chip">
+              <span className="pt-chip-key">{f.label}:</span>
+              {f.value}
+            </span>
+          ))}
           <button className="pt-chip-clear-all" onClick={clearAll}>
             <RotateCcw size={10}/> Clear all
           </button>

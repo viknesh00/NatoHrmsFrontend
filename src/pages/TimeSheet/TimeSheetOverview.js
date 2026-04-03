@@ -119,6 +119,9 @@ export default function TimeSheetOverview() {
         onApplyFilters={handleApply}
         onResetFilters={handleReset}
         onExport={handleExport}
+        externalFilters={[
+          { label: "Month", value: dayjs(selectedMonth + "-01").format("MMM YYYY") },
+        ]}
       />
     </div>
   );
