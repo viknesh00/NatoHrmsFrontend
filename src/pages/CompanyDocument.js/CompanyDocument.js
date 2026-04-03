@@ -8,6 +8,7 @@ import Breadcrumb from "../../services/Breadcrumb";
 import { getCookie } from "../../services/Cookies";
 import { ToastSuccess, ToastError } from "../../services/ToastMsg";
 import ProTable, { StatusChip } from "../../components/ProTable";
+
 import * as XLSX from "xlsx";
 import { createPortal } from "react-dom";
 
@@ -20,6 +21,7 @@ export default function CompanyDocument() {
   const [selected, setSelected]       = useState([]);
   const [deleteTarget, setDeleteTarget] = useState(null); // single row or array of rows
   const isAdminOrManager = ["Admin", "Manager"].includes(getCookie("role"));
+
 
   useEffect(() => {
     fetchDocuments();
@@ -132,6 +134,8 @@ export default function CompanyDocument() {
     XLSX.writeFile(wb, "Company_Documents.xlsx");
   };
 
+  // ─── FILTERED DATA — handled by ProTable internally ───────
+
   // ─── COLUMNS ────────────────────────────────────────────
 
   const columns = [
@@ -156,6 +160,11 @@ export default function CompanyDocument() {
     {
       field: "isCurrent",
       label: "Current",
+      filterable: true,
+      options: [
+        { value: "true",  label: "Yes" },
+        { value: "false", label: "No"  },
+      ],
       renderCell: (row) => (
         <StatusChip label={row.isCurrent ? "Yes" : "No"} />
       ),

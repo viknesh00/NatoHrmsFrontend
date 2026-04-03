@@ -1,23 +1,24 @@
 import React, { useEffect, useState } from "react";
-import { Check, RotateCcw, Eye } from "lucide-react";
+import { Eye } from "lucide-react";
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
 import { getRequest } from "../../services/Apiservice";
 import LoadingMask from "../../services/LoadingMask";
 import Breadcrumb from "../../services/Breadcrumb";
 import ProTable from "../../components/ProTable";
+import { FormMonth } from "../../components/FormComponents";
 
 const decimalToHHMM = (h) => {
   if (!h || isNaN(h)) return "0.00";
-  const hrs = Math.floor(h), min = Math.round((h-hrs)*60);
-  return `${hrs}.${String(min).padStart(2,"0")}`;
+  const hrs = Math.floor(h), min = Math.round((h - hrs) * 60);
+  return `${hrs}.${String(min).padStart(2, "0")}`;
 };
 
 export default function TimeSheetOverview() {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]           = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(dayjs().format("YYYY-MM"));
-  const [tableData, setTableData] = useState([]);
+  const [tableData, setTableData]       = useState([]);
 
   useEffect(() => { fetchTimesheet(selectedMonth); }, []);
 
@@ -39,12 +40,20 @@ export default function TimeSheetOverview() {
       .catch(console.error).finally(() => setLoading(false));
   };
 
+  const handleApply = () => fetchTimesheet(selectedMonth);
+
+  const handleReset = () => {
+    const m = dayjs().format("YYYY-MM");
+    setSelectedMonth(m);
+    fetchTimesheet(m);
+  };
+
   const handleExport = (data) => {
     const mObj = dayjs(selectedMonth + "-01");
     const end = mObj.endOf("month");
     const allDates = [];
     let d = mObj.startOf("month");
-    while (d.isBefore(end) || d.isSame(end,"day")) { allDates.push(d.format("DD-MM-YYYY")); d = d.add(1,"day"); }
+    while (d.isBefore(end) || d.isSame(end, "day")) { allDates.push(d.format("DD-MM-YYYY")); d = d.add(1, "day"); }
 
     const rows = data.map(emp => {
       const row = { "Employee Name": emp.employeeName, "Employee ID": emp.employeeId, "Email": emp.username };
@@ -62,31 +71,30 @@ export default function TimeSheetOverview() {
     const csv = [headers.join(","), ...rows.map(r => headers.map(h => r[h]).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-    a.download = `Timesheet_${dayjs(selectedMonth+"-01").format("MMM-YYYY")}.csv`; a.click();
+    a.download = `Timesheet_${dayjs(selectedMonth + "-01").format("MMM-YYYY")}.csv`; a.click();
   };
 
-  const inputStyle = { padding:"7px 11px", borderRadius:8, border:"1.5px solid var(--border)", fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"var(--text-primary)", background:"var(--bg-card)", outline:"none" };
-
+  /* ── filter field — no buttons, ProTable footer handles Apply/Reset ── */
   const filterBar = (
-    <div style={{ display:"flex", gap:10, alignItems:"center" }}>
-      <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-        <span style={{ fontSize:12, color:"var(--text-muted)", fontWeight:600 }}>Month</span>
-        <input type="month" style={inputStyle} value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} />
-      </div>
-      <button className="btn btn-primary btn-sm" onClick={() => fetchTimesheet(selectedMonth)}><Check size={14} /> Apply</button>
-      <button className="btn btn-ghost btn-sm" onClick={() => { const m=dayjs().format("YYYY-MM"); setSelectedMonth(m); fetchTimesheet(m); }}><RotateCcw size={14} /> Reset</button>
-    </div>
+    <FormMonth
+      label="Month"
+      value={selectedMonth}
+      onChange={e => setSelectedMonth(e.target.value)}
+    />
   );
 
   const columns = [
-    { field: "employeeId",        label: "Emp ID", width: 90 },
+    { field: "employeeId",        label: "Emp ID",      width: 90 },
     { field: "employeeName",      label: "Employee" },
     { field: "username",          label: "Email" },
     { field: "totalWorkingHours", label: "Total Hours" },
     {
       field: "action", label: "Action",
       renderCell: (row) => (
-        <button className="icon-btn" onClick={() => navigate("/timesheet/timesheet-view", { state: { viewData: row, selectedMonth: dayjs(selectedMonth+"-01").format("MMM-YYYY") } })}>
+        <button
+          className="icon-btn"
+          onClick={() => navigate("/timesheet/timesheet-view", { state: { viewData: row, selectedMonth: dayjs(selectedMonth + "-01").format("MMM-YYYY") } })}
+        >
           <Eye size={15} />
         </button>
       ),
@@ -103,7 +111,15 @@ export default function TimeSheetOverview() {
           <p className="page-subtitle">Monthly working hours overview</p>
         </div>
       </div>
-      <ProTable title="Employee Timesheet" columns={columns} data={tableData} filterComponents={filterBar} onExport={handleExport} />
+      <ProTable
+        title="Employee Timesheet"
+        columns={columns}
+        data={tableData}
+        filterComponents={filterBar}
+        onApplyFilters={handleApply}
+        onResetFilters={handleReset}
+        onExport={handleExport}
+      />
     </div>
   );
 }

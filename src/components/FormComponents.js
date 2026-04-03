@@ -485,16 +485,116 @@ export function FormTime({ label, required, hint, error, ...props }) {
   );
 }
 
-/* ── FormMonth ── */
-export function FormMonth({ label, required, hint, error, ...props }) {
+/* ── FormMonth (custom month/year picker — matches FormDate UI) ── */
+export function FormMonth({ label, required, hint, error, value, onChange, disabled, placeholder = "Select month" }) {
   injectStyles();
+  const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState("month"); // "month" | "year"
+  const ref = useRef(null);
+
+  const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const MONTHS_FULL  = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+  const parsed = value ? { year: parseInt(value.split("-")[0]), month: parseInt(value.split("-")[1]) - 1 } : null;
+  const today  = new Date();
+
+  const [viewYear, setViewYear] = useState(parsed ? parsed.year : today.getFullYear());
+  const [yearPage, setYearPage] = useState(Math.floor((parsed ? parsed.year : today.getFullYear()) / 12) * 12);
+
+  useEffect(() => {
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) { setOpen(false); setMode("month"); } };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  useEffect(() => {
+    if (parsed) { setViewYear(parsed.year); setYearPage(Math.floor(parsed.year / 12) * 12); }
+  }, [value]);
+
+  const displayValue = parsed
+    ? `${MONTHS_FULL[parsed.month]} ${parsed.year}`
+    : null;
+
+  function selectMonth(monthIdx) {
+    const mm = String(monthIdx + 1).padStart(2, "0");
+    onChange && onChange({ target: { value: `${viewYear}-${mm}` } });
+    setOpen(false);
+    setMode("month");
+  }
+
   return (
-    <div className="fc-group">
+    <div className="fc-group" ref={ref}>
       {label && <label className="fc-label">{label}{required && <span className="req">*</span>}</label>}
-      <div className="fc-input-wrap">
-        <input type="month" {...props} className="fc-input" />
+      <div className="fc-cal-wrap">
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => { if (!disabled) { setOpen(o => !o); setMode("month"); } }}
+          className={`fc-cal-trigger${open ? " open" : ""}${!displayValue ? " placeholder" : ""}`}
+        >
+          <span>{displayValue || placeholder}</span>
+          <Calendar size={15} color="var(--text-muted)" />
+        </button>
+
+        {open && (
+          <div className="fc-cal-popup">
+            {/* ── Header ── */}
+            <div className="fc-cal-header">
+              <button className="fc-cal-nav" type="button" onClick={() => {
+                if (mode === "month") setViewYear(y => y - 1);
+                else setYearPage(y => y - 12);
+              }}>
+                <ChevronDown size={15} style={{ transform: "rotate(90deg)" }} />
+              </button>
+
+              <div className="fc-cal-title">
+                {mode === "month" && (
+                  <button className="fc-cal-year-btn" type="button"
+                    onClick={() => { setYearPage(Math.floor(viewYear / 12) * 12); setMode("year"); }}>
+                    {viewYear}
+                  </button>
+                )}
+                {mode === "year" && (
+                  <span style={{ color: "var(--text-primary)" }}>{yearPage} – {yearPage + 11}</span>
+                )}
+              </div>
+
+              <button className="fc-cal-nav" type="button" onClick={() => {
+                if (mode === "month") setViewYear(y => y + 1);
+                else setYearPage(y => y + 12);
+              }}>
+                <ChevronDown size={15} style={{ transform: "rotate(-90deg)" }} />
+              </button>
+            </div>
+
+            {/* ── Month grid ── */}
+            {mode === "month" && (
+              <div className="fc-cal-overlay">
+                {MONTHS_SHORT.map((m, i) => (
+                  <div key={m}
+                    className={`fc-cal-overlay-item${parsed && parsed.month === i && parsed.year === viewYear ? " active" : ""}${today.getMonth() === i && today.getFullYear() === viewYear && !(parsed && parsed.month === i && parsed.year === viewYear) ? " fc-cal-day-today" : ""}`}
+                    onClick={() => selectMonth(i)}
+                  >{m}</div>
+                ))}
+              </div>
+            )}
+
+            {/* ── Year grid ── */}
+            {mode === "year" && (
+              <div className="fc-cal-overlay">
+                {Array.from({ length: 12 }, (_, i) => yearPage + i).map(y => (
+                  <div key={y}
+                    className={`fc-cal-overlay-item${viewYear === y ? " active" : ""}`}
+                    onClick={() => { setViewYear(y); setMode("month"); }}
+                  >{y}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
       {error && <div className="fc-error">{error}</div>}
+      {hint && !error && <div className="fc-hint">{hint}</div>}
     </div>
   );
 }
