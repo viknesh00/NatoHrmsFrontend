@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, Users, LogOut, ChevronLeft, ChevronRight,
@@ -21,6 +22,82 @@ const menuItems = [
   { to:"/leave",             label:"Leave",          icon:<UserMinus size={18}/>,       roles:["Admin","Manager","Employee"] },
   { to:"/Calendar",          label:"Calendar",       icon:<Calendar size={18}/>,        roles:["Admin","Manager","Employee"] },
 ];
+
+// Portal tooltip — renders outside sidebar DOM to avoid overflow:hidden clipping
+function Tooltip({ label, targetRef, visible }) {
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+
+  useEffect(() => {
+    if (visible && targetRef.current) {
+      const rect = targetRef.current.getBoundingClientRect();
+      setPos({
+        top: rect.top + rect.height / 2,
+        left: rect.right + 11,
+      });
+    }
+  }, [visible, targetRef]);
+
+  if (!visible) return null;
+
+  return createPortal(
+    <>
+      {/* Arrow */}
+      <div style={{
+        position: "fixed",
+        top: pos.top,
+        left: pos.left - 5,
+        transform: "translateY(-50%)",
+        width: 0,
+        height: 0,
+        borderTop: "5px solid transparent",
+        borderBottom: "5px solid transparent",
+        borderRight: "5px solid #1e1143",
+        pointerEvents: "none",
+        zIndex: 99999,
+      }} />
+      {/* Bubble */}
+      <div style={{
+        position: "fixed",
+        top: pos.top,
+        left: pos.left,
+        transform: "translateY(-50%)",
+        background: "#1e1143",
+        color: "#fff",
+        fontSize: 12,
+        fontWeight: 600,
+        fontFamily: "'Plus Jakarta Sans', sans-serif",
+        whiteSpace: "nowrap",
+        padding: "6px 12px",
+        borderRadius: 8,
+        boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
+        pointerEvents: "none",
+        zIndex: 99999,
+      }}>
+        {label}
+      </div>
+    </>,
+    document.body
+  );
+}
+
+// Wrapper that tracks hover and passes ref to Tooltip
+function TooltipItem({ label, collapsed, children, style = {}, onClick }) {
+  const [hovered, setHovered] = useState(false);
+  const ref = useRef(null);
+
+  return (
+    <div
+      ref={ref}
+      style={{ position: "relative", ...style }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={onClick}
+    >
+      {children}
+      <Tooltip label={label} targetRef={ref} visible={collapsed && hovered} />
+    </div>
+  );
+}
 
 export default function Sidebar() {
   const [collapsed, setCollapsed]   = useState(false);
@@ -47,77 +124,70 @@ export default function Sidebar() {
         <ul className="sidebar-nav">
           {!collapsed && <li className="sidebar-label">Navigation</li>}
           {filtered.map(item => (
-            <li key={item.to} style={{ listStyle:"none" }}>
-              <NavLink
-                to={item.to}
-                data-label={item.label}
-                className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
-              >
-                <div className="nav-icon">{item.icon}</div>
-                {!collapsed && <span style={{ color:"inherit" }}>{item.label}</span>}
-              </NavLink>
+            <li key={item.to} style={{ listStyle: "none" }}>
+              <TooltipItem label={item.label} collapsed={collapsed}>
+                <NavLink
+                  to={item.to}
+                  data-label={item.label}
+                  className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
+                >
+                  <div className="nav-icon">{item.icon}</div>
+                  {!collapsed && <span style={{ color: "inherit" }}>{item.label}</span>}
+                </NavLink>
+              </TooltipItem>
             </li>
           ))}
         </ul>
 
         <div className="sidebar-footer">
-          {/* Logout */}
-          <div
-            data-label="Logout"
-            className="nav-item"
-            style={{ marginBottom:8, cursor:"pointer" }}
-            onClick={() => setShowLogout(true)}
-          >
-            <div className="nav-icon"><LogOut size={18}/></div>
-            {!collapsed && <span style={{ color:"inherit" }}>Logout</span>}
-          </div>
+          {/* Logout with tooltip */}
+          <TooltipItem label="Logout" collapsed={collapsed} style={{ marginBottom: 8 }}>
+            <div
+              data-label="Logout"
+              className="nav-item"
+              style={{ cursor: "pointer" }}
+              onClick={() => setShowLogout(true)}
+            >
+              <div className="nav-icon"><LogOut size={18}/></div>
+              {!collapsed && <span style={{ color: "inherit" }}>Logout</span>}
+            </div>
+          </TooltipItem>
 
           {/* Natobotics branding */}
           {!collapsed ? (
             <div
               className="sidebar-footer-text"
-              onClick={() => window.open("http://www.natobotics.com","_blank")}
-              style={{ cursor:"pointer" }}
+              onClick={() => window.open("http://www.natobotics.com", "_blank")}
+              style={{ cursor: "pointer" }}
             >
-              Powered by <strong style={{ color:"rgba(255,255,255,0.5)" }}>NATOBOTICS</strong>
+              Powered by <strong style={{ color: "rgba(255,255,255,0.5)" }}>NATOBOTICS</strong>
             </div>
           ) : (
-            <div
-              onClick={() => window.open("http://www.natobotics.com","_blank")}
-              title="Powered by Natobotics"
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: "rgba(255,255,255,0.15)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                margin: "0 auto",
-                transition: "background 0.2s",
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.25)"}
-              onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.15)"}
-            >
-              <img
-                src="/assets/images/natobotics-logo.png"
-                alt="Natobotics"
+            <TooltipItem label="Powered by Natobotics" collapsed={collapsed}>
+              <div
+                onClick={() => window.open("http://www.natobotics.com", "_blank")}
                 style={{
-                  width: 24,
-                  height: 24,
-                  objectFit: "contain",
-                  display: "block",
+                  width: 36, height: 36, borderRadius: 10,
+                  background: "rgba(255,255,255,0.15)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer", margin: "0 auto", transition: "background 0.2s",
                 }}
-                onError={e => {
-                  // ✅ Fallback to "N" if image fails to load
-                  e.currentTarget.style.display = "none";
-                  e.currentTarget.parentElement.innerHTML = `
-                    <span style="color:white;font-size:15px;font-weight:900;font-family:'Plus Jakarta Sans',sans-serif;line-height:1;">N</span>
-                  `;
-                }}
-              />
-            </div>
+                onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.25)"}
+                onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.15)"}
+              >
+                <img
+                  src="/assets/images/natobotics-logo.png"
+                  alt="Natobotics"
+                  style={{ width: 24, height: 24, objectFit: "contain", display: "block" }}
+                  onError={e => {
+                    e.currentTarget.style.display = "none";
+                    e.currentTarget.parentElement.innerHTML = `
+                      <span style="color:white;font-size:15px;font-weight:900;font-family:'Plus Jakarta Sans',sans-serif;line-height:1;">N</span>
+                    `;
+                  }}
+                />
+              </div>
+            </TooltipItem>
           )}
         </div>
       </aside>
