@@ -1,293 +1,251 @@
 import React, { useState } from "react";
-import { makeStyles } from "@material-ui/core/styles";
-import {
-    Box,
-    Button,
-    TextField,
-    MenuItem,
-    Typography
-} from "@mui/material";
-import moment from "moment";
+import { useLocation, useNavigate } from "react-router-dom";
 import { postRequest, putRequest } from "../../services/Apiservice";
 import { ToastError, ToastSuccess } from "../../services/ToastMsg";
 import LoadingMask from "../../services/LoadingMask";
 import Breadcrumb from "../../services/Breadcrumb";
-import { useLocation, useNavigate } from "react-router-dom";
+import { FormInput, FormTextarea, FormSelect, FormCard, FormSection, FormRow } from "../../components/FormComponents";
+import { Briefcase, Save, X } from "lucide-react";
+import dayjs from "dayjs";
 
-const useStyles = makeStyles(() => ({
-    rootBox: {
-        backgroundColor: "#fff",
-        padding: 16,
-        borderRadius: 8,
-        boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
-    },
-    buttonsContainer: {
-        margin: 16,
-        display: "flex",
-        justifyContent: "center",
-        gap: 16,
-    },
-
-}));
+const JOB_TYPES = ["Full-time", "Part-time", "Contract", "Remote", "Internship"].map(v => ({ label: v, value: v }));
 
 export default function CreateJob() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const editData = location.state?.editData || null;
+  const [loading, setLoading] = useState(false);
+  const [errors,  setErrors]  = useState({});
 
-    const classes = useStyles();
-    const navigate = useNavigate();
-    const location = useLocation();
-    const editData = location.state?.editData || null;
-    const [editId, setEditId] = useState(editData?.id??null);
-    const [loading, setLoading] = useState(false);
-    const breadCrumb = editData
-        ?  [
-            { label: "Job Management", link: "/job-management" },
-            { label: "Update Job Post" },
-        ]
-        :  [
-            { label: "Job Management", link: "/job-management" },
-            { label: "Create Job Post" },
-        ];
+  const [form, setForm] = useState({
+    jobCode:          editData?.jobCode                      || "",
+    title:            editData?.title                        || "",
+    role:             editData?.role                         || "",
+    location:         editData?.location                     || "",
+    salary:           editData?.salary                       || "",
+    jobType:          editData?.jobType                      || "Full-time",
+    skills:           editData?.skills                       || "", // ✅ ADDED
+    date:             editData?.postedDate
+                        ? dayjs(editData.postedDate).format("YYYY-MM-DD")
+                        : dayjs().format("YYYY-MM-DD"),
+    description:      editData?.description                  || "",
+    responsibilities: editData?.responsibilities?.join("\n") || "",
+    qualifications:   editData?.qualifications?.join("\n")   || "",
+  });
 
-       
-    const defaultForm = {
-        jobCode: editData?.jobCode || "",
-        title: editData?.title || "",
-        role: editData?.role || "",
-        location: editData?.location || "",
-        salary: editData?.salary || "",
-        jobType: editData?.jobType || "",
-        date: editData?.postedDate
-            ? moment(editData.postedDate).format("YYYY-MM-DD")
-            : moment().format("YYYY-MM-DD"),
-        description: editData?.description || "",
-        responsibilities: editData?.responsibilities.join(",") || "",
-        qualifications: editData?.qualifications.join(",") || "",
-    };
-    const [form, setForm] = useState(defaultForm);
-    
-    const handleCreateJob = () => {
+  const set = (field) => (e) => setForm(prev => ({ ...prev, [field]: e.target.value }));
 
-        const payload = {
-            jobCode: form.jobCode,
-            jobTitle: form.title,
-            role: form.role,
-            location: form.location,
-            salary: form.salary,
-            jobType: form.jobType,
-            skills: "",
-            description: form.description,
-            responsibilities: form.responsibilities,
-            qualifications: form.qualifications,
-            postedDate: form.date
-        };
+  const validate = () => {
+    const e = {};
+    if (!form.jobCode.trim())          e.jobCode = "Required";
+    if (!form.title.trim())            e.title   = "Required";
+    if (!form.role.trim())             e.role    = "Required";
+    if (!form.location.trim())         e.loc     = "Required";
+    if (!form.salary.trim())           e.salary  = "Required";
+    if (!form.skills.trim())           e.skills  = "Required"; // ✅ ADDED
+    if (!form.description.trim())      e.desc    = "Required";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
 
-        if (editId) {
+  const handleSave = () => {
+    if (!validate()) { ToastError("Please fill required fields"); return; }
 
-            payload.jobId = editId;
-
-            const url = `Jobs/UpdateJob`;
-
-            putRequest(url, payload)
-                .then((res) => {
-                    setEditId(null);
-                    setForm(defaultForm);
-                    navigate("/job-management");
-                    ToastSuccess("Job Updated Successfully");
-
-                })
-                .catch((err) => {
-                    console.error("Update job error:", err);
-                    ToastError(err.response?.data || "Job Code already exists")
-                });
-
-        }
-        else {
-
-            const url = `Jobs/CreateJob`;
-
-            postRequest(url, payload)
-                .then((res) => {
-                    setForm(defaultForm);
-                    navigate("/job-management");
-                    ToastSuccess("Job Created Successfully")
-
-                })
-                .catch((err) => {
-                    console.error("Create job error:", err);
-                    ToastError(err.response?.data || "Job Code already exists")
-                });
-
-        }
-
+    const payload = {
+      jobCode:          form.jobCode,
+      jobTitle:         form.title,
+      role:             form.role,
+      location:         form.location,
+      salary:           form.salary,
+      jobType:          form.jobType,
+      skills:           form.skills,           // ✅ ADDED
+      description:      form.description,
+      responsibilities: form.responsibilities,
+      qualifications:   form.qualifications,
+      postedDate:       form.date,
     };
 
+    setLoading(true);
+    const req = editData?.id
+      ? putRequest("Jobs/UpdateJob", { ...payload, jobId: editData.id })
+      : postRequest("Jobs/CreateJob", payload);
 
-    const handleChange = (e) => {
-        setForm({
-            ...form,
-            [e.target.name]: e.target.value
-        });
-    };
+    req
+      .then(() => {
+        ToastSuccess(editData ? "Job updated successfully" : "Job created successfully");
+        navigate("/job-management");
+      })
+      .catch(err => ToastError(err?.response?.data || "Job code already exists"))
+      .finally(() => setLoading(false));
+  };
 
+  return (
+    <div>
+      <LoadingMask loading={loading} />
 
-    const isFormValid = () => {
-        return (
-            form.jobCode.trim() &&
-            form.title.trim() &&
-            form.role.trim() &&
-            form.location.trim() &&
-            form.salary.trim() &&
-            form.jobType.trim() &&
-            form.date.trim() &&
-            form.description.trim() &&
-            form.responsibilities.trim() &&
-            form.qualifications.trim()
-        );
-    };
+      {/* Page Header */}
+      <div className="page-header">
+        <div>
+          <Breadcrumb
+            items={[
+              { label: "Job Management", link: "/job-management" },
+              { label: editData ? "Edit Job" : "Create Job" },
+            ]}
+          />
+          <h1 className="page-title">
+            {editData ? "Update Job Posting" : "Create Job Posting"}
+          </h1>
+          <p className="page-subtitle">Post an open position to attract talent</p>
+        </div>
+      </div>
 
-    return (
-        <Box className={classes.rootBox}>
+      {/* Form */}
+      <div style={{ maxWidth: 900, margin: "0 auto" }}>
+        <FormCard
+          icon={<Briefcase />}
+          title={editData ? "Edit Job Posting" : "New Job Posting"}
+          subtitle="Fill in the job details to publish an opening"
+          footer={
+            <>
+              <button className="btn btn-ghost" onClick={() => navigate("/job-management")}>
+                <X size={15} /> Cancel
+              </button>
+              <button className="btn btn-primary" onClick={handleSave}>
+                <Save size={15} /> {editData ? "Update" : "Publish"} Job
+              </button>
+            </>
+          }
+        >
+          {/* Section 1 – Basic Info */}
+          <FormSection title="Basic Information">
 
-            <LoadingMask loading={loading} />
+            {/* Row 1: Job Code | Job Title */}
+            <FormRow cols={2}>
+              <FormInput
+                label="Job Code"
+                required
+                value={form.jobCode}
+                onChange={set("jobCode")}
+                error={errors.jobCode}
+                placeholder="e.g. ENG-001"
+              />
+              <FormInput
+                label="Job Title"
+                required
+                value={form.title}
+                onChange={set("title")}
+                error={errors.title}
+                placeholder="e.g. Senior React Developer"
+              />
+            </FormRow>
 
-           <Breadcrumb items={breadCrumb} />
-                       <Box
-                           sx={{
-                               display: "flex",
-                               justifyContent: "center",
-                               alignItems: "center",
-                               px: 3,
-                               mt: 4,
-                           }}
-                       >
-                           <Typography variant="h6" align="center">
-                               {editId ? "Update Job Post" : "Create Job Post"}
-                           </Typography>
-                       </Box>
-                    <Box
-                        sx={{
-                            display: "grid",
-                            gridTemplateColumns: "1fr 1fr 1fr 1fr",
-                            gap: 2,
-                            mt: 1
-                        }}
-                    >
+            {/* Row 2: Role | Location | Salary */}
+            <FormRow cols={3}>
+              <FormInput
+                label="Role / Function"
+                required
+                value={form.role}
+                onChange={set("role")}
+                error={errors.role}
+                placeholder="e.g. Frontend Engineer"
+              />
+              <FormInput
+                label="Location"
+                required
+                value={form.location}
+                onChange={set("location")}
+                error={errors.loc}
+                placeholder="e.g. Chennai, Remote"
+              />
+              <FormInput
+                label="Salary / CTC"
+                required
+                value={form.salary}
+                onChange={set("salary")}
+                error={errors.salary}
+                placeholder="e.g. 8-12 LPA"
+              />
+            </FormRow>
 
-                        <TextField
-                            label={<span>Job Code <span style={{ color: 'red' }}>*</span></span>}
-                            name="jobCode"
-                            value={form.jobCode}
-                            onChange={handleChange}
-                            fullWidth
-                        />
-                        <TextField
-                            label={<span>Job Title<span style={{ color: 'red' }}>*</span></span>}
-                            name="title"
-                            value={form.title}
-                            onChange={handleChange}
-                            fullWidth
-                        />
+            {/* Row 3: Employment Type | Date Posted */}
+            <FormRow cols={2}>
+              <FormSelect
+                label="Employment Type"
+                options={JOB_TYPES}
+                value={form.jobType}
+                onChange={set("jobType")}
+              />
+              <div>
+                <label className="fc-label">
+                  Posted Date
+                </label>
+                <input
+                  type="date"
+                  className="fc-input"
+                  value={form.date}
+                  onChange={set("date")}
+                />
+              </div>
+            </FormRow>
 
-                        <TextField
-                            label={<span>Role <span style={{ color: 'red' }}>*</span></span>}
-                            name="role"
-                            value={form.role}
-                            onChange={handleChange}
-                            fullWidth
-                        />
+            {/* Row 4: Skills (full width) ✅ ADDED */}
+            <FormRow cols={1}>
+              <FormInput
+                label="Skills"
+                required
+                value={form.skills}
+                onChange={set("skills")}
+                error={errors.skills}
+                placeholder="e.g. React, Node.js, SQL, Python"
+                hint="Separate skills with commas"
+              />
+            </FormRow>
 
-                        <TextField
-                            label={<span>Location <span style={{ color: 'red' }}>*</span></span>}
-                            name="location"
-                            value={form.location}
-                            onChange={handleChange}
-                            fullWidth
-                        />
+          </FormSection>
 
-                        <TextField
-                            label={<span>Salary <span style={{ color: 'red' }}>*</span></span>}
-                            name="salary"
-                            value={form.salary}
-                            onChange={handleChange}
-                            fullWidth
-                        />
+          {/* Section 2 – Description */}
+          <FormSection title="Job Description">
+            <FormTextarea
+              label="Description"
+              required
+              value={form.description}
+              onChange={set("description")}
+              error={errors.desc}
+              rows={4}
+              placeholder="Describe the role, team, and what you'll be working on..."
+            />
+          </FormSection>
 
-                        <TextField
-                            label={<span>Job Type <span style={{ color: 'red' }}>*</span></span>}
-                            name="jobType"
-                            select
-                            value={form.jobType}
-                            onChange={handleChange}
-                            fullWidth
-                        >
-                            <MenuItem value="Full time">Full time</MenuItem>
-                            <MenuItem value="Part time">Part time</MenuItem>
-                            <MenuItem value="Contract">Contract</MenuItem>
-                        </TextField>
+          {/* Section 3 – Responsibilities & Qualifications */}
+          <FormSection title="Responsibilities & Qualifications">
+            <FormTextarea
+              label="Key Responsibilities"
+              value={form.responsibilities}
+              onChange={set("responsibilities")}
+              rows={5}
+              placeholder="Enter each responsibility on a new line..."
+              hint="Each line = one bullet point"
+            />
+            <FormTextarea
+              label="Required Qualifications"
+              value={form.qualifications}
+              onChange={set("qualifications")}
+              rows={5}
+              placeholder="Enter each qualification on a new line..."
+              hint="Each line = one bullet point"
+            />
+          </FormSection>
 
-                        <TextField
-                            label={<span>Date Posted <span style={{ color: 'red' }}>*</span></span>}
-                            type="date"
-                            name="date"
-                            InputLabelProps={{ shrink: true }}
-                            value={form.date}
-                            onChange={handleChange}
-                            fullWidth
-                        />
+        </FormCard>
+      </div>
 
-                    </Box>
-
-                    <TextField
-                        label={<span>Description <span style={{ color: 'red' }}>*</span></span>}
-                        name="description"
-                        multiline
-                        rows={3}
-                        value={form.description}
-                        onChange={handleChange}
-                        fullWidth
-                        sx={{ mt: 2 }}
-                    />
-
-                    <TextField
-                        label={<span>Key Responsibilities (comma separated) <span style={{ color: 'red' }}>*</span></span>}
-                        name="responsibilities"
-                        multiline
-                        rows={3}
-                        value={form.responsibilities}
-                        onChange={handleChange}
-                        fullWidth
-                        sx={{ mt: 2 }}
-                    />
-
-                    <TextField
-                        label={<span>Qualifications (comma separated) <span style={{ color: 'red' }}>*</span></span>}
-                        name="qualifications"
-                        multiline
-                        rows={3}
-                        value={form.qualifications}
-                        onChange={handleChange}
-                        fullWidth
-                        sx={{ mt: 2 }}
-                    />
-
-              
-
-                    
-<Box className={classes.buttonsContainer}>
-                    <Button
-                        variant="contained"
-                        onClick={handleCreateJob}
-                        disabled={!isFormValid()}
-                    >
-                        {editId ? "Update Job" : "Save Job"}
-                    </Button>
-                    <Button 
-                    variant="outlined"
-                    onClick={() => navigate("/job-management")}
-                    >
-                        Cancel
-                    </Button>
-                    </Box>
-        </Box>
-    );
+      <style>{`
+        .fc-label { display:block; font-family:'Plus Jakarta Sans',sans-serif; font-size:11.5px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:7px; }
+        .fc-input { width:100%; padding:10px 13px; border-radius:10px; border:1.5px solid var(--border); background:var(--bg); font-family:'DM Sans',sans-serif; font-size:13.5px; color:var(--text-primary); outline:none; transition:all 0.2s; box-sizing:border-box; }
+        .fc-input:focus { border-color:var(--primary); box-shadow:0 0 0 3px var(--primary-ghost); background:#fff; }
+        .fc-error { font-size:12px; color:var(--coral); margin-top:5px; }
+        .fc-hint  { font-size:12px; color:var(--text-muted); margin-top:5px; }
+      `}</style>
+    </div>
+  );
 }

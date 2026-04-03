@@ -1,58 +1,84 @@
 import React, { useState } from "react";
-import { makeStyles } from "@material-ui/core/styles";
-import {
-    Box,
-    Tabs,
-    Tab,
-} from "@mui/material";
 import { useLocation } from "react-router-dom";
 import Breadcrumb from "../../services/Breadcrumb";
 import JobPosted from "./JobPosted";
-import Jobapplied from "./JobApplied";
-
-const useStyles = makeStyles(() => ({
-    rootBox: {
-        backgroundColor: "#fff",
-        padding: 16,
-        borderRadius: 8,
-        boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
-    },
-    tabHeader: {
-        borderBottom: "1px solid #e0e0e0",
-        marginBottom: 16,
-    },
-}));
+import JobApplied from "./JobApplied";
+import { Briefcase } from "lucide-react";
 
 export default function JobManagement() {
+  const location = useLocation();
 
-    const classes = useStyles();
-    const location = useLocation();
+  // Support both old key ("jobApplied") and new key ("applied") coming from navigate state
+  const rawTab = location.state?.tab || "posted";
+  const normalise = (t) => {
+    if (t === "jobPosted")  return "posted";
+    if (t === "jobApplied") return "applied";
+    return t;
+  };
 
-    const [viewTab, setViewTab] = useState(location.state?.tab || "jobPosted");
+  const [tab, setTab] = useState(normalise(rawTab));
 
+  const TABS = [
+    { key: "posted",  label: "Job Postings"  },
+    { key: "applied", label: "Applications"  },
+  ];
 
-    const handleTabChange = (event, newValue) => {
-        setViewTab(newValue);
-    };
+  return (
+    <div>
+      <div className="page-header">
+        <div>
+          <Breadcrumb
+            icon={<Briefcase size={13} />}
+            items={[{ label: "Job Management" }]}
+          />
+          <h1 className="page-title">Job Management</h1>
+          <p className="page-subtitle">Post jobs and manage applications</p>
+        </div>
+      </div>
 
-    return (
-        <Box className={classes.rootBox}>
-            <Breadcrumb items={[{ label: "Job Management" }]} />
-            <Box className={classes.tabHeader}>
-                <Tabs
-                    value={viewTab}
-                    onChange={handleTabChange}
-                    textColor="primary"
-                    indicatorColor="primary"
-                    sx={{ mb: 2 }}
-                >
-                    <Tab value="jobPosted" label="Job Posted" />
-                    <Tab value="jobApplied" label="Job Applied" />
-                </Tabs>
-            </Box>
-            {viewTab === "jobPosted" ? 
-                (<JobPosted />) : (<Jobapplied/>)
-            }
-        </Box>
-    );
+      {/* Tab Switcher */}
+      <div
+        style={{
+          display:      "flex",
+          gap:          4,
+          background:   "var(--bg-card)",
+          padding:      4,
+          borderRadius: 12,
+          border:       "1px solid var(--border)",
+          width:        "fit-content",
+          marginBottom: 20,
+          boxShadow:    "var(--shadow-sm)",
+        }}
+      >
+        {TABS.map(t => {
+          const isActive = tab === t.key;
+          return (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              style={{
+                padding:     "8px 22px",
+                borderRadius: 9,
+                border:      "none",
+                cursor:      "pointer",
+                fontFamily:  "'DM Sans', sans-serif",
+                fontSize:    13,
+                fontWeight:  600,
+                background:  isActive
+                  ? "linear-gradient(135deg, var(--primary), var(--primary-light))"
+                  : "transparent",
+                color:       isActive ? "white" : "var(--text-secondary)",
+                boxShadow:   isActive ? "0 2px 8px var(--primary-glow)" : "none",
+                transition:  "all 0.2s",
+              }}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {tab === "posted" ? <JobPosted /> : <JobApplied />}
+    </div>
+  );
 }

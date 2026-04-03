@@ -1,648 +1,446 @@
 import React, { useEffect, useRef, useState } from "react";
-import MUIDataTable from "mui-datatables";
-import { ThemeProvider, createTheme } from "@mui/material/styles";
-import { makeStyles } from "@material-ui/core/styles";
-import Box from "@mui/material/Box";
-import { IconButton, Tooltip, Button } from "@mui/material";
-import { Download, Plus } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import moment from "moment";
+import { Download, X, Check, FileSpreadsheet, Plus } from "lucide-react";
+import dayjs from "dayjs";
 import { getRequest, postRequest } from "../../services/Apiservice";
 import LoadingMask from "../../services/LoadingMask";
 import { getCookie } from "../../services/Cookies";
-import { Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, TextField, Typography } from "@mui/material";
 import { ToastError, ToastSuccess } from "../../services/ToastMsg";
+import ProTable from "../../components/ProTable";
+import { useNavigate } from "react-router-dom";
+import * as XLSX from "xlsx";
 
-const getMuiTheme = () =>
-    createTheme({
-        components: {
-            MUIDataTableHeadCell: {
-                styleOverrides: {
-                    data: { textTransform: "none !important" },
-                    root: { textTransform: "none !important" },
-                },
-            },
-        },
-    });
+const STATUS_OPTS = ["New", "Still Searching", "Interviewing", "Placed", "Rejected"].map(v => ({ label: v, value: v }));
 
-const useStyles = makeStyles(() => ({
-    rootBox: {
-        backgroundColor: "#fff",
-        padding: 16,
-        borderRadius: 8,
-        boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
-    },
-    tableBody: {
-        "& .Mui-active .MuiTableSortLabel-icon": {
-            color: "#fff !important",
-        },
-        "& .tss-10rusft-MUIDataTableToolbar-icon": {
-            color: "#0c4a6e",
-            boxShadow:
-                "0px -1px 2px 0 #065881 inset, 0px 1px 1px 1px #ccc, 0 0 0 6px #fff, 0 2px 12px 8px #ddd",
-            borderRadius: "5px",
-            marginLeft: "15px",
-        },
-        "& .tss-9z1tfs-MUIDataTableToolbar-iconActive": {
-            color: "#0c4a6e",
-            boxShadow:
-                "0px -1px 2px 0 #065881 inset, 0px 1px 1px 1px #ccc, 0 0 0 6px #fff, 0 2px 12px 8px #ddd",
-            borderRadius: "5px",
-            marginLeft: "15px",
-        },
-        "& .tss-qbo1l6-MUIDataTableToolbar-actions": {
-            justifyContent: "left",
-            position: "absolute",
-        },
-        "& .tss-1ufdzki-MUIDataTableSearch-main": {
-            marginRight: "10px",
-            width: 500,
-        },
-        "& .tss-1fz5efq-MUIDataTableToolbar-left": {
-            position: "absolute",
-            right: 25,
-        },
-        "& .tss-1h5wt30-MUIDataTableSearch-searchIcon": {
-            color: "#0c4a6e",
-        },
-    },
-    addButtonContainer: {
-        display: "flex",
-        justifyContent: "flex-end",
-        marginBottom: "10px",
-    },
-    addButton: {
-        backgroundColor: "#0c4a6e",
-        gap: "8px",
-        textTransform: "none",
-    },
-    uploadBox: {
-        marginTop: 8,
-        border: "2px dashed #aaa",
-        borderRadius: 8,
-        padding: 20,
-        textAlign: "center",
-        cursor: "pointer",
-        background: "#fafafa",
-    },
-    fileRow: {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginTop: 8,
-    },
-}));
+const STATUS_MAP = {
+  "new":             { bg: "#dbeafe", color: "#1d4ed8" },
+  "still searching": { bg: "#fff7ed", color: "#c2410c" },
+  "interviewing":    { bg: "#ede9fe", color: "#6c3fc5" },
+  "placed":          { bg: "#dcfce7", color: "#15803d" },
+  "rejected":        { bg: "#fee2e2", color: "#b91c1c" },
+};
 
-export default function Jobapplied() {
-    const classes = useStyles();
-    const navigate = useNavigate();
-    const [loading, setLoading] = useState(false);
-    const [applications, setApplications] = useState([]);
-    const [selectedRowsData, setSelectedRowsData] = useState([]);
-    const [employeesList, setEmployeesList] = useState([]);
-    const [openStatusDialog, setOpenStatusDialog] = useState(false);
-    const [selectedStatus, setSelectedStatus] = useState("New");
-    const [assignedUserId, setAssignedUserId] = useState(null);
-    const [selectedApplication, setSelectedApplication] = useState(null);
+export default function JobApplied() {
+  const navigate = useNavigate();
 
-    const statusOptions = [
-        { label: "New", value: "New" },
-        { label: "Still Searching", value: "Still Searching" },
-        { label: "Interviewing", value: "Interviewing" },
-        { label: "Placed", value: "Placed" },
-        { label: "Rejected", value: "Rejected" }
-    ];
+  const [loading, setLoading]             = useState(false);
+  const [applications, setApplications]   = useState([]);
+  const [employeesList, setEmployeesList] = useState([]);
+  const [modal, setModal]                 = useState(false);
+  const [selApp, setSelApp]               = useState(null);
+  const [selStatus, setSelStatus]         = useState("New");
+  const [assignedTo, setAssignedTo]       = useState("");
+  const [selected, setSelected]           = useState([]);   // array of row indices
 
-    const calledOnce = useRef(false);
+  const called = useRef(false);
 
-    useEffect(() => {
-        if (calledOnce.current) return;  // skip if already called
-        getJobApplications();
-        getUsers();
-        calledOnce.current = true;
-    }, []);
+  const userRole  = getCookie("role");
+  const userEmail = getCookie("email");
+  const isAdmin   = userRole === "Admin" || userRole === "Manager";
 
-    // ================= API FUNCTIONS =================
+  useEffect(() => {
+    if (called.current) return;
+    loadApplications();
+    loadUsers();
+    called.current = true;
+  }, []);
 
-    const getUsers = () => {
-        const url = `User/All`;
-        setLoading(true);
+  // ─────────────────────────── API ───────────────────────────
 
-        const loggedEmail = getCookie("email");
-        const userRole = getCookie("role");
-
-        getRequest(url)
-            .then((res) => {
-                if (res.data) {
-
-                    let emails = res.data.map((user) => ({
-                        label: user.email,
-                        value: user.email,
-                    }));
-
-                    // If NOT Admin or Manager → show only logged user email
-                    if (userRole !== "Admin" && userRole !== "Manager") {
-                        emails = emails.filter(e => e.value === loggedEmail);
-                    }
-
-                    // Sort A-Z
-                    emails.sort((a, b) => a.label.localeCompare(b.label));
-
-                    setEmployeesList(emails);
-                }
-            })
-            .finally(() => setLoading(false));
-    };
-
-    const getJobApplications = () => {
-        setLoading(true);
-        getRequest("Jobs")
-            .then((res) => {
-                res.data.forEach((d) => {
-                    if (d.updatedAt) {
-                        d.updatedAt = moment(d.updatedAt).format("DD/MM/YYYY");
-                    }
-                    if (d.appliedOn) {
-                        d.appliedOn = moment(d.appliedOn).format("DD/MM/YYYY");
-                    }
-                });
-                setApplications(res.data || []);
-                setLoading(false);
-            })
-            .catch((err) => {
-                console.error(err);
-                setLoading(false);
-            });
-    };
-
-    const downloadSingle = (id, fileName) => {
-        setLoading(true);
-
-        getRequest(`Jobs/Download/${id}`, null, true)
-            .then((res) => {
-                const contentType =
-                    res.headers["content-type"] || "application/octet-stream";
-
-                const blob = new Blob([res.data], { type: contentType });
-
-                const url = window.URL.createObjectURL(blob);
-                const link = document.createElement("a");
-
-                link.href = url;
-                link.setAttribute("download", fileName);
-
-                document.body.appendChild(link);
-                link.click();
-
-                document.body.removeChild(link);
-                window.URL.revokeObjectURL(url);
-                getJobApplications();
-                setSelectedRowsData([]);
-                setLoading(false);
-            })
-            .catch((err) => {
-                console.error(err);
-                setLoading(false);
-            });
-    };
-
-
-
-    const downloadMultiple = (ids) => {
-        setLoading(true);
-
-        postRequest("Jobs/DownloadMultiple", ids.split(","), true)
-            .then((res) => {
-                const blob = new Blob([res.data], {
-                    type: "application/zip",
-                });
-
-                const url = window.URL.createObjectURL(blob);
-                const link = document.createElement("a");
-
-                link.href = url;
-                link.setAttribute(
-                    "download",
-                    `JobsApplied_${new Date().getTime()}.zip`
-                );
-
-                document.body.appendChild(link);
-                link.click();
-
-                document.body.removeChild(link);
-                window.URL.revokeObjectURL(url);
-                getJobApplications();
-                setSelectedRowsData([]);
-                setLoading(false);
-            })
-            .catch((err) => {
-                console.error(err);
-                setLoading(false);
-            });
-    };
-
-
-    // ================= HANDLERS =================
-
-    const handleDownload = (selectedDocs) => {
-        if (!selectedDocs || selectedDocs.length === 0) return;
-
-        if (selectedDocs.length === 1) {
-            const doc = selectedDocs[0];
-            downloadSingle(doc.applicationId, doc.resumeFileName);
-        } else {
-            const ids = selectedDocs.map(d => d.applicationId).join(",");
-            downloadMultiple(ids);
+  const loadApplications = () => {
+    setLoading(true);
+    getRequest("Jobs")
+      .then(res => {
+        if (res.data) {
+          setApplications(
+            res.data.map(d => ({
+              ...d,
+              appliedOn: d.appliedOn ? dayjs(d.appliedOn).format("DD/MM/YYYY") : "—",
+              updatedAt: d.updatedAt ? dayjs(d.updatedAt).format("DD/MM/YYYY") : "—",
+            }))
+          );
         }
-    };
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  };
 
-
-
-
-    const handleStatusChange = () => {
-
-        if (!selectedStatus) {
-            ToastError("Candidate Status is required");
-            return;
+  const loadUsers = () => {
+    getRequest("User/All")
+      .then(res => {
+        if (res.data) {
+          let list = res.data.map(u => ({ label: u.email, value: u.email }));
+          if (!isAdmin) list = list.filter(e => e.value === userEmail);
+          setEmployeesList(list.sort((a, b) => a.label.localeCompare(b.label)));
         }
+      })
+      .catch(console.error);
+  };
 
-        if (!assignedUserId) {
-            ToastError("Assigned To is required");
-            return;
+  const downloadSingle = (id, name) => {
+    setLoading(true);
+    getRequest(`Jobs/Download/${id}`, null, true)
+      .then(res => {
+        const blob = new Blob([res.data], {
+          type: res.headers["content-type"] || "application/octet-stream",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = name || "resume";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        ToastSuccess("Downloaded");
+        loadApplications();
+        setSelected([]);
+      })
+      .catch(() => ToastError("Download failed"))
+      .finally(() => setLoading(false));
+  };
+
+  const downloadMultiple = (ids) => {
+    setLoading(true);
+    postRequest("Jobs/DownloadMultiple", ids, true)
+      .then(res => {
+        const blob = new Blob([res.data], { type: "application/zip" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Resumes_${dayjs().format("DDMMYYYY")}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        ToastSuccess("Downloaded");
+        loadApplications();
+        setSelected([]);
+      })
+      .catch(() => ToastError("Download failed"))
+      .finally(() => setLoading(false));
+  };
+
+  // ─────────────────────────── Handlers ───────────────────────────
+
+  const handleBulkDownload = () => {
+    const rows = selected.map(i => applications[i]).filter(Boolean);
+    if (!rows.length) return;
+    if (rows.length === 1) {
+      const row = rows[0];
+      if (row?.resumeFileName) downloadSingle(row.applicationId, row.resumeFileName);
+    } else {
+      const ids = rows.map(r => r.applicationId).filter(Boolean);
+      downloadMultiple(ids);
+    }
+  };
+
+  const handleStatusClick = (row) => {
+    const canEdit = isAdmin || row.assignedTo === userEmail || !row.assignedTo;
+    if (!canEdit) {
+      ToastError("You are not authorized to update this candidate status");
+      return;
+    }
+    setSelApp(row);
+    setSelStatus(row.candidateStatus || "New");
+    setAssignedTo(row.assignedTo || "");
+    setModal(true);
+  };
+
+  const handleStatusSave = () => {
+    if (!selStatus) { ToastError("Candidate Status is required"); return; }
+    if (!assignedTo) { ToastError("Assigned To is required"); return; }
+
+    setLoading(true);
+    postRequest("Jobs/UpdateApplicationStaus", {
+      applicationId:   selApp.applicationId,
+      candidateStatus: selStatus,
+      assignedTo,
+    })
+      .then(res => {
+        if (res.status === 200) {
+          ToastSuccess(res.data.message);
+          loadApplications();
         }
+      })
+      .catch(err => ToastError(err?.response?.data?.message || "Failed to update status"))
+      .finally(() => { setLoading(false); setModal(false); });
+  };
 
-        const payload = {
-            applicationId: selectedApplication.applicationId,
-            candidateStatus: selectedStatus,
-            assignedTo: assignedUserId
-        };
-        const url = `Jobs/UpdateApplicationStaus`;
-        setLoading(true);
-        postRequest(url, payload)
-            .then((res) => {
-                if (res.status === 200) {
-
-                    ToastSuccess(res.data.message)
-                    setLoading(false);
-                    getJobApplications();
-                }
-            })
-            .catch((err) => {
-                setLoading(false);
-                console.error("Login error:", err);
-                ToastError(err.response?.data?.message || "Failed to update status");
-            });
-
-        setOpenStatusDialog(false);
-    };
-
-    const handleStatusClick = (rowIndex, currentValue) => {
-
-        const row = applications[rowIndex];
-
-        const userEmail = getCookie("email");
-        const userRole = getCookie("role");
-
-        // Access conditions
-        const isAdmin = userRole === "Admin";
-        const isAssignedUser = row.assignedTo === userEmail;
-        const isUnassigned = !row.assignedTo;
-
-        if (isAdmin || isAssignedUser || isUnassigned) {
-
-            setSelectedApplication(row);
-            setSelectedStatus(currentValue || "New");
-            setAssignedUserId(row.assignedTo || "");
-            setOpenStatusDialog(true);
-
-        } else {
-
-            ToastError("You are not authorized to update this candidate status");
-
-        }
-    };
-
-    const getStatusColor = (status) => {
-        switch ((status || "new").toLowerCase()) {
-            case "new":
-                return "#1565C0"; // blue
-
-            case "still searching":
-                return "#F57C00"; // orange
-
-            case "interviewing":
-                return "#6A1B9A"; // purple
-
-            case "placed":
-                return "#0F7B0F"; // green
-
-            case "rejected":
-                return "#C62828"; // red
-
-            default:
-                return "#7D7D7D"; // gray
-        }
-    };
-
-    const getBackgroundColor = (status) => {
-        switch ((status || "new").toLowerCase()) {
-            case "new":
-                return "#E3F2FD"; // light blue
-
-            case "still searching":
-                return "#FFF3CD"; // light orange/yellow
-
-            case "interviewing":
-                return "#E8E1FF"; // light purple
-
-            case "placed":
-                return "#DFF5D8"; // light green
-
-            case "rejected":
-                return "#FDE0E0"; // light red
-
-            default:
-                return "#E9E9E9"; // fallback gray
-        }
-    };
-
-    const StatusChip = ({ label }) => {
-        return (
-            <div
-                style={{
-                    backgroundColor: getBackgroundColor(label),
-                    color: getStatusColor(label),
-                    padding: "3px 10px",
-                    fontWeight: 500,
-                    fontSize: "12px",
-                    borderRadius: "16px",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    textTransform: "capitalize",
-                    cursor: "pointer"
-                }}
-            >
-                {label}
-            </div>
-        );
-    };
-
-    // Columns
-    const columns = [
-        {
-            name: "jobCode",
-            label: "Job Code",
-        },
-        {
-            name: "jobTitle",
-            label: "Job Title",
-        },
-        {
-            name: "role",
-            label: "Role",
-        },
-        {
-            name: "location",
-            label: "Location",
-        },
-        {
-            name: "jobType",
-            label: "Job Type",
-        },
-        {
-            name: "salary",
-            label: "Salary",
-        },
-        {
-            name: "firstName",
-            label: "First Name",
-        },
-        {
-            name: "lastName",
-            label: "Last Name",
-        },
-        {
-            name: "email",
-            label: "Email",
-        },
-        {
-            name: "phone",
-            label: "Phone",
-        },
-        {
-            name: "skills",
-            label: "Skills",
-        },
-        { name: "readCount", label: "View Count" },
-        {
-            name: "appliedOn",
-            label: "Applied On",
-        },
-        {
-            name: "updatedAt",
-            label: "updated At",
-        },
-        {
-            name: "candidateStatus",
-            label: "Status",
-            options: {
-                customBodyRenderLite: (dataIndex) => {
-                    const value = applications[dataIndex]?.candidateStatus || "New";
-
-                    let statusClass = classes.statusNew;
-
-                    if (value === "Still Searching") statusClass = classes.statusSearching;
-                    if (value === "Interviewing") statusClass = classes.statusInterviewing;
-                    if (value === "Placed") statusClass = classes.statusPlaced;
-                    if (value === "Rejected") statusClass = classes.statusRejected;
-
-                    return (
-                        <span
-                            className={statusClass}
-                            onClick={() => handleStatusClick(dataIndex, value)}
-                        >
-                            <StatusChip label={value} />
-                        </span>
-                    );
-                },
-            },
-        },
-        {
-            name: "assignedTo",
-            label: "assignedTo",
-        },
-
-    ];
-
-    const custom = () => {
-        return (
-            <>
-                <Tooltip title="Download Resumes" arrow placement="bottom">
-                    <IconButton onClick={() => handleDownload(selectedRowsData)} className="tss-10rusft-MUIDataTableToolbar-icon">
-                        <Download size={20} />
-                    </IconButton>
-                </Tooltip>
-            </>
-        );
-    };
-
-    const options = {
-        customToolbarSelect: () => { },
-        selectToolbarPlacement: "above",
-        selectableRows: "multiple",
-        customToolbar: custom,
-        responsive: "standard",
-        filterType: 'multiselect',
-        download: true,
-        print: true,
-        search: true,
-        filter: true,
-        viewColumns: true,
-        rowsPerPage: 10,
-        rowsPerPageOptions: [10, 15, 50, 100],
-        onRowSelectionChange: (currentRowsSelected, allRowsSelected, rowsSelected) => {
-            const selectedData = rowsSelected.map(index => applications[index]);
-            console.log(selectedData)
-            setSelectedRowsData(selectedData);
-
-        },
-    };
-
-    return (
-        <Box >
-            <LoadingMask loading={loading} />
-            <Box className={classes.addButtonContainer}>
-                <Button
-                    variant="contained"
-                    className={classes.addButton}
-                    onClick={() => navigate("/job-management/add-profile")}
-                >
-                    <Plus size={20} /> Add Profile
-                </Button>
-            </Box>
-            <Box className="reportstablehead">
-                <ThemeProvider theme={getMuiTheme()}>
-                    <MUIDataTable
-                        title="Job Applications"
-                        data={applications}
-                        className={classes.tableBody}
-                        columns={columns}
-                        options={options}
-                    />
-                </ThemeProvider>
-            </Box>
-            {/* ---- STATUS CHANGE DIALOG ---- */}
-            <Dialog
-                open={openStatusDialog}
-                onClose={() => setOpenStatusDialog(false)}
-                maxWidth="sm"
-                fullWidth
-            >
-                <DialogTitle>
-                    Update Candidate Status
-                </DialogTitle>
-
-                <DialogContent dividers>
-
-                    {/* Candidate Info */}
-                    <Box mb={3}>
-                        <Box display="flex" justifyContent="space-between" mb={1}>
-                            <Typography variant="body2">
-                                <strong>Candidate Name:</strong>
-                            </Typography>
-                            <Typography variant="body2">
-                                {selectedApplication?.firstName} {selectedApplication?.lastName}
-                            </Typography>
-                        </Box>
-
-                        <Box display="flex" justifyContent="space-between" mb={1}>
-                            <Typography variant="body2">
-                                <strong>Job Title:</strong>
-                            </Typography>
-                            <Typography variant="body2">
-                                {selectedApplication?.jobTitle}
-                            </Typography>
-                        </Box>
-
-                        <Box display="flex" justifyContent="space-between">
-                            <Typography variant="body2">
-                                <strong>Applied On:</strong>
-                            </Typography>
-                            <Typography variant="body2">
-                                {new Date(selectedApplication?.appliedOn).toLocaleDateString()}
-                            </Typography>
-                        </Box>
-                    </Box>
-
-                    {/* Candidate Status Autocomplete */}
-                    <Box mb={3}>
-                        <Autocomplete
-                            options={statusOptions}
-                            getOptionLabel={(option) => option.label}
-                            value={
-                                statusOptions.find(
-                                    (s) => s.value === selectedStatus
-                                ) || null
-                            }
-                            onChange={(event, newValue) => {
-                                setSelectedStatus(newValue ? newValue.value : null);
-                            }}
-                            renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    label={<span>Candidate Status <span style={{ color: 'red' }}>*</span></span>}
-                                    variant="outlined"
-                                    fullWidth
-                                />
-                            )}
-                        />
-                    </Box>
-
-                    {/* Assigned To Autocomplete */}
-                    <Box mb={2}>
-                        <Autocomplete
-                            options={employeesList || []}
-                            getOptionLabel={(option) => option.value || ""}
-                            value={
-                                employeesList?.find(
-                                    (emp) => emp.value === assignedUserId
-                                ) || null
-                            }
-                            onChange={(event, newValue) => {
-                                setAssignedUserId(newValue ? newValue.value : null);
-                            }}
-                            renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    label={<span>Assigned To <span style={{ color: 'red' }}>*</span></span>}
-                                    variant="outlined"
-                                    fullWidth
-                                />
-                            )}
-                        />
-                    </Box>
-
-                </DialogContent>
-
-                <DialogActions>
-                    <Button
-                        variant="outlined"
-                        onClick={() => setOpenStatusDialog(false)}
-                    >
-                        Cancel
-                    </Button>
-
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={handleStatusChange}
-                    >
-                        Save
-                    </Button>
-                </DialogActions>
-            </Dialog>
-            {/* Create Job Modal */}
-        </Box>
+  const handleExportExcel = () => {
+    const ws = XLSX.utils.json_to_sheet(
+      applications.map(r => ({
+        "Job Code":    r.jobCode   || "—",
+        "Job Title":   r.jobTitle  || "—",
+        "Role":        r.role      || "—",
+        "Location":    r.location  || "—",
+        "Job Type":    r.jobType   || "—",
+        "Salary":      r.salary    || "—",
+        "First Name":  r.firstName || "—",
+        "Last Name":   r.lastName  || "—",
+        "Email":       r.email     || "—",
+        "Phone":       r.phone     || "—",
+        "Skills":      r.skills    || "—",
+        "View Count":  r.readCount ?? "—",
+        "Applied On":  r.appliedOn,
+        "Updated At":  r.updatedAt,
+        "Status":      r.candidateStatus || "New",
+        "Assigned To": r.assignedTo || "—",
+      }))
     );
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Applications");
+    XLSX.writeFile(wb, "Job_Applications.xlsx");
+  };
+
+  // ─────────────────────────── Sub-components ───────────────────────────
+
+  const CandidateChip = ({ status }) => {
+    const s = STATUS_MAP[(status || "new").toLowerCase()] || { bg: "#f1f5f9", color: "#475569" };
+    return (
+      <span
+        style={{
+          background:    s.bg,
+          color:         s.color,
+          padding:       "3px 10px",
+          borderRadius:  20,
+          fontSize:      11.5,
+          fontWeight:    700,
+          display:       "inline-block",
+          textTransform: "capitalize",
+          cursor:        "pointer",
+        }}
+      >
+        {status || "New"}
+      </span>
+    );
+  };
+
+  // ─────────────────────────── Table config ───────────────────────────
+
+  const columns = [
+    { field: "jobCode",   label: "Job Code" },
+    { field: "jobTitle",  label: "Job Title" },
+    { field: "role",      label: "Role" },
+    { field: "location",  label: "Location" },
+    { field: "jobType",   label: "Job Type" },
+    { field: "salary",    label: "Salary" },
+    { field: "firstName", label: "First Name" },
+    { field: "lastName",  label: "Last Name" },
+    { field: "email",     label: "Email" },
+    { field: "phone",     label: "Phone" },
+    { field: "skills",    label: "Skills" },
+    { field: "readCount", label: "View Count" },
+    { field: "appliedOn", label: "Applied On" },
+    { field: "updatedAt", label: "Updated At" },
+    {
+      field:      "candidateStatus",
+      label:      "Status",
+      filterable: true,
+      renderCell: (row) => (
+        <span onClick={() => handleStatusClick(row)}>
+          <CandidateChip status={row.candidateStatus} />
+        </span>
+      ),
+    },
+    { field: "assignedTo", label: "Assigned To" },
+    {
+      field:      "actions",
+      label:      "Resume",
+      renderCell: (row) =>
+        row.resumeFileName ? (
+          <button
+            className="icon-btn"
+            title="Download Resume"
+            onClick={() => downloadSingle(row.applicationId, row.resumeFileName)}
+            style={{ color: "var(--teal)" }}
+          >
+            <Download size={14} />
+          </button>
+        ) : null,
+    },
+  ];
+
+  // Bulk actions bar — shown inside ProTable toolbar (same pattern as CompanyDocument)
+  const tableActions = (
+    <>
+
+      {selected.length > 0 && (
+        <button
+          className="btn btn-teal btn-sm"
+          onClick={handleBulkDownload}
+        >
+          <Download size={14} /> Download ({selected.length})
+        </button>
+      )}
+    </>
+  );
+
+  // ─────────────────────────── Render ───────────────────────────
+
+  return (
+    <div>
+      <LoadingMask loading={loading} />
+
+      {/* ── Page Header ── */}
+      <div className="page-header" style={{ justifyContent: "flex-end" }}>
+        <button
+          className="btn btn-primary"
+          onClick={() => navigate("/job-management/add-profile")}
+        >
+          <Plus size={14} /> Add Profile
+        </button>
+      </div>
+
+      <ProTable
+        title="Job Applications"
+        columns={columns}
+        data={applications}
+        actions={tableActions}
+        onExport={handleExportExcel}
+        multiSelect={true}
+        onSelectionChange={setSelected}
+      />
+
+      {/* ── Status Modal ── */}
+      {modal && selApp && (
+        <div
+          onClick={() => setModal(false)}
+          style={{
+            position:       "fixed",
+            inset:          0,
+            background:     "rgba(20,0,50,0.55)",
+            backdropFilter: "blur(5px)",
+            zIndex:         9999,
+            display:        "flex",
+            alignItems:     "center",
+            justifyContent: "center",
+            padding:        20,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background:   "#fff",
+              borderRadius: 20,
+              width:        "100%",
+              maxWidth:     440,
+              boxShadow:    "0 20px 60px rgba(0,0,0,0.25)",
+              overflow:     "hidden",
+            }}
+          >
+            {/* top accent bar */}
+            <div style={{ height: 4, background: "linear-gradient(90deg,#0c4a6e,#0ea5e9)" }} />
+
+            {/* Header */}
+            <div style={{ padding: "22px 24px 14px", borderBottom: "1px solid #f0f0f0", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 16, color: "#1e293b" }}>
+                  Update Application Status
+                </div>
+                <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 3 }}>
+                  {selApp.firstName} {selApp.lastName} — {selApp.jobTitle}
+                </div>
+              </div>
+              <button
+                onClick={() => setModal(false)}
+                style={{ width: 30, height: 30, borderRadius: 8, background: "#f1f5f9", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b" }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Info strip */}
+            <div style={{ padding: "14px 24px 0", display: "flex", gap: 28, flexWrap: "wrap" }}>
+              {[
+                ["Job Code",   selApp.jobCode   || "—"],
+                ["Applied On", selApp.appliedOn  || "—"],
+                ["Email",      selApp.email      || "—"],
+              ].map(([k, v]) => (
+                <div key={k}>
+                  <div style={{ fontSize: 10.5, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>{k}</div>
+                  <div style={{ fontSize: 13, color: "#1e293b", marginTop: 2 }}>{v}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: "18px 24px" }}>
+              {/* Status pill buttons */}
+              <div style={{ marginBottom: 18 }}>
+                <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+                  Candidate Status <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                  {STATUS_OPTS.map(o => (
+                    <button
+                      key={o.value}
+                      type="button"
+                      onClick={() => setSelStatus(o.value)}
+                      style={{
+                        padding:      "7px 14px",
+                        borderRadius: 8,
+                        fontSize:     12.5,
+                        fontWeight:   700,
+                        border:       `1.5px solid ${selStatus === o.value ? "#0c4a6e" : "#e2e8f0"}`,
+                        background:   selStatus === o.value ? "#0c4a6e" : "#f8fafc",
+                        color:        selStatus === o.value ? "#fff" : "#64748b",
+                        cursor:       "pointer",
+                        transition:   "all 0.15s",
+                      }}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Assign To dropdown */}
+              <div>
+                <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 7 }}>
+                  Assign To <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <select
+                  value={assignedTo}
+                  onChange={e => setAssignedTo(e.target.value)}
+                  style={{
+                    width:        "100%",
+                    padding:      "10px 13px",
+                    borderRadius: 10,
+                    border:       "1.5px solid #e2e8f0",
+                    background:   "#f8fafc",
+                    fontSize:     13.5,
+                    color:        "#1e293b",
+                    outline:      "none",
+                    appearance:   "none",
+                    fontFamily:   "inherit",
+                  }}
+                >
+                  <option value="">Select employee...</option>
+                  {employeesList.map(e => (
+                    <option key={e.value} value={e.value}>{e.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: "0 24px 22px", display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setModal(false)}
+                style={{ padding: "9px 20px", borderRadius: 10, border: "1.5px solid #e2e8f0", background: "#fff", color: "#475569", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleStatusSave}
+                style={{ padding: "9px 20px", borderRadius: 10, border: "none", background: "#0c4a6e", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7, fontFamily: "inherit", boxShadow: "0 3px 12px rgba(12,74,110,0.25)" }}
+              >
+                <Check size={15} /> Update
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

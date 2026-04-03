@@ -1,302 +1,204 @@
 import React, { useEffect, useState } from "react";
-import { makeStyles } from "@material-ui/core/styles";
-import { Plus, ArrowLeft, ArrowRight } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import LoadingMask from "../../services/LoadingMask";
 import Breadcrumb from "../../services/Breadcrumb";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
-import { Typography, Box, Button } from "@mui/material";
 import { getRequest } from "../../services/Apiservice";
 import { getCookie } from "../../services/Cookies";
 
 dayjs.extend(isoWeek);
 
-const useStyles = makeStyles(() => ({
-    rootBox: {
-        backgroundColor: "#fff",
-        padding: 12,
-        borderRadius: 8,
-        boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
-    },
-    addButtonContainer: {
-        display: "flex",
-        justifyContent: "flex-end",
-        marginBottom: "10px",
-    },
-    addButton: {
-        backgroundColor: "#0c4a6e",
-        gap: "8px",
-        textTransform: "none",
-    },
-    calendarWrapper: {
-        maxWidth: 600,
-        margin: "0 auto",
-        padding: 16,
-        display: "flex",
-        flexDirection: "column",
-    },
-    table: {
-        borderCollapse: "collapse",
-        textAlign: "center",
-        fontSize: 18,
-        width: "100%",
-        tableLayout: "fixed",
-    },
-    td: {
-        width: 80,
-        height: 80,
-        border: "1px solid #ddd",
-        cursor: "pointer",
-        verticalAlign: "top",
-        position: "relative",
-        padding: 0,
-        boxSizing: "border-box",
-    },
-    th: {
-        padding: "10px 15px",
-        border: "1px solid #ddd",
-        backgroundColor: "#e0e0e0",
-    },
-    dimDay: {
-        color: "#bbb",
-        backgroundColor: "#fafafa",
-    },
-    today: {
-        backgroundColor: "#dbeafe !important",
-        border: "2px solid #2563eb",
-    },
-    weekend: {
-        backgroundColor: "#FFF7E6",
-    },
-    holidayCell: {
-        backgroundColor: "#ffe6e6 !important",
-    },
-    eventCell: {
-        backgroundColor: "#FFFDE7",
-    },
-    holidayTag: {
-        marginTop: 4,
-        padding: "2px 4px",
-        backgroundColor: "#ffcccc",
-        color: "#990000",
-        fontSize: 12,
-        borderRadius: 4,
-        fontWeight: 600,
-        maxWidth: 100,
-        whiteSpace: "nowrap",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-    },
-    eventTag: {
-        marginTop: 4,
-        padding: "2px 4px",
-        backgroundColor: "#FEF3C7",
-        color: "#B45309",
-        fontSize: 12,
-        borderRadius: 4,
-        fontWeight: 600,
-        maxWidth: 100,
-        whiteSpace: "nowrap",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-    },
-}));
+const COLORS = {
+  Holiday: { bg: "#fee2e2", text: "#b91c1c", dot: "#ef4444", cellBg: "rgba(254,226,226,0.5)" },
+  Event: { bg: "#ede9fe", text: "#6c3fc5", dot: "#8b5cf6", cellBg: "rgba(237,233,254,0.5)" },
+};
 
 export default function Holiday() {
-    const classes = useStyles();
-    const navigate = useNavigate();
-    const breadCrumb = [{ label: "Calendar" }];
-    const [holidays, setHolidays] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [currentMonth, setCurrentMonth] = useState(dayjs());
-    const userRole = getCookie("role");
-    const isAdminOrManager = userRole === "Admin" || userRole === "Manager";
+  const navigate = useNavigate();
+  const [holidays, setHolidays] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [current, setCurrent] = useState(dayjs());
+  const userRole = getCookie("role");
+  const isAdminOrMgr = userRole === "Admin" || userRole === "Manager";
 
-    useEffect(() => {
-        getEvent();
-    }, []);
+  useEffect(() => {
+    setLoading(true);
+    getRequest("Holiday/GetHolidays").then(res => {
+      if (res.data?.length) setHolidays(res.data.map(h => ({ ...h, eventDate: dayjs(h.eventDate).format("YYYY-MM-DD") })));
+    }).catch(console.error).finally(() => setLoading(false));
+  }, []);
 
-    const getEvent = () => {
-        const url = `Holiday/GetHolidays`;
-        getRequest(url)
-            .then((res) => {
-                if (res.data && res.data.length > 0) {
-                    const formatted = res.data.map((x) => ({
-                        ...x,
-                        eventDate: dayjs(x.eventDate).format("YYYY-MM-DD"),
-                    }));
-                    setHolidays(formatted);
-                }
-            })
-            .catch((err) => {
-                console.error("Error fetching holidays:", err);
-            });
-    };
+  // Build 6-row × 7-col grid
+  const firstDay = current.startOf("month").startOf("isoWeek");
+  const days = Array.from({ length: 42 }, (_, i) => firstDay.add(i, "day"));
+  const weeks = Array.from({ length: 6 }, (_, w) => days.slice(w * 7, w * 7 + 7));
 
-    const generateCalendar = () => {
-        const startOfMonth = currentMonth.startOf("month");
-        const endOfMonth = currentMonth.endOf("month");
-        const startDate = startOfMonth.startOf("isoWeek");
-        const endDate = endOfMonth.endOf("isoWeek");
+  const getHoliday = (d) => holidays.find(h => h.eventDate === d.format("YYYY-MM-DD"));
+  const isToday = (d) => d.format("YYYY-MM-DD") === dayjs().format("YYYY-MM-DD");
+  const monthHolidays = holidays.filter(h => h.eventDate.startsWith(current.format("YYYY-MM")));
 
-        const days = [];
-        let cur = startDate;
+  const canGoNext = current.add(1, "month").isSameOrBefore(dayjs().endOf("year"), "month");
 
-        while (cur.isBefore(endDate) || cur.isSame(endDate)) {
-            days.push(cur);
-            cur = cur.add(1, "day");
-        }
-        return days;
-    };
+  const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-    const totalDays = generateCalendar();
-    const weeks = [];
-    for (let i = 0; i < totalDays.length; i += 7) {
-        weeks.push(totalDays.slice(i, i + 7));
-    }
+  return (
+    <div>
+      <LoadingMask loading={loading} />
+      <div className="page-header">
+        <div>
+          <Breadcrumb icon={<Calendar size={13} />} items={[{ label: "Calendar" }]} />
+          <h1 className="page-title">Company Calendar</h1>
+          <p className="page-subtitle">Holidays and company events</p>
+        </div>
+        {isAdminOrMgr && (
+          <button className="btn btn-primary" onClick={() => navigate("/calendar/create-event")}>
+            <Plus size={15} /> Add Event
+          </button>
+        )}
+      </div>
 
-    const handleCreateForm = () => navigate("/calendar/create-event");
-    const handleEdit = (holiday) => navigate("/calendar/edit-event", { state: { holiday } });
-
-    return (
-        <Box className={classes.rootBox}>
-            <LoadingMask loading={loading} />
-            <Breadcrumb items={breadCrumb} />
-
-            {/* CREATE BUTTON (ONLY FOR ADMIN) */}
-            {isAdminOrManager && (
-                <Box className={classes.addButtonContainer}>
-                    <Button
-                        variant="contained"
-                        onClick={handleCreateForm}
-                        className={classes.addButton}
-                    >
-                        <Plus size={20} /> Create Event
-                    </Button>
-                </Box>
-            )}
-
-            {/* HEADER WITH MONTH ARROWS */}
-            <Box display="flex" justifyContent="center" alignItems="center" gap={4} mb={2}>
-                <ArrowLeft
-                    onClick={() => setCurrentMonth(currentMonth.subtract(1, "month"))}
-                    size={32}
-                    style={{ cursor: "pointer" }}
-                />
-
-                <Typography variant="h5" sx={{ minWidth: 180, textAlign: "center" }}>
-                    {currentMonth.format("MMMM YYYY")}
-                </Typography>
-
-                <ArrowRight
-                    onClick={() => {
-                        const next = currentMonth.add(1, "month");
-                        if (next.isSameOrBefore(dayjs().endOf("year"), "month")) {
-                            setCurrentMonth(next);
-                        }
-                    }}
-                    size={32}
-                    style={{
-                        cursor: currentMonth
-                            .add(1, "month")
-                            .isAfter(dayjs().endOf("year"), "month")
-                            ? "not-allowed"
-                            : "pointer",
-                        opacity: currentMonth
-                            .add(1, "month")
-                            .isAfter(dayjs().endOf("year"), "month")
-                            ? 0.4
-                            : 1,
-                    }}
-                />
-            </Box>
-
-
-            {/* CALENDAR */}
-            <div className={classes.calendarWrapper}>
-                <table className={classes.table}>
-                    <thead>
-                        <tr>
-                            {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => (
-                                <th key={d} className={classes.th}>
-                                    {d}
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {weeks.map((week, i) => (
-                            <tr key={i}>
-                                {week.map((day) => {
-                                    const isCurrentMonth = day.month() === currentMonth.month();
-                                    const isToday =
-                                        day.format("YYYY-MM-DD") === dayjs().format("YYYY-MM-DD");
-                                    const isWeekend = [6, 0].includes(day.day()); // Sat=6, Sun=0
-
-                                    const holidayObj = holidays.find(
-                                        (h) => h.eventDate === day.format("YYYY-MM-DD")
-                                    );
-
-                                    const cellClasses = [classes.td];
-
-                                    if (!isCurrentMonth) cellClasses.push(classes.dimDay);
-                                    if (isWeekend && isCurrentMonth) cellClasses.push(classes.weekend);
-                                    if (holidayObj) {
-                                        cellClasses.push(
-                                            holidayObj.eventType === "Holiday"
-                                                ? classes.holidayCell
-                                                : classes.eventCell
-                                        );
-                                    }
-                                    if (isToday) cellClasses.push(classes.today);
-
-                                    return (
-                                        <td
-                                            key={day.format("YYYY-MM-DD")}
-                                            className={cellClasses.join(" ")}
-                                            onClick={() =>
-                                                isAdminOrManager && holidayObj && handleEdit(holidayObj)
-                                            }
-                                            style={{
-                                                cursor:
-                                                    isAdminOrManager && holidayObj
-                                                        ? "pointer"
-                                                        : "default",
-                                            }}
-                                        >
-                                            {/* DATE */}
-                                            <div>{day.format("DD")}</div>
-
-                                            {/* HOLIDAY LABEL */}
-                                            {holidayObj && (
-                                                <div
-                                                    className={
-                                                        holidayObj.eventType === "Holiday"
-                                                            ? classes.holidayTag
-                                                            : classes.eventTag
-                                                    }
-                                                    title={`${holidayObj.eventName}${
-                                                        holidayObj.workLocation
-                                                            ? ` (${holidayObj.workLocation})`
-                                                            : ""
-                                                    }`}
-                                                >
-                                                    {holidayObj.eventName}
-                                                    <br />
-                                                    {holidayObj.workLocation
-                                                        ? `(${holidayObj.workLocation})`
-                                                        : ""}
-                                                </div>
-                                            )}
-                                        </td>
-                                    );
-                                })}
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 256px", gap: 16, alignItems: "start" }}>
+        {/* Main Calendar */}
+        <div className="card">
+          <div className="card-header">
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <button className="calendar-nav-btn" onClick={() => setCurrent(c => c.subtract(1, "month"))}>
+                <ChevronLeft size={16} />
+              </button>
+              <span style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 18, fontWeight: 800, color: "var(--text-primary)", minWidth: 150, textAlign: "center" }}>
+                {current.format("MMMM YYYY")}
+              </span>
+              <button className="calendar-nav-btn" onClick={() => canGoNext && setCurrent(c => c.add(1, "month"))} style={{ opacity: canGoNext ? 1 : 0.35, cursor: canGoNext ? "pointer" : "not-allowed" }}>
+                <ChevronRight size={16} />
+              </button>
             </div>
-        </Box>
-    );
+            <div style={{ display: "flex", gap: 16 }}>
+              {[["Holiday", "#ef4444"], ["Event", "#8b5cf6"]].map(([t, color]) => (
+                <div key={t} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "var(--text-secondary)" }}>
+                  <div style={{ width: 9, height: 9, borderRadius: "50%", background: color }} />
+                  {t}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Calendar grid - full width, equal columns */}
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+              <thead>
+                <tr>
+                  {DAYS.map(d => (
+                    <th key={d} style={{ padding: "10px 4px", textAlign: "center", fontSize: 11.5, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid var(--border)", background: "var(--bg)", width: `${100 / 7}%` }}>
+                      {d}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {weeks.map((week, wi) => (
+                  <tr key={wi}>
+                    {week.map(day => {
+                      const inMonth = day.month() === current.month();
+                      const today2 = isToday(day);
+                      const isWknd = day.day() === 0 || day.day() === 6;
+                      const h = getHoliday(day);
+                      const c = h ? (COLORS[h.eventType] || COLORS.Event) : null;
+                      const clickable = isAdminOrMgr && h && inMonth;
+
+                      return (
+                        <td key={day.format("YYYY-MM-DD")}
+                          onClick={() => clickable && navigate("/calendar/edit-event", { state: { holiday: h } })}
+                          style={{
+                            height: 80, border: "1px solid var(--border)", verticalAlign: "top", padding: 0,
+                            background: !inMonth ? "var(--bg)" : c ? c.cellBg : today2 ? "var(--primary-ghost)" : isWknd ? "#fefbff" : "white",
+                            cursor: clickable ? "pointer" : "default",
+                            transition: "background 0.15s",
+                          }}
+                          onMouseEnter={e => { if (clickable) e.currentTarget.style.opacity = "0.88"; }}
+                          onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}>
+                          <div style={{ padding: "6px 8px", display: "flex", flexDirection: "column", height: "100%", gap: 4 }}>
+                            {/* Date number */}
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <div style={{
+                                width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+                                fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 13,
+                                fontWeight: today2 ? 900 : inMonth ? 600 : 400,
+                                color: !inMonth ? "#c9d0d8" : today2 ? "white" : isWknd ? "var(--coral)" : "var(--text-primary)",
+                                background: today2 ? "var(--primary)" : "transparent",
+                                boxShadow: today2 ? "0 2px 8px var(--primary-glow)" : "none",
+                              }}>
+                                {day.format("D")}
+                              </div>
+                            </div>
+                            {/* Holiday label */}
+                            {h && inMonth && (
+                              <div style={{
+                                display: "flex",
+                                justifyContent: "center",   // ← center horizontally
+                                alignItems: "center",
+                                flex: 1,                    // ← take remaining cell height
+                              }}>
+                                <div style={{
+                                  background: c.bg, color: c.text, fontSize: 10, fontWeight: 700,
+                                  padding: "2px 6px", borderRadius: 5,
+                                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                                  lineHeight: 1.4, maxWidth: "90%", textAlign: "center",
+                                }} title={h.eventName}>
+                                  {h.eventName}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Events sidebar - compact */}
+        <div className="card" style={{ position: "sticky", top: 80 }}>
+          <div className="card-header" style={{ padding: "12px 16px" }}>
+            <span className="card-title" style={{ fontSize: 14, display: "flex", alignItems: "center", gap: 7 }}>
+              🗓️ Events this month
+            </span>
+            <span style={{ background: "var(--primary-ghost)", color: "var(--primary)", fontSize: 11, fontWeight: 800, padding: "2px 8px", borderRadius: 12 }}>
+              {monthHolidays.length}
+            </span>
+          </div>
+          <div style={{ maxHeight: 480, overflowY: "auto" }}>
+            {monthHolidays.length === 0 ? (
+              <div style={{ padding: "24px 16px", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>No events</div>
+            ) : monthHolidays.map((h, i) => {
+              const c = COLORS[h.eventType] || COLORS.Event;
+              const d = dayjs(h.eventDate);
+              return (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", borderBottom: "1px solid var(--border)", cursor: isAdminOrMgr ? "pointer" : "default", transition: "background 0.15s" }}
+                  onClick={() => isAdminOrMgr && navigate("/calendar/edit-event", { state: { holiday: h } })}
+                  onMouseEnter={e => { if (isAdminOrMgr) e.currentTarget.style.background = "var(--bg)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: c.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <span style={{ fontSize: 14, fontWeight: 900, color: c.text, lineHeight: 1.1 }}>{d.format("DD")}</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: c.text, textTransform: "uppercase" }}>{d.format("MMM")}</span>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.eventName}</div>
+                    <div style={{ display: "flex", gap: 6, marginTop: 3 }}>
+                      <span style={{ background: c.bg, color: c.text, fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 12 }}>{h.eventType}</span>
+                      {h.workLocation && <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{h.workLocation}</span>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

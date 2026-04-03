@@ -1,345 +1,360 @@
 import React, { useEffect, useState } from "react";
-import MUIDataTable from "mui-datatables";
-import { ThemeProvider, createTheme } from "@mui/material/styles";
-import { makeStyles } from "@material-ui/core/styles";
-import Box from "@mui/material/Box";
-import { IconButton, Tooltip, Button } from "@mui/material";
-import { Pencil, Plus, Download, Trash2 } from "lucide-react";
+import { Pencil, Plus, Download, Trash2, File, AlertTriangle, X, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import moment from "moment";
+import dayjs from "dayjs";
 import { getRequest, postRequest } from "../../services/Apiservice";
 import LoadingMask from "../../services/LoadingMask";
 import Breadcrumb from "../../services/Breadcrumb";
 import { getCookie } from "../../services/Cookies";
+import { ToastSuccess, ToastError } from "../../services/ToastMsg";
+import ProTable, { StatusChip } from "../../components/ProTable";
+import * as XLSX from "xlsx";
+import { createPortal } from "react-dom";
 
-const getMuiTheme = () =>
-    createTheme({
-        components: {
-            MUIDataTableHeadCell: {
-                styleOverrides: {
-                    data: { textTransform: "none !important" },
-                    root: { textTransform: "none !important" },
-                },
-            },
-        },
-    });
-
-const useStyles = makeStyles(() => ({
-    rootBox: {
-        backgroundColor: "#fff",
-        padding: 16,
-        borderRadius: 8,
-        boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
-    },
-    tableBody: {
-        "& .Mui-active .MuiTableSortLabel-icon": {
-            color: "#fff !important",
-        },
-        "& .tss-10rusft-MUIDataTableToolbar-icon": {
-            color: "#0c4a6e",
-            boxShadow:
-                "0px -1px 2px 0 #065881 inset, 0px 1px 1px 1px #ccc, 0 0 0 6px #fff, 0 2px 12px 8px #ddd",
-            borderRadius: "5px",
-            marginLeft: "15px",
-        },
-        "& .tss-9z1tfs-MUIDataTableToolbar-iconActive": {
-            color: "#0c4a6e",
-            boxShadow:
-                "0px -1px 2px 0 #065881 inset, 0px 1px 1px 1px #ccc, 0 0 0 6px #fff, 0 2px 12px 8px #ddd",
-            borderRadius: "5px",
-            marginLeft: "15px",
-        },
-        "& .tss-qbo1l6-MUIDataTableToolbar-actions": {
-            justifyContent: "left",
-            position: "absolute",
-        },
-        "& .tss-1ufdzki-MUIDataTableSearch-main": {
-            marginRight: "10px",
-            width: 500,
-        },
-        "& .tss-1fz5efq-MUIDataTableToolbar-left": {
-            position: "absolute",
-            right: 25,
-        },
-        "& .tss-1h5wt30-MUIDataTableSearch-searchIcon": {
-            color: "#0c4a6e",
-        },
-    },
-    addButtonContainer: {
-        display: "flex",
-        justifyContent: "flex-end",
-        marginBottom: "10px",
-    },
-    addButton: {
-        backgroundColor: "#0c4a6e",
-        gap: "8px",
-        textTransform: "none",
-    },
-}));
+const fmt = (d) => (d ? dayjs(d).format("DD-MM-YYYY") : "—");
 
 export default function CompanyDocument() {
-    const classes = useStyles();
-    const navigate = useNavigate();
-    const [loading, setLoading] = useState(false);
-    const [documents, setDocuments] = useState([]);
-    const [selectedRowsData, setSelectedRowsData] = useState([]);
-    const userRole = getCookie("role");
-    const isAdminOrManager = userRole === "Admin" || userRole === "Manager";
+  const navigate = useNavigate();
+  const [loading, setLoading]         = useState(false);
+  const [list, setList]               = useState([]);
+  const [selected, setSelected]       = useState([]);
+  const [deleteTarget, setDeleteTarget] = useState(null); // single row or array of rows
+  const isAdminOrManager = ["Admin", "Manager"].includes(getCookie("role"));
 
-    useEffect(() => {
-        getCompanyDocuments();
-    }, []);
+  useEffect(() => {
+    fetchDocuments();
+  }, []);
 
-    // ================= API FUNCTIONS =================
+  // ─── API ────────────────────────────────────────────────
 
-    const getCompanyDocuments = () => {
-        setLoading(true);
-        getRequest("CompanyDocument/GetAll")
-            .then((res) => {
-                setDocuments(res.data || []);
-                setLoading(false);
-            })
-            .catch((err) => {
-                console.error(err);
-                setLoading(false);
-            });
-    };
+  const fetchDocuments = () => {
+    setLoading(true);
+    getRequest("CompanyDocument/GetAll")
+      .then((res) => {
+        if (res.data) setList(res.data);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  };
 
-    const downloadSingle = (id, fileName) => {
-        setLoading(true);
+  const downloadSingle = async (row) => {
+    try {
+      setLoading(true);
+      const res = await getRequest(`CompanyDocument/Download/${row.id}`, null, true);
+      const contentType = res.headers["content-type"] || "application/octet-stream";
+      const blob = new Blob([res.data], { type: contentType });
+      const url  = window.URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
+      a.download = row.fileName || "document";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      ToastSuccess("Downloaded");
+    } catch {
+      ToastError("Download failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        getRequest(`CompanyDocument/Download/${id}`, null, true)
-            .then((res) => {
-                const contentType =
-                    res.headers["content-type"] || "application/octet-stream";
+  const downloadMultiple = async (rows) => {
+    try {
+      setLoading(true);
+      const ids = rows.map((r) => r.id);
+      const res = await postRequest("CompanyDocument/DownloadMultiple", ids, true);
+      const blob = new Blob([res.data], { type: "application/zip" });
+      const url  = window.URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
+      a.download = `CompanyDocuments_${new Date().getTime()}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      ToastSuccess("Downloaded");
+      setSelected([]);
+    } catch {
+      ToastError("Download failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-                const blob = new Blob([res.data], { type: contentType });
+  const handleDownload = (row) => downloadSingle(row);
 
-                const url = window.URL.createObjectURL(blob);
-                const link = document.createElement("a");
+  const handleBulkDownload = () => {
+    const rows = selected.map((i) => list[i]).filter(Boolean);
+    if (!rows.length) return;
+    if (rows.length === 1) {
+      downloadSingle(rows[0]);
+    } else {
+      downloadMultiple(rows);
+    }
+  };
 
-                link.href = url;
-                link.setAttribute("download", fileName);
+  // Triggers confirmation modal
+  const confirmDelete = (rowOrRows) => setDeleteTarget(rowOrRows);
 
-                document.body.appendChild(link);
-                link.click();
+  const executeDelete = () => {
+    if (!deleteTarget) return;
+    const ids = Array.isArray(deleteTarget)
+      ? deleteTarget.map((r) => r.id)
+      : [deleteTarget.id];
 
-                document.body.removeChild(link);
-                window.URL.revokeObjectURL(url);
-                getCompanyDocuments();
-                setSelectedRowsData([]);
-                setLoading(false);
-            })
-            .catch((err) => {
-                console.error(err);
-                setLoading(false);
-            });
-    };
+    setLoading(true);
+    postRequest("CompanyDocument/Delete", ids)
+      .then(() => {
+        ToastSuccess("Deleted successfully");
+        setList((l) => l.filter((d) => !ids.includes(d.id)));
+        setSelected([]);
+        setDeleteTarget(null);
+      })
+      .catch(() => ToastError("Delete failed"))
+      .finally(() => setLoading(false));
+  };
 
-
-
-    const downloadMultiple = (ids) => {
-        setLoading(true);
-
-        postRequest("CompanyDocument/DownloadMultiple", ids.split(","), true)
-            .then((res) => {
-                const blob = new Blob([res.data], {
-                    type: "application/zip",
-                });
-
-                const url = window.URL.createObjectURL(blob);
-                const link = document.createElement("a");
-
-                link.href = url;
-                link.setAttribute(
-                    "download",
-                    `CompanyDocuments_${new Date().getTime()}.zip`
-                );
-
-                document.body.appendChild(link);
-                link.click();
-
-                document.body.removeChild(link);
-                window.URL.revokeObjectURL(url);
-                getCompanyDocuments();
-                setSelectedRowsData([]);
-                setLoading(false);
-            })
-            .catch((err) => {
-                console.error(err);
-                setLoading(false);
-            });
-    };
-
-
-    const deleteDocuments = (idsArray) => {
-
-    };
-
-
-    // ================= HANDLERS =================
-
-    const handleDownload = (selectedDocs) => {
-        if (!selectedDocs || selectedDocs.length === 0) return;
-
-        if (selectedDocs.length === 1) {
-            const doc = selectedDocs[0];
-            downloadSingle(doc.id, doc.fileName);
-        } else {
-            const ids = selectedDocs.map(d => d.id).join(",");
-            downloadMultiple(ids);
-        }
-    };
-
-
-    const handleDelete = (selectedDocs) => {
-        if (!selectedDocs || selectedDocs.length === 0) return;
-
-        const ids = selectedDocs.map(d => d.id);
-
-        setLoading(true);
-
-        postRequest("CompanyDocument/Delete", ids)
-            .then(() => {
-                getCompanyDocuments();
-                setSelectedRowsData([]);
-                setLoading(false);
-            })
-            .catch((err) => {
-                console.error(err);
-                setLoading(false);
-            });
-    };
-
-
-    // ================= TABLE =================
-
-    const columns = [
-        { name: "documentName", label: "Name" },
-        {
-            name: "lastUpdated",
-            label: "Last Updated",
-            options: {
-                customBodyRender: (v) =>
-                    v ? moment(v).format("DD/MM/YYYY") : "-",
-            },
-        },
-        {
-            name: "tags",
-            label: "Tags",
-            options: {
-                customBodyRender: (v) => v || "-",
-            },
-        },
-        { name: "assignedCount", label: "# Assigned" },
-        { name: "readCount", label: "# Read" },
-        {
-            name: "reviewDate",
-            label: "Review Date",
-            options: {
-                customBodyRender: (v) =>
-                    v ? moment(v).format("DD/MM/YYYY") : "-",
-            },
-        },
-        {
-            name: "isCurrent",
-            label: "Current",
-            options: {
-                customBodyRender: (v) => (v ? "Yes" : "No"),
-            },
-        },
-        {
-            name: "actions",
-            label: "Actions",
-            options: {
-                display: (isAdminOrManager ? true : "excluded"),
-                sort: false,
-                filter: false,
-                customBodyRenderLite: (index) => {
-                    const row = documents[index];
-                    return (
-                        <IconButton
-                            onClick={() =>
-                                navigate("/company-documents/edit", {
-                                    state: { editData: row },
-                                })
-                            }
-                        >
-                            <Pencil size={18} />
-                        </IconButton>
-                    );
-                },
-            },
-        },
-    ];
-
-    const custom = () => {
-        return (
-            <>
-                <Tooltip title="Download">
-                    <IconButton onClick={() => handleDownload(selectedRowsData)} className="tss-10rusft-MUIDataTableToolbar-icon">
-                        <Download size={20} />
-                    </IconButton>
-                </Tooltip>
-
-                <Tooltip title="Delete">
-                    <IconButton onClick={() => handleDelete(selectedRowsData)} className="tss-10rusft-MUIDataTableToolbar-icon">
-                        <Trash2 size={20} />
-                    </IconButton>
-                </Tooltip>
-            </>
-        );
-    };
-
-    const options = {
-        customToolbarSelect: () => { },
-        selectToolbarPlacement:"above",
-        selectableRows: "multiple",
-        customToolbar: custom,
-        responsive: "standard",
-        filterType: 'multiselect',
-        download: true,
-        print: true,
-        search: true,
-        filter: true,
-        viewColumns: true,
-        rowsPerPage: 10,
-        rowsPerPageOptions: [10, 15, 50, 100],
-        onRowSelectionChange: (currentRowsSelected, allRowsSelected, rowsSelected) => {
-            const selectedData = rowsSelected.map(index => documents[index]);
-            console.log(selectedData)
-            setSelectedRowsData(selectedData);
-
-        },
-    };
-
-    return (
-        <Box className={classes.rootBox}>
-            <LoadingMask loading={loading} />
-            <Breadcrumb items={[{ label: "Company Document" }]} />
-
-            {isAdminOrManager && (
-                <Box className={classes.addButtonContainer}>
-                    <Button
-                        variant="contained"
-                        className={classes.addButton}
-                        onClick={() => navigate("/company-documents/upload")}
-                    >
-                        <Plus size={20} /> Upload Document
-                    </Button>
-                </Box>
-            )}
-            <Box className="reportstablehead">
-                <ThemeProvider theme={getMuiTheme()}>
-                    <MUIDataTable
-                        title="Company Documents"
-                        data={documents}
-                        className={classes.tableBody}
-                        columns={columns}
-                        options={options}
-                    />
-                </ThemeProvider>
-            </Box>
-        </Box>
+  const handleExportExcel = (data) => {
+    const ws = XLSX.utils.json_to_sheet(
+      data.map((r) => ({
+        "Document Name": r.documentName,
+        Tags:            r.tags,
+        "# Assigned":    r.assignedCount,
+        "# Read":        r.readCount,
+        "Last Updated":  r.lastUpdated ? fmt(r.lastUpdated) : "—",
+        "Review Date":   r.reviewDate  ? fmt(r.reviewDate)  : "—",
+        Current:         r.isCurrent ? "Yes" : "No",
+      }))
     );
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Documents");
+    XLSX.writeFile(wb, "Company_Documents.xlsx");
+  };
+
+  // ─── COLUMNS ────────────────────────────────────────────
+
+  const columns = [
+    { field: "documentName", label: "Name" },
+    {
+      field: "lastUpdated",
+      label: "Last Updated",
+      renderCell: (row) => (row.lastUpdated ? fmt(row.lastUpdated) : "—"),
+    },
+    {
+      field: "tags",
+      label: "Tags",
+      renderCell: (row) => row.tags || "—",
+    },
+    { field: "assignedCount", label: "# Assigned" },
+    { field: "readCount",     label: "# Read" },
+    {
+      field: "reviewDate",
+      label: "Review Date",
+      renderCell: (row) => (row.reviewDate ? fmt(row.reviewDate) : "—"),
+    },
+    {
+      field: "isCurrent",
+      label: "Current",
+      renderCell: (row) => (
+        <StatusChip label={row.isCurrent ? "Yes" : "No"} />
+      ),
+    },
+    {
+      field: "actions",
+      label: "Actions",
+      renderCell: (row) => (
+        <div style={{ display: "flex", gap: 4 }}>
+          <button
+            className="icon-btn"
+            title="Download"
+            onClick={() => handleDownload(row)}
+            style={{ color: "var(--teal)" }}
+          >
+            <Download size={14} />
+          </button>
+          {isAdminOrManager && (
+            <>
+              <button
+                className="icon-btn"
+                title="Edit"
+                onClick={() =>
+                  navigate("/company-documents/edit", { state: { editData: row } })
+                }
+              >
+                <Pencil size={14} />
+              </button>
+              <button
+                className="icon-btn"
+                title="Delete"
+                onClick={() => confirmDelete(row)}
+                style={{ color: "var(--coral)" }}
+              >
+                <Trash2 size={14} />
+              </button>
+            </>
+          )}
+        </div>
+      ),
+    },
+  ];
+
+  // ─── BULK ACTIONS BAR ───────────────────────────────────
+
+  const tableActions = (
+    <>
+      {selected.length > 0 && (
+        <>
+          <button
+            className="btn btn-teal btn-sm"
+            onClick={handleBulkDownload}
+          >
+            <Download size={14} /> Download ({selected.length})
+          </button>
+          {isAdminOrManager && (
+            <button
+              className="btn btn-sm"
+              style={{ background: "var(--coral)", color: "#fff" }}
+              onClick={() => confirmDelete(selected.map((i) => list[i]).filter(Boolean))}
+            >
+              <Trash2 size={14} /> Delete ({selected.length})
+            </button>
+          )}
+        </>
+      )}
+    </>
+  );
+
+  // ─── RENDER ─────────────────────────────────────────────
+
+  return (
+    <div>
+      <LoadingMask loading={loading} />
+
+      <div className="page-header">
+        <div>
+          <Breadcrumb icon={<File size={13} />} items={[{ label: "Company Documents" }]} />
+          <h1 className="page-title">Company Documents</h1>
+          <p className="page-subtitle">Shared documents and resources</p>
+        </div>
+        {isAdminOrManager && (
+          <button
+            className="btn btn-primary"
+            onClick={() => navigate("/company-documents/upload")}
+          >
+            <Plus size={14} /> Upload
+          </button>
+        )}
+      </div>
+
+      <ProTable
+        title="Documents"
+        columns={columns}
+        data={list}
+        actions={tableActions}
+        onExport={handleExportExcel}
+        multiSelect={true}
+        onSelectionChange={setSelected}
+      />
+
+      {/* ── Delete Confirmation Modal ── */}
+      {deleteTarget && createPortal(
+        <div
+          style={{
+            position: "fixed", inset: 0,
+            background: "rgba(20,0,50,0.55)",
+            backdropFilter: "blur(5px)",
+            zIndex: 9999,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              background: "white", borderRadius: 20,
+              boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
+              width: "100%", maxWidth: 400,
+              overflow: "hidden",
+              animation: "slideUp 0.25s ease",
+            }}
+          >
+            {/* top accent bar */}
+            <div style={{ height: 4, background: "linear-gradient(90deg,#f43f5e,#f97316)" }} />
+
+            <div style={{ padding: "24px 24px 0" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <div
+                    style={{
+                      width: 48, height: 48, borderRadius: 14,
+                      background: "#fff1f2",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <AlertTriangle size={24} color="#f43f5e" />
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 18, fontWeight: 900, color: "#1e1143" }}>
+                      Confirm Delete
+                    </div>
+                    <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 2 }}>
+                      {Array.isArray(deleteTarget)
+                        ? `${deleteTarget.length} document${deleteTarget.length > 1 ? "s" : ""} will be removed`
+                        : `"${deleteTarget.documentName}" will be removed`}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setDeleteTarget(null)}
+                  style={{
+                    width: 30, height: 30, borderRadius: 8,
+                    background: "#f1f5f9", border: "none", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    color: "#64748b",
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <p style={{ fontSize: 13.5, color: "#475569", lineHeight: 1.7, marginBottom: 22, paddingLeft: 62 }}>
+                This action cannot be undone. The document
+                {Array.isArray(deleteTarget) && deleteTarget.length > 1 ? "s" : ""} will
+                be permanently deleted from the system.
+              </p>
+            </div>
+
+            <div style={{ padding: "0 24px 22px", display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setDeleteTarget(null)}
+                style={{
+                  padding: "9px 20px", borderRadius: 10,
+                  border: "1.5px solid #e2e8f0", background: "white",
+                  color: "#475569", fontSize: 13, fontWeight: 600,
+                  cursor: "pointer", fontFamily: "'DM Sans',sans-serif",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={executeDelete}
+                style={{
+                  padding: "9px 20px", borderRadius: 10, border: "none",
+                  background: "linear-gradient(135deg,#f43f5e,#f97316)",
+                  color: "white", fontSize: 13, fontWeight: 700,
+                  cursor: "pointer", display: "flex", alignItems: "center",
+                  gap: 7, fontFamily: "'Plus Jakarta Sans',sans-serif",
+                  boxShadow: "0 3px 12px rgba(244,63,94,0.3)",
+                }}
+              >
+                <Trash2 size={15} /> Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
 }

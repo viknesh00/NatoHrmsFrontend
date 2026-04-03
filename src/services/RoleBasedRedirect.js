@@ -1,20 +1,9 @@
-import React from "react";
-import { Navigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { getCookie } from "./Cookies";
 
-
-const RoleBasedRedirect = () => {
-    const role = getCookie("role"); // or get from localStorage if you store it there
-
-    const roleDefaultRoute = {
-        "Admin": "/employees",
-        "Manager": "/employees",
-        "Employee": "/timesheet",
-    };
-
-    const defaultRoute = roleDefaultRoute[role] || "/dashboard";
-
-    return <Navigate to={defaultRoute} replace />;
-};
-
-export default RoleBasedRedirect;
+export default function RoleBasedRedirect() {
+  const navigate = useNavigate();
+  useEffect(() => { navigate("/dashboard"); }, [navigate]);
+  return null;
+}

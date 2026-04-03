@@ -1,101 +1,179 @@
 import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
 import {
-  LayoutDashboard,
-  Users,
-  LogOut,
-  CircleChevronRight,
-  CircleChevronLeft,
-  Megaphone,
-  File,
-  CalendarCheck2,
-  UserMinus,
-  ClipboardList,
-  Calendar,
-  Receipt,
-  Briefcase,
+  LayoutDashboard, Users, LogOut, ChevronLeft, ChevronRight,
+  Megaphone, File, CalendarCheck2, UserMinus, ClipboardList, Calendar, Receipt,
+  AlertTriangle, X, Briefcase,
 } from "lucide-react";
 import { cookieKeys, getCookie } from "../../services/Cookies";
 import { cookieObj } from "../../models/cookieObj";
+import { useNavigate } from "react-router-dom";
 
-const Sidebar = () => {
-  const [collapsed, setCollapsed] = useState(false);
+const menuItems = [
+  { to:"/dashboard",         label:"Dashboard",      icon:<LayoutDashboard size={18}/>, roles:["Admin","Manager","Employee"] },
+  { to:"/employees",         label:"Employees",      icon:<Users size={18}/>,           roles:["Admin","Manager"] },
+  { to:"/timesheet",         label:"Timesheet",      icon:<ClipboardList size={18}/>,   roles:["Admin","Manager","Employee"] },
+  //{ to:"/job-management",    label:"Job Management", icon:<Briefcase size={18}/>,       roles:["Admin","Manager","Employee"] },
+  { to:"/attendance",        label:"Attendance",     icon:<CalendarCheck2 size={18}/>,  roles:["Admin","Manager","Employee"] },
+  //{ to:"/payslip",           label:"Payslip",        icon:<Receipt size={18}/>,         roles:["Admin"] },
+  { to:"/company-documents", label:"Documents",      icon:<File size={18}/>,            roles:["Admin","Manager","Employee"] },
+  { to:"/announcement",      label:"Announcements",  icon:<Megaphone size={18}/>,       roles:["Admin","Manager","Employee"] },
+  { to:"/leave",             label:"Leave",          icon:<UserMinus size={18}/>,       roles:["Admin","Manager","Employee"] },
+  { to:"/Calendar",          label:"Calendar",       icon:<Calendar size={18}/>,        roles:["Admin","Manager","Employee"] },
+];
+
+export default function Sidebar() {
+  const [collapsed, setCollapsed]   = useState(false);
+  const [showLogout, setShowLogout] = useState(false);
+  const navigate = useNavigate();
   const userRole = getCookie("role") || "Employee";
+  const filtered = menuItems.filter(m => m.roles.includes(userRole));
 
-  // const mainMenu = [
-  //   { to: "/dashboard", label: "Dashboard", icon: <LayoutDashboard size={20} />, roles: ["Admin","Manager","Employee"] },
-  // ];
-
-  const organizationMenu = [
-    { to: "/employees", label: "Employees", icon: <Users size={20} />, roles: ["Admin", "Manager"] },
-    // { to: "/job-management", label: "Job-Management", icon: <Briefcase  size={20} />, roles: ["Admin", "Manager", "Employee"] },
-    { to: "/timesheet", label: "Timesheet", icon: <ClipboardList size={20} />, roles: ["Admin", "Manager", "Employee"] },
-    { to: "/attendance", label: "Attendance", icon: <CalendarCheck2 size={20} />, roles: ["Admin","Manager","Employee"] },
-    { to: "/payslip", label: "Payslip", icon: <Receipt size={20} />, roles: ["Admin"] },
-    { to: "/company-documents", label: "Company Documents", icon: <File size={20} />, roles: ["Admin", "Manager", "Employee"] },
-    { to: "/announcement", label: "Announcement", icon: <Megaphone size={20} />, roles: ["Admin", "Manager", "Employee"] },
-    { to: "/leave", label: "Leave", icon: <UserMinus size={20} />, roles: ["Admin","Manager","Employee"] },
-    { to: "/Calendar", label: "Calendar", icon: <Calendar size={20} />, roles: ["Admin", "Manager", "Employee"] },
-  ];
-
-  // const filteredMainMenu = mainMenu.filter(item => item.roles.includes(userRole));
-  const filteredOrganizationMenu = organizationMenu.filter(item => item.roles.includes(userRole));
+  const handleLogout = () => {
+    cookieKeys(cookieObj, 0);
+    navigate("/login");
+    setShowLogout(false);
+  };
 
   return (
-    <aside className={`sidebar ${collapsed ? "collapsed" : ""}`}>
-      <button className="collapse-btn" onClick={() => setCollapsed(!collapsed)}>
-        {collapsed ? <CircleChevronRight size={20} /> : <CircleChevronLeft size={20} />}
-      </button>
+    <>
+      <aside className={`sidebar${collapsed ? " collapsed" : ""}`}>
+        <div className="sidebar-toggle">
+          <button className="sidebar-toggle-btn" onClick={() => setCollapsed(c => !c)}>
+            {collapsed ? <ChevronRight size={16}/> : <ChevronLeft size={16}/>}
+          </button>
+        </div>
 
-      <div className="menu-scroll">
-        {/* <MenuSection title="ORGANIZATION" items={filteredMainMenu} collapsed={collapsed} /> */}
-        <MenuSection  items={filteredOrganizationMenu} collapsed={collapsed} />
-      </div>
+        <ul className="sidebar-nav">
+          {!collapsed && <li className="sidebar-label">Navigation</li>}
+          {filtered.map(item => (
+            <li key={item.to} style={{ listStyle:"none" }}>
+              <NavLink
+                to={item.to}
+                data-label={item.label}
+                className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
+              >
+                <div className="nav-icon">{item.icon}</div>
+                {!collapsed && <span style={{ color:"inherit" }}>{item.label}</span>}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
 
-      <div className="logout-section" onClick={() => { cookieKeys(cookieObj, 0); }}>
-        <MenuItem to="/login" icon={<LogOut size={20} />} label="Logout" collapsed={collapsed} />
-      </div>
-
-      <div className="footer">
-        {!collapsed && (
-          <span
-            className="footer-text"
-            onClick={(e) => {
-              e.stopPropagation();
-              window.open("http://www.natobotics.com", "_blank");
-            }}
+        <div className="sidebar-footer">
+          {/* Logout */}
+          <div
+            data-label="Logout"
+            className="nav-item"
+            style={{ marginBottom:8, cursor:"pointer" }}
+            onClick={() => setShowLogout(true)}
           >
-            Powered by <span className="footer-companyname">NATOBOTICS</span>
-          </span>
-        )}
-        <img src="/assets/images/natobotics-logo.png" alt="Logo" className="footer-logo" />
-      </div>
-    </aside>
+            <div className="nav-icon"><LogOut size={18}/></div>
+            {!collapsed && <span style={{ color:"inherit" }}>Logout</span>}
+          </div>
+
+          {/* Natobotics branding */}
+          {!collapsed ? (
+            <div
+              className="sidebar-footer-text"
+              onClick={() => window.open("http://www.natobotics.com","_blank")}
+              style={{ cursor:"pointer" }}
+            >
+              Powered by <strong style={{ color:"rgba(255,255,255,0.5)" }}>NATOBOTICS</strong>
+            </div>
+          ) : (
+            <div
+              onClick={() => window.open("http://www.natobotics.com","_blank")}
+              title="Powered by Natobotics"
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                background: "rgba(255,255,255,0.15)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                margin: "0 auto",
+                transition: "background 0.2s",
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.25)"}
+              onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.15)"}
+            >
+              <img
+                src="/assets/images/natobotics-logo.png"
+                alt="Natobotics"
+                style={{
+                  width: 24,
+                  height: 24,
+                  objectFit: "contain",
+                  display: "block",
+                }}
+                onError={e => {
+                  // ✅ Fallback to "N" if image fails to load
+                  e.currentTarget.style.display = "none";
+                  e.currentTarget.parentElement.innerHTML = `
+                    <span style="color:white;font-size:15px;font-weight:900;font-family:'Plus Jakarta Sans',sans-serif;line-height:1;">N</span>
+                  `;
+                }}
+              />
+            </div>
+          )}
+        </div>
+      </aside>
+
+      {/* Logout Confirmation Modal */}
+      {showLogout && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(20,0,50,0.55)", backdropFilter:"blur(5px)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
+          <div style={{ background:"white", borderRadius:20, boxShadow:"0 20px 60px rgba(0,0,0,0.25)", width:"100%", maxWidth:380, overflow:"hidden", animation:"slideUp 0.25s ease" }}>
+
+            <div style={{ height:4, background:"linear-gradient(90deg,#f43f5e,#f97316)" }} />
+
+            <div style={{ padding:"24px 24px 0" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:14 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+                  <div style={{ width:48, height:48, borderRadius:14, background:"#fff1f2", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                    <AlertTriangle size={24} color="#f43f5e"/>
+                  </div>
+                  <div>
+                    <div style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:18, fontWeight:900, color:"#1e1143" }}>
+                      Confirm Logout
+                    </div>
+                    <div style={{ fontSize:12.5, color:"#64748b", marginTop:2 }}>
+                      You'll be signed out of HRMS
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowLogout(false)}
+                  style={{ width:30, height:30, borderRadius:8, background:"#f1f5f9", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"#64748b" }}
+                >
+                  <X size={16}/>
+                </button>
+              </div>
+              <p style={{ fontSize:13.5, color:"#475569", lineHeight:1.7, marginBottom:22, paddingLeft:62 }}>
+                Any unsaved changes will be lost. Are you sure you want to log out?
+              </p>
+            </div>
+
+            <div style={{ padding:"0 24px 22px", display:"flex", gap:10, justifyContent:"flex-end" }}>
+              <button
+                onClick={() => setShowLogout(false)}
+                style={{ padding:"9px 20px", borderRadius:10, border:"1.5px solid #e2e8f0", background:"white", color:"#475569", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"'DM Sans',sans-serif" }}
+              >
+                Stay Logged In
+              </button>
+              <button
+                onClick={handleLogout}
+                style={{ padding:"9px 20px", borderRadius:10, border:"none", background:"linear-gradient(135deg,#f43f5e,#f97316)", color:"white", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:7, fontFamily:"'Plus Jakarta Sans',sans-serif", boxShadow:"0 3px 12px rgba(244,63,94,0.3)" }}
+              >
+                <LogOut size={15}/> Yes, Logout
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+    </>
   );
-};
-
-const MenuSection = ({ title, items, collapsed }) => (
-  <div className="menu-section">
-    {!collapsed && title && <h3 className="menu-title">{title}</h3>}
-    <ul>
-      {items.map((item) => (
-        <MenuItem key={item.to} {...item} collapsed={collapsed} />
-      ))}
-    </ul>
-  </div>
-);
-
-const MenuItem = ({ to, icon, label, collapsed }) => (
-  <li>
-    <NavLink
-      to={to}
-      className={({ isActive }) => `menu-item ${isActive ? "active" : ""}`}
-      title={collapsed ? label : ""}
-    >
-      <div className="icon">{icon}</div>
-      {!collapsed && <span>{label}</span>}
-    </NavLink>
-  </li>
-);
-
-export default Sidebar;
+}

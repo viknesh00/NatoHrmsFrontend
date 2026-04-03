@@ -1,207 +1,164 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Box, TextField, Button, Typography, Checkbox, FormControlLabel } from "@mui/material";
-import { LocalizationProvider, TimePicker } from "@mui/x-date-pickers";
-import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-import { format, parse } from "date-fns";
-import { makeStyles } from "@material-ui/core/styles";
-import Autocomplete from "@mui/material/Autocomplete";
 import { postRequest } from "../../services/Apiservice";
-import { ToastSuccess } from "../../services/ToastMsg";
+import { ToastSuccess, ToastError } from "../../services/ToastMsg";
 import LoadingMask from "../../services/LoadingMask";
 import Breadcrumb from "../../services/Breadcrumb";
-
-const useStyles = makeStyles({
-  rootBox: {
-    backgroundColor: "#fff",
-    padding: 16,
-    borderRadius: 8,
-    boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
-  },
-  container: {
-    maxWidth: 500,
-    margin: "50px auto",
-    padding: 24,
-    display: "flex",
-    flexDirection: "column",
-    gap: 24,
-  },
-  title: {
-    textAlign: "center",
-    fontWeight: 600,
-    fontSize: 22,
-    marginBottom: 16,
-  },
-  buttonsContainer: {
-    display: "flex",
-    justifyContent: "center",
-    gap: 16,
-    marginTop: 24,
-  },
-});
+import { FormInput, FormTime, FormCheckbox, FormCard, FormSection, FormRow } from "../../components/FormComponents";
+import { Clock, Save, Users, X } from "lucide-react";
 
 const WorkingHoursForm = () => {
-  const classes = useStyles();
   const navigate = useNavigate();
   const location = useLocation();
   const editData = location.state?.editData || null;
-  const breadCrumb = !editData ? [{ label: "Employee", link: "/employees", label: "Department List", link: "/employees/working-hours" }, { label: "Create-Department" }] : [{ label: "Department List", link: "/employees/working-hours" }, { label: "Edit-Department" }];
   const [loading, setLoading] = useState(false);
-  const [formValues, setFormValues] = useState({
-    deptId: editData?.deptId ?? null,
-    departmentName: editData?.departmentName ?? "",
-    startTime: editData?.startTime
-      ? parse(editData.startTime, "HH:mm:ss", new Date())
-      : null,
-    endTime: editData?.endTime
-      ? parse(editData.endTime, "HH:mm:ss", new Date())
-      : null,
+  const [errors, setErrors]   = useState({});
+
+  const [form, setForm] = useState({
+    deptId:          editData?.deptId ?? null,
+    departmentName:  editData?.departmentName || editData?.department || "",
+    startTime:       editData?.startTime ? editData.startTime.substring(0, 5) : "",
+    endTime:         editData?.endTime   ? editData.endTime.substring(0, 5)   : "",
     includeSaturday: editData?.includeSaturday ?? false,
-    includeSunday: editData?.includeSunday ?? false,
+    includeSunday:   editData?.includeSunday   ?? false,
   });
 
+  const set = (f) => (v) => setForm(prev => ({ ...prev, [f]: v }));
 
-  const departmentOptions = [
-    { label: "HR", value: "HR" },
-    { label: "Management", value: "Management" },
-    { label: "IT", value: "IT" },
-    { label: "All", value: "All" },
-  ];
+  const validate = () => {
+    const e = {};
+    if (!form.departmentName.trim()) e.dept      = "Department name is required";
+    if (!form.startTime)             e.startTime = "Start time is required";
+    if (!form.endTime)               e.endTime   = "End time is required";
+    if (form.startTime && form.endTime && form.endTime <= form.startTime)
+      e.endTime = "End time must be after start time";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const calcHours = () => {
+    if (!form.startTime || !form.endTime) return null;
+    const [sh, sm] = form.startTime.split(":").map(Number);
+    const [eh, em] = form.endTime.split(":").map(Number);
+    const diff = (eh * 60 + em) - (sh * 60 + sm);
+    if (diff <= 0) return null;
+    return `${Math.floor(diff / 60)}h ${diff % 60}m`;
+  };
+
+  const hours = calcHours();
 
   const handleSave = () => {
-    const saveData = {
-      deptId: formValues.deptId,
-      departmentName: formValues.departmentName || "",
-      startTime: formValues.startTime
-        ? format(formValues.startTime, "HH:mm:ss")
-        : null,
-      endTime: formValues.endTime
-        ? format(formValues.endTime, "HH:mm:ss")
-        : null,
-      includeSaturday: formValues.includeSaturday,
-      includeSunday: formValues.includeSunday,
+    if (!validate()) { ToastError("Please fill all required fields"); return; }
+    const payload = {
+      deptId:          form.deptId,
+      departmentName:  form.departmentName,
+      startTime:       form.startTime + ":00",
+      endTime:         form.endTime + ":00",
+      includeSaturday: form.includeSaturday,
+      includeSunday:   form.includeSunday,
     };
-
     setLoading(true);
-    const url = `Attendance/InsertOrUpdateDepartmentTiming`;
-    postRequest(url, saveData)
-      .then((res) => {
+    postRequest("Attendance/InsertOrUpdateDepartmentTiming", payload)
+      .then(res => {
         if (res.status === 200) {
-          ToastSuccess(res.data.message);
+          ToastSuccess(res.data?.message || "Saved");
           navigate("/employees/working-hours");
         }
       })
-      .catch((err) => {
-        setLoading(false);
-        console.error(err);
-      });
+      .catch(err => ToastError(err?.response?.data?.message || "Failed"))
+      .finally(() => setLoading(false));
   };
 
-
-  const handleCancel = () => navigate("/employees/working-hours");
-
   return (
-    <Box className={classes.rootBox}>
+    <div>
       <LoadingMask loading={loading} />
-      <Breadcrumb items={breadCrumb} />
-      <Box className={classes.container}>
-       <Typography variant="h6" className={classes.title}>
-          {editData ? "Edit Department Timings" : "Create Department Timings"}
-        </Typography>
-
-        {/* Department */}
-        {/* <Autocomplete
-          fullWidth
-          options={departmentOptions}
-          getOptionLabel={(option) => option.label || ""}
-          value={formValues.departmentName}
-          onChange={(event, newValue) =>
-            setFormValues({ ...formValues, departmentName: newValue })
-          }
-          disabled={!!editData}
-          renderInput={(params) => <TextField {...params} label="Department" fullWidth />}
-        /> */}
-
-        <TextField
-          fullWidth
-          label={<span>Department Name <span style={{ color: 'red' }}>*</span></span>}
-          value={formValues.departmentName || ""}
-          onChange={(e) =>
-            setFormValues({ ...formValues, departmentName: e.target.value })
-          }
-          disabled={!!editData}
-        />
-
-        {/* Start Time */}
-        <LocalizationProvider dateAdapter={AdapterDateFns}>
-          <TimePicker
-            label="Start Time"
-            value={formValues.startTime}
-            onChange={(newValue) =>
-              setFormValues({ ...formValues, startTime: newValue })
-            }
-            renderInput={(params) => <TextField {...params} fullWidth />}
+      <div className="page-header">
+        <div>
+          <Breadcrumb
+            icon={<Users size={13} />}
+            items={[
+              { label: "Employees", link: "/employees" },
+              { label: "Departments", link: "/employees/working-hours" },
+              { label: editData ? "Edit Timing" : "Add Timing" },
+            ]}
           />
-        </LocalizationProvider>
+          <h1 className="page-title">{editData ? "Edit Department Timing" : "Add Department Timing"}</h1>
+          <p className="page-subtitle">Configure working hours for this department</p>
+        </div>
+      </div>
 
-        {/* End Time */}
-        <LocalizationProvider dateAdapter={AdapterDateFns}>
-          <TimePicker
-            label="End Time"
-            value={formValues.endTime}
-            onChange={(newValue) =>
-              setFormValues({ ...formValues, endTime: newValue })
-            }
-            renderInput={(params) => <TextField {...params} fullWidth />}
-          />
-        </LocalizationProvider>
-        
-        <Box display="flex" alignItems="center" gap={4} flexWrap="nowrap">
-  <strong>Include Weekends:</strong>
+      <div style={{ maxWidth: 620, margin: "0 auto" }}>
+        <FormCard
+          icon={<Clock />}
+          title={editData ? "Edit Timing" : "New Department Timing"}
+          subtitle="Define working hours and weekend policy for this department"
+          footer={
+            <>
+              <button className="btn btn-ghost" onClick={() => navigate("/employees/working-hours")}>
+                <X size={15} /> Cancel
+              </button>
+              <button className="btn btn-primary" onClick={handleSave}>
+                <Save size={15} /> {editData ? "Update" : "Save"}
+              </button>
+            </>
+          }
+        >
+          <FormSection title="Department Information">
+            <FormInput
+              label="Department Name"
+              required
+              value={form.departmentName}
+              onChange={e => set("departmentName")(e.target.value)}
+              error={errors.dept}
+              disabled={!!editData}
+              placeholder="e.g. Information Technology"
+            />
+          </FormSection>
 
-  <FormControlLabel
-    control={
-      <Checkbox
-        checked={formValues.includeSaturday}
-        onChange={(e) =>
-          setFormValues({
-            ...formValues,
-            includeSaturday: e.target.checked,
-          })
-        }
-      />
-    }
-    label="Saturday"
-  />
+          <FormSection title="Working Hours">
+            <FormRow cols={2}>
+              <FormTime
+                label="Start Time"
+                required
+                value={form.startTime}
+                onChange={e => set("startTime")(e.target.value)}
+                error={errors.startTime}
+              />
+              <FormTime
+                label="End Time"
+                required
+                value={form.endTime}
+                onChange={e => set("endTime")(e.target.value)}
+                error={errors.endTime}
+              />
+            </FormRow>
 
-  <FormControlLabel
-    control={
-      <Checkbox
-        checked={formValues.includeSunday}
-        onChange={(e) =>
-          setFormValues({
-            ...formValues,
-            includeSunday: e.target.checked,
-          })
-        }
-      />
-    }
-    label="Sunday"
-  />
-</Box>
+            {hours && (
+              <div style={{ background: "var(--teal-ghost)", border: "1px solid var(--teal)", borderRadius: 10, padding: "10px 14px", marginBottom: 18, display: "flex", alignItems: "center", gap: 8 }}>
+                <Clock size={15} color="var(--teal)" />
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--teal)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total Hours:</span>
+                <span style={{ fontSize: 14, fontWeight: 800, color: "var(--teal)" }}>{hours}</span>
+              </div>
+            )}
+          </FormSection>
 
-
-        {/* Buttons */}
-        <Box className={classes.buttonsContainer}>
-          <Button variant="contained" onClick={handleSave}>
-            Save
-          </Button>
-          <Button variant="outlined" onClick={handleCancel}>
-            Cancel
-          </Button>
-        </Box>
-      </Box>
-    </Box>
+          <FormSection title="Weekend Policy">
+            <div style={{ display: "flex", gap: 24 }}>
+              <FormCheckbox
+                label="Include Saturday"
+                checked={form.includeSaturday}
+                onChange={v => set("includeSaturday")(v)}
+              />
+              <FormCheckbox
+                label="Include Sunday"
+                checked={form.includeSunday}
+                onChange={v => set("includeSunday")(v)}
+              />
+            </div>
+          </FormSection>
+        </FormCard>
+      </div>
+    </div>
   );
 };
 

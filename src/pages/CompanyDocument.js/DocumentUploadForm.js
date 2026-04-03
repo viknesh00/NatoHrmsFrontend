@@ -1,425 +1,339 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import {
-    Box,
-    TextField,
-    Button,
-    Typography,
-    IconButton,
-} from "@mui/material";
-import DeleteIcon from "@mui/icons-material/Delete";
-import PreviewIcon from "@mui/icons-material/Visibility";
-import { LocalizationProvider, DatePicker } from "@mui/x-date-pickers";
-import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-import { makeStyles } from "@material-ui/core/styles";
-import Autocomplete from "@mui/material/Autocomplete";
 import { getRequest, postRequest } from "../../services/Apiservice";
-import { ToastSuccess } from "../../services/ToastMsg";
+import { ToastSuccess, ToastError } from "../../services/ToastMsg";
 import LoadingMask from "../../services/LoadingMask";
 import Breadcrumb from "../../services/Breadcrumb";
+import { FormCard, FormSection, FormRow, FormDate } from "../../components/FormComponents";
+import { FileText, Save, X, Upload, File, Eye, Trash2 } from "lucide-react";
 
-const useStyles = makeStyles({
-    rootBox: {
-        backgroundColor: "#fff",
-        padding: 16,
-        borderRadius: 8,
-        boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
-    },
-    container: {
-        maxWidth: 500,
-        margin: "50px auto",
-        display: "flex",
-        flexDirection: "column",
-        gap: 20,
-    },
-    uploadBox: {
-        border: "2px dashed #aaa",
-        borderRadius: 8,
-        padding: 20,
-        textAlign: "center",
-        cursor: "pointer",
-        background: "#fafafa",
-    },
-    fileRow: {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginTop: 8,
-    },
-    buttonsContainer: {
-        display: "flex",
-        justifyContent: "center",
-        gap: 16,
-    },
-});
+const IS = {
+  label:{ display:"block",fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:11.5,fontWeight:700,color:"var(--text-secondary)",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:7 },
+  input:{ width:"100%",padding:"10px 13px",borderRadius:10,border:"1.5px solid var(--border)",background:"var(--bg)",fontFamily:"'DM Sans',sans-serif",fontSize:13.5,color:"var(--text-primary)",outline:"none",transition:"all 0.2s",boxSizing:"border-box" },
+  req:{ color:"var(--coral)",marginLeft:2 },
+  error:{ fontSize:12,color:"var(--coral)",marginTop:4 },
+};
+
+function Field({ label, req, children, err }){
+  return (
+    <div style={{ marginBottom:16 }}>
+      <label style={IS.label}>{label}{req && <span style={IS.req}>*</span>}</label>
+      {children}
+      {err && <div style={IS.error}>{err}</div>}
+    </div>
+  );
+}
+
+function FocusInput({ style:s, ...props }){
+  return <input {...props} style={{ ...IS.input, ...s }}
+    onFocus={e=>{e.target.style.borderColor="var(--primary)";e.target.style.boxShadow="0 0 0 3px var(--primary-ghost)";e.target.style.background="#fff";}}
+    onBlur={e=>{e.target.style.borderColor="var(--border)";e.target.style.boxShadow="none";e.target.style.background="var(--bg)";}}/>;
+}
 
 const yesNoOptions = [
-    { label: "Yes", value: true },
-    { label: "No", value: false },
+  { label:"Yes", value:true },
+  { label:"No",  value:false },
 ];
 
 const DocumentUploadForm = () => {
-    const classes = useStyles();
-    const navigate = useNavigate();
-    const location = useLocation();
-    const editData = location.state?.editData || null;
+  const navigate  = useNavigate();
+  const location  = useLocation();
+  const editData  = location.state?.editData || null;
+  const [loading, setLoading]               = useState(false);
+  const [errors,  setErrors]                = useState({});
+  const [file,    setFile]                  = useState(null);
+  const [removedExistingFile, setRemovedExistingFile] = useState(false);
+  const [peopleOptions, setPeopleOptions]   = useState([]);
+  const [peopleSearch, setPeopleSearch]     = useState("");
+  const [showPeopleDropdown, setShowPeopleDropdown] = useState(false);
 
-    const breadCrumb = editData
-        ? [
-            { label: "Company Document", link: "/company-documents" },
-            { label: "Edit Document" },
-        ]
-        : [
-            { label: "Company Document", link: "/company-documents" },
-            { label: "Upload Document" },
-        ];
+  // ── FIX: ref for the entire people dropdown container ──
+  const peopleDropdownRef = useRef(null);
 
-    const [loading, setLoading] = useState(false);
-    const [uploadedFile, setUploadedFile] = useState(null);
-    const [removedExistingFile, setRemovedExistingFile] = useState(false);
-    const [peopleOptions, setPeopleOptions] = useState([]);
+  const [form, setForm] = useState({
+    id:             editData?.id ?? null,
+    documentName:   editData?.documentName   || "",
+    tags:           editData?.tags           || "",
+    assignedPeople: editData?.assignedPeople
+      ? editData.assignedPeople.split(",").map(e => ({ label:e, value:e }))
+      : [],
+    reviewDate:     editData?.reviewDate
+      ? editData.reviewDate.split("T")[0]
+      : "",
+    isCurrent:      editData?.isCurrent != null
+      ? (editData.isCurrent ? { label:"Yes", value:true } : { label:"No", value:false })
+      : null,
+    fileName:       editData?.fileName || "",
+  });
 
-    const [formValues, setFormValues] = useState({
-        id: editData?.id ?? null,
-        documentName: editData?.documentName || "",
-        tags: editData?.tags || "",
-        assignedPeople: editData?.assignedPeople
-            ? editData.assignedPeople.split(",").map(e => ({ label: e, value: e }))
-            : [],
-        reviewDate: editData?.reviewDate
-            ? new Date(editData.reviewDate)
-            : null,
-        isCurrent:
-            editData?.isCurrent != null
-                ? { label: editData.isCurrent ? "Yes" : "No", value: editData.isCurrent }
-                : null,
-        hasExistingFile: !!editData?.id,
-        fileName: editData?.fileName || "",
-    });
+  useEffect(() => { getUsers(); }, []);
 
-    useEffect(() => {
-        getUsers();
-    }, []);
-
-    const getUsers = () => {
-        const url = `User/All`;
-        setLoading(true);
-        getRequest(url)
-            .then((res) => {
-                if (res.data) {
-
-                    // Map emails
-                    const emails = res.data.map((user) => ({
-                        label: user.email,
-                        value: user.email,
-                    }));
-
-                    // Sort ascending (A–Z)
-                    emails.sort((a, b) =>
-                        a.label.localeCompare(b.label)
-                    );
-
-                    // Add "All" as first option
-                    const optionsWithAll = [
-                        { label: "All", value: "ALL" },
-                        ...emails
-                    ];
-
-                    setPeopleOptions(optionsWithAll);
-                }
-            })
-            .finally(() => setLoading(false));
+  // ── FIX: close dropdown on outside click ──
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (peopleDropdownRef.current && !peopleDropdownRef.current.contains(e.target)) {
+        setShowPeopleDropdown(false);
+      }
     };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-    const validateForm = () => {
-        const newErrors = {};
-
-        if (!formValues.documentName?.trim()) {
-            newErrors.documentName = "Document name is required";
+  const getUsers = () => {
+    setLoading(true);
+    getRequest("User/All")
+      .then(res => {
+        if (res.data) {
+          const emails = res.data
+            .map(u => ({ label:u.email, value:u.email }))
+            .sort((a,b) => a.label.localeCompare(b.label));
+          setPeopleOptions([{ label:"All", value:"ALL" }, ...emails]);
         }
+      }).finally(() => setLoading(false));
+  };
 
-        if (!formValues.tags?.trim()) {
-            newErrors.tags = "Tags are required";
-        }
+  const set = (f) => (v) => setForm(prev => ({ ...prev, [f]:v }));
 
-        if (!formValues.assignedPeople || formValues.assignedPeople.length === 0) {
-            newErrors.assignedPeople = "Please assign at least one person";
-        }
+  // People multi-select helpers
+  const togglePerson = (option) => {
+    if (option.value === "ALL") {
+      set("assignedPeople")([{ label:"All", value:"ALL" }]);
+    } else {
+      const already = form.assignedPeople.some(p => p.value === option.value);
+      const filtered = form.assignedPeople.filter(p => p.value !== "ALL");
+      set("assignedPeople")(
+        already ? filtered.filter(p => p.value !== option.value) : [...filtered, option]
+      );
+    }
+  };
 
-        if (!formValues.reviewDate) {
-            newErrors.reviewDate = "Review date is required";
-        }
+  const removePerson = (val) => set("assignedPeople")(form.assignedPeople.filter(p => p.value !== val));
 
-        if (!formValues.isCurrent) {
-            newErrors.isCurrent = "Please select current status";
-        }
+  const filteredPeople = peopleOptions.filter(o =>
+    o.label.toLowerCase().includes(peopleSearch.toLowerCase()) &&
+    (form.assignedPeople.some(p => p.value === "ALL") ? o.value === "ALL" : true)
+  );
 
-        // File validation
-        const mustHaveFile =
-            !editData || removedExistingFile; // new OR removed existing
+  const validate = () => {
+    const e = {};
+    if (!form.documentName.trim()) e.documentName = "Document name is required";
+    if (!form.tags.trim())         e.tags         = "Tags are required";
+    if (!form.assignedPeople.length) e.assignedPeople = "Please assign at least one person";
+    if (!form.reviewDate)          e.reviewDate   = "Review date is required";
+    if (!form.isCurrent)           e.isCurrent    = "Please select current status";
+    if ((!editData || removedExistingFile) && !file) e.file = "Document file is required";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
 
-        if (mustHaveFile && !uploadedFile) {
-            newErrors.file = "Document file is required";
-        }
+  const handleSave = () => {
+    if (!validate()) { ToastError("Please fill all required fields"); return; }
+    const formData = new FormData();
+    formData.append("id",             form.id ?? "");
+    formData.append("documentName",   form.documentName);
+    formData.append("tags",           form.tags.split(",").map(t=>t.trim()).filter(Boolean).join(","));
+    formData.append("assignedPeople", form.assignedPeople.map(p=>p.value).join(","));
+    formData.append("reviewDate",     form.reviewDate);
+    formData.append("isCurrent",      form.isCurrent?.value ? "true" : "false");
+    if (removedExistingFile) formData.append("removeExistingFile","true");
+    if (file) formData.append("document", file);
 
+    setLoading(true);
+    postRequest("CompanyDocument/SaveDocument", formData, { headers:{ "Content-Type":"multipart/form-data" } })
+      .then(res => { if (res.data) { ToastSuccess("Saved successfully"); navigate("/company-documents"); } })
+      .catch(err => ToastError(err?.response?.data?.message || "Failed"))
+      .finally(() => setLoading(false));
+  };
 
-        return Object.keys(newErrors).length === 0;
-    };
+  const previewExistingFile = async () => {
+    try {
+      setLoading(true);
+      const res = await getRequest(`CompanyDocument/Preview/${form.id}`, {}, true);
+      window.open(URL.createObjectURL(res.data), "_blank");
+    } catch { ToastError("Preview failed"); } finally { setLoading(false); }
+  };
 
+  const previewNewFile = () => window.open(URL.createObjectURL(file), "_blank");
 
-    /* ---------- FILE HANDLERS ---------- */
-    const handleFileSelect = (file) => {
-        if (!file) return;
-        setUploadedFile(file);
-        setRemovedExistingFile(true);
-    };
+  const removeFile = () => { setFile(null); setRemovedExistingFile(true); };
 
-    const handleDrop = (e) => {
-        e.preventDefault();
-        handleFileSelect(e.dataTransfer.files[0]);
-    };
+  return (
+    <div>
+      <LoadingMask loading={loading}/>
+      <div className="page-header">
+        <div>
+          <Breadcrumb icon={<File size={13}/>} items={[{ label:"Company Documents", link:"/company-documents" }, { label: editData ? "Edit Document" : "Upload Document" }]}/>
+          <h1 className="page-title">{editData ? "Edit Document" : "Upload Document"}</h1>
+          <p className="page-subtitle">Manage company document library</p>
+        </div>
+      </div>
 
-    const previewNewFile = () => {
-        const fileURL = URL.createObjectURL(uploadedFile);
-        window.open(fileURL, "_blank");
-    };
+      <div style={{ maxWidth:620, margin:"0 auto" }}>
+        <FormCard
+          icon={<FileText/>}
+          title={editData ? "Edit Document" : "Upload New Document"}
+          subtitle="Add a document to the company knowledge base"
+          footer={
+            <>
+              <button className="btn btn-ghost" onClick={() => navigate("/company-documents")}><X size={15}/> Cancel</button>
+              <button className="btn btn-primary" onClick={handleSave}><Save size={15}/> {editData ? "Update" : "Upload"}</button>
+            </>
+          }
+        >
+          <FormSection title="Document Information">
 
-    const previewExistingFile = async () => {
-        try {
-            setLoading(true);
+            {/* Document Name */}
+            <Field label="Document Name" req err={errors.documentName}>
+              <FocusInput
+                value={form.documentName}
+                onChange={e => set("documentName")(e.target.value)}
+                placeholder="e.g. Employee Handbook 2024"
+              />
+            </Field>
 
-            const response = await getRequest(
-                `CompanyDocument/Preview/${formValues.id}`,
-                {},
-                true   // 🔥 THIS FIXES IT
-            );
+            {/* Tags */}
+            <Field label="Tags (comma separated)" req err={errors.tags}>
+              <FocusInput
+                value={form.tags}
+                onChange={e => set("tags")(e.target.value)}
+                placeholder="e.g. policy, hr, onboarding"
+              />
+            </Field>
 
-            const fileURL = URL.createObjectURL(response.data);
-            window.open(fileURL, "_blank");
-
-        } catch (error) {
-            console.error("Preview failed:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-
-
-
-    const removeFile = () => {
-        setUploadedFile(null);
-        setRemovedExistingFile(true);
-    };
-
-    /* ---------- SAVE / UPDATE ---------- */
-    const handleSave = () => {
-        if (!validateForm()) {
-            ToastSuccess("Please fill all mandatory fields");
-            return;
-        }
-        const formData = new FormData();
-
-        formData.append("id", formValues.id ?? "");
-        formData.append("documentName", formValues.documentName ?? "");
-        formData.append(
-            "tags",
-            formValues.tags
-                ?.split(",")
-                .map(t => t.trim())
-                .filter(Boolean)
-                .join(",") ?? ""
-        );
-        formData.append(
-            "assignedPeople",
-            Array.isArray(formValues.assignedPeople)
-                ? formValues.assignedPeople.map(p => p.value).join(",")
-                : ""
-        );
-        formData.append(
-            "reviewDate",
-            formValues.reviewDate
-                ? formValues.reviewDate.toISOString().split("T")[0]
-                : ""
-        );
-        formData.append("isCurrent", formValues.isCurrent?.value ? "true" : "false");
-        if (removedExistingFile) {
-            formData.append("removeExistingFile", "true");
-        }
-
-
-        if (uploadedFile) {
-            formData.append("document", uploadedFile);
-        }
-
-        setLoading(true);
-
-        postRequest("CompanyDocument/SaveDocument", formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-        })
-            .then((res) => {
-                if (res.data) {
-                    ToastSuccess("Uploaded Successfully");
-                    navigate("/company-documents");
-                }
-            })
-            .finally(() => setLoading(false));
-    };
-
-    return (
-        <Box className={classes.rootBox}>
-            <LoadingMask loading={loading} />
-            <Breadcrumb items={breadCrumb} />
-
-            <Box className={classes.container}>
-                <Typography variant="h6" align="center">
-                    {editData ? "Edit Company Document" : "Create Company Document"}
-                </Typography>
-
-                <TextField
-                    label={<span>Document Name <span style={{ color: 'red' }}>*</span></span>}                   
-                    value={formValues.documentName}
-                    onChange={(e) =>
-                        setFormValues({ ...formValues, documentName: e.target.value })
-                    }
-                    fullWidth
+            {/* Assigned People multi-select */}
+            <Field label="Assign People" req err={errors.assignedPeople}>
+              {/* ── FIX: attach ref here, removed onBlur from FocusInput ── */}
+              <div style={{ position:"relative" }} ref={peopleDropdownRef}>
+                {/* Selected tags */}
+                <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom: form.assignedPeople.length ? 8 : 0 }}>
+                  {form.assignedPeople.map(p => (
+                    <span key={p.value} style={{ display:"flex", alignItems:"center", gap:4, background:"var(--primary-ghost)", color:"var(--primary)", fontSize:12, fontWeight:600, padding:"3px 10px", borderRadius:20 }}>
+                      {p.label}
+                      <span onClick={() => removePerson(p.value)} style={{ cursor:"pointer", fontSize:14, lineHeight:1 }}>×</span>
+                    </span>
+                  ))}
+                </div>
+                {/* Search input — onBlur removed */}
+                <FocusInput
+                  value={peopleSearch}
+                  onChange={e => { setPeopleSearch(e.target.value); setShowPeopleDropdown(true); }}
+                  onFocus={() => setShowPeopleDropdown(true)}
+                  placeholder="Search and select people..."
                 />
+                {/* Dropdown */}
+                {showPeopleDropdown && (
+                  <div style={{ position:"absolute", top:"100%", left:0, right:0, background:"white", border:"1.5px solid var(--border)", borderRadius:10, boxShadow:"var(--shadow-lg)", zIndex:100, maxHeight:200, overflowY:"auto", marginTop:4 }}>
+                    {filteredPeople.length === 0 ? (
+                      <div style={{ padding:"10px 14px", fontSize:13, color:"var(--text-muted)" }}>No results</div>
+                    ) : filteredPeople.map(o => {
+                      const selected = form.assignedPeople.some(p => p.value === o.value);
+                      return (
+                        <div key={o.value} onMouseDown={() => togglePerson(o)}
+                          style={{ padding:"9px 14px", fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"space-between",
+                            background: selected ? "var(--primary-ghost)" : "white",
+                            color: selected ? "var(--primary)" : "var(--text-primary)",
+                          }}>
+                          {o.label}
+                          {selected && <span style={{ fontSize:16, color:"var(--primary)" }}>✓</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </Field>
 
-                <TextField
-                    label={<span>Tags (comma separated) <span style={{ color: 'red' }}>*</span></span>}
-                    value={formValues.tags}
-                    onChange={(e) =>
-                        setFormValues({ ...formValues, tags: e.target.value })
-                    }
-                    fullWidth
+            <FormRow cols={2}>
+              {/* Review Date */}
+              <Field label="Review Date" req err={errors.reviewDate}>
+                <FormDate
+                  value={form.reviewDate}
+                  onChange={e => set("reviewDate")(e.target.value)}
+                  placeholder="Select review date"
                 />
+              </Field>
 
-                <Autocomplete
-                    multiple
-                    options={peopleOptions}
-                    getOptionLabel={(o) => o.label}
-                    value={formValues.assignedPeople}
-                    onChange={(event, newValue) => {
-
-                        const isAllSelected = newValue.some(v => v.value === "ALL");
-
-                        if (isAllSelected) {
-                            // If "All" is selected, make it the only value
-                            setFormValues({
-                                ...formValues,
-                                assignedPeople: [{ label: "All", value: "ALL" }]
-                            });
-                        } else {
-                            // Remove "All" if previously selected
-                            const filteredValues = newValue.filter(v => v.value !== "ALL");
-
-                            setFormValues({
-                                ...formValues,
-                                assignedPeople: filteredValues
-                            });
-                        }
-                    }}
-                    // Disable other options when "All" is selected
-                    getOptionDisabled={(option) =>
-                        formValues.assignedPeople.some(v => v.value === "ALL") &&
-                        option.value !== "ALL"
-                    }
-                    renderInput={(params) => (
-                        <TextField {...params} label={<span>Assign People <span style={{ color: 'red' }}>*</span></span>} />
-                    )}
-                />
-
-
-                <LocalizationProvider dateAdapter={AdapterDateFns}>
-                    <DatePicker
-                        label={<span>Review Date <span style={{ color: 'red' }}>*</span></span>}
-                        value={formValues.reviewDate}
-                        onChange={(v) =>
-                            setFormValues({ ...formValues, reviewDate: v })
-                        }
-                        renderInput={(params) => (
-                            <TextField {...params} fullWidth />
-                        )}
-                    />
-                </LocalizationProvider>
-
-                <Autocomplete
-                    options={yesNoOptions}
-                    getOptionLabel={(o) => o.label}
-                    value={formValues.isCurrent}
-                    onChange={(e, v) =>
-                        setFormValues({ ...formValues, isCurrent: v })
-                    }
-                    renderInput={(params) => (
-                        <TextField {...params}label={<span>Current <span style={{ color: 'red' }}>*</span></span>} />
-                    )}
-                />
-
-                {/* ---------- UPLOAD ---------- */}
-                <Box
-                    className={classes.uploadBox}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={handleDrop}
-                    onClick={() => document.getElementById("fileInput").click()}
+              {/* Is Current */}
+              <Field label="Current" req err={errors.isCurrent}>
+                <select
+                  value={form.isCurrent?.value != null ? String(form.isCurrent.value) : ""}
+                  onChange={e => {
+                    const found = yesNoOptions.find(o => String(o.value) === e.target.value);
+                    set("isCurrent")(found || null);
+                  }}
+                  style={{ ...IS.input, appearance:"none",
+                    backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='1.5' fill='none'/%3E%3C/svg%3E")`,
+                    backgroundRepeat:"no-repeat", backgroundPosition:"right 12px center", paddingRight:36 }}
+                  onFocus={e=>{e.target.style.borderColor="var(--primary)";e.target.style.boxShadow="0 0 0 3px var(--primary-ghost)";}}
+                  onBlur={e=>{e.target.style.borderColor="var(--border)";e.target.style.boxShadow="none";}}
                 >
-                    <Typography variant="body2">
-                        Drag & drop document here or click to upload <span style={{ color: 'red' }}>*</span>
-                    </Typography>
-                    <input
-                        id="fileInput"
-                        type="file"
-                        hidden
-                        accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg"
-                        onChange={(e) => handleFileSelect(e.target.files[0])}
-                    />
-                </Box>
+                  <option value="">Select...</option>
+                  {yesNoOptions.map(o => <option key={String(o.value)} value={String(o.value)}>{o.label}</option>)}
+                </select>
+              </Field>
+            </FormRow>
 
-                {/* ---------- EXISTING FILE ---------- */}
-                {editData && !removedExistingFile && !uploadedFile && (
-                    <Box className={classes.fileRow}>
-                        <Typography variant="body2">
-                            {formValues.fileName || "Existing document"}
-                        </Typography>
-                        <Box>
-                            <IconButton onClick={previewExistingFile}>
-                                <PreviewIcon />
-                            </IconButton>
-                            <IconButton onClick={removeFile}>
-                                <DeleteIcon />
-                            </IconButton>
-                        </Box>
-                    </Box>
+          </FormSection>
+
+          {/* File Upload */}
+          <FormSection title="File Upload">
+            <Field label={`File${!editData ? " *" : ""}`} err={errors.file}>
+              <div style={{
+                border:`2px dashed ${errors.file ? "var(--coral)" : "var(--border)"}`,
+                borderRadius:12, padding:"20px 16px", textAlign:"center",
+                background: file ? "var(--teal-ghost)" : "var(--bg)", cursor:"pointer", transition:"all 0.2s",
+              }}
+                onClick={() => document.getElementById("doc-file-input").click()}
+                onDragOver={e => e.preventDefault()}
+                onDrop={e => { e.preventDefault(); const f=e.dataTransfer.files[0]; if(f){ setFile(f); setRemovedExistingFile(true); } }}>
+                <input id="doc-file-input" type="file" style={{ display:"none" }}
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg"
+                  onChange={e => { setFile(e.target.files[0]); setRemovedExistingFile(true); }}/>
+                <Upload size={28} color={file ? "var(--teal)" : "var(--text-muted)"} style={{ margin:"0 auto 8px" }}/>
+                {file ? (
+                  <div>
+                    <div style={{ fontSize:14, fontWeight:700, color:"var(--teal)" }}>{file.name}</div>
+                    <div style={{ fontSize:12, color:"var(--text-muted)", marginTop:3 }}>{(file.size/1024/1024).toFixed(2)} MB</div>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ fontSize:13.5, fontWeight:600, color:"var(--text-secondary)" }}>Click to upload or drag & drop</div>
+                    <div style={{ fontSize:12, color:"var(--text-muted)", marginTop:3 }}>PDF, DOCX, XLSX, PNG, JPG</div>
+                  </div>
                 )}
+              </div>
+            </Field>
 
-                {/* ---------- NEW FILE ---------- */}
-                {uploadedFile && (
-                    <Box className={classes.fileRow}>
-                        <Typography variant="body2">{uploadedFile.name}</Typography>
-                        <Box>
-                            <IconButton onClick={previewNewFile}>
-                                <PreviewIcon />
-                            </IconButton>
-                            <IconButton onClick={removeFile}>
-                                <DeleteIcon />
-                            </IconButton>
-                        </Box>
-                    </Box>
-                )}
+            {/* Existing file row */}
+            {editData && !removedExistingFile && !file && (
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px", background:"var(--bg)", borderRadius:10, border:"1px solid var(--border)" }}>
+                <span style={{ fontSize:13, color:"var(--text-primary)", fontWeight:600 }}>{form.fileName || "Existing document"}</span>
+                <div style={{ display:"flex", gap:6 }}>
+                  <button className="icon-btn" title="Preview" onClick={previewExistingFile} style={{ color:"var(--primary)" }}><Eye size={16}/></button>
+                  <button className="icon-btn" title="Remove"  onClick={removeFile}          style={{ color:"var(--coral)"   }}><Trash2 size={16}/></button>
+                </div>
+              </div>
+            )}
 
-                <Box className={classes.buttonsContainer}>
-                    <Button variant="contained" onClick={handleSave}>
-                        {editData ? "Update" : "Save"}
-                    </Button>
-                    <Button
-                        variant="outlined"
-                        onClick={() => navigate("/company-documents")}
-                    >
-                        Cancel
-                    </Button>
-                </Box>
-            </Box>
-        </Box>
-    );
+            {/* New file row */}
+            {file && (
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px", background:"var(--teal-ghost)", borderRadius:10, border:"1px solid var(--border)" }}>
+                <span style={{ fontSize:13, color:"var(--teal)", fontWeight:600 }}>{file.name}</span>
+                <div style={{ display:"flex", gap:6 }}>
+                  <button className="icon-btn" title="Preview" onClick={previewNewFile} style={{ color:"var(--primary)" }}><Eye size={16}/></button>
+                  <button className="icon-btn" title="Remove"  onClick={removeFile}     style={{ color:"var(--coral)"  }}><Trash2 size={16}/></button>
+                </div>
+              </div>
+            )}
+
+            {editData && !file && (
+              <div style={{ fontSize:12, color:"var(--text-muted)", marginTop:6 }}>Leave empty to keep the existing file</div>
+            )}
+          </FormSection>
+        </FormCard>
+      </div>
+    </div>
+  );
 };
 
 export default DocumentUploadForm;

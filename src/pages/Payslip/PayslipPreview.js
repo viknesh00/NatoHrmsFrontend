@@ -1,369 +1,259 @@
 import React, { useState, useEffect } from "react";
-import { Box, Typography, Divider, TextField, Button } from "@mui/material";
-import { FileDown } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { FileDown, Mail, ArrowLeft } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import { makeStyles } from "@material-ui/core/styles";
-import { useLocation } from "react-router-dom";
 import Breadcrumb from "../../services/Breadcrumb";
+import LoadingMask from "../../services/LoadingMask";
+import { ToastSuccess, ToastError } from "../../services/ToastMsg";
+import { postRequest } from "../../services/Apiservice";
+import dayjs from "dayjs";
 
-// --- Utility: Convert number to words ---
+// Convert number to Indian words
 const numberToWords = (num) => {
-    const a = [
-        "", "One", "Two", "Three", "Four", "Five", "Six", "Seven",
-        "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen",
-        "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"
-    ];
-    const b = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
-
-    const convert = (n) => {
-        if (n < 20) return a[n];
-        if (n < 100) return b[Math.floor(n / 10)] + (n % 10 ? " " + a[n % 10] : "");
-        if (n < 1000) return a[Math.floor(n / 100)] + " Hundred" + (n % 100 === 0 ? "" : " and " + convert(n % 100));
-        if (n < 100000) return convert(Math.floor(n / 1000)) + " Thousand" + (n % 1000 === 0 ? "" : " " + convert(n % 1000));
-        if (n < 10000000) return convert(Math.floor(n / 100000)) + " Lakh" + (n % 100000 === 0 ? "" : " " + convert(n % 100000));
-        return "";
-    };
-    return `Indian Rupees ${convert(num)} Only`;
+  if (!num || isNaN(num)) return "";
+  const a=["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
+  const b=["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
+  const cvt=(n)=>{
+    if(n<20)return a[n];if(n<100)return b[Math.floor(n/10)]+(n%10?" "+a[n%10]:"");
+    if(n<1000)return a[Math.floor(n/100)]+" Hundred"+(n%100===0?"":(" and "+cvt(n%100)));
+    if(n<100000)return cvt(Math.floor(n/1000))+" Thousand"+(n%1000===0?"":" "+cvt(n%1000));
+    if(n<10000000)return cvt(Math.floor(n/100000))+" Lakh"+(n%100000===0?"":" "+cvt(n%100000));
+    return "";
+  };
+  return cvt(Math.round(num))+" Rupees Only";
 };
 
-// --- Styling ---
-const useStyles = makeStyles({
-    rootBox: {
-        backgroundColor: "#fff",
-        padding: 16,
-        borderRadius: 8,
-        boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
-    },
-    logo: { width: 100, height: "auto" },
-    headerBox: {
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: 10,
-    },
-    centerContent: { textAlign: "center", fontSize: 12 },
-    detailBox: { marginTop: 10 },
-    detailRow: { display: "flex", justifyContent: "space-between", marginBottom: 3 },
-    column: { display: "flex", flexDirection: "column", gap: 4, width: "45%" },
-    rowFlex: { display: "flex", justifyContent: "space-between" },
-    label: { fontWeight: "bold", minWidth: 120, fontSize: 12 },
-});
+const numFmt=(v)=>{ const n=parseFloat(v)||0; return n===0?"—":n.toLocaleString("en-IN",{minimumFractionDigits:0,maximumFractionDigits:0}); };
+const inr=(v)=>{ const n=parseFloat(v)||0; return n===0?"-":n.toLocaleString("en-IN",{minimumFractionDigits:0}); };
 
-const PayslipPreview = () => {
-    const classes = useStyles();
-    const location = useLocation();
-    const breadCrumb = [{ label: "Payslip", link: "/payslip" }, { label: "Generate Payslip" }];
-    const { employee, monthYear } = location.state || {};
-    const selectedYear = monthYear?.getFullYear();
-    const selectedMonth = monthYear?.getMonth();
-    const totalDays = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-    const [payslipData, setPayslipData] = useState({
-        employeeName: employee.fullName,
-        employeeId: employee.employeeId,
-        designation: employee.designation,
-        department: employee.department,
-        location: employee.workLocation,
-        bankDetails: employee.accountNumber,
-        dateOfJoining: employee.doj,
-        taxRegime: "Regular Tax Regime",
-        panNumber: employee.panNumber,
-        uanNumber: employee.uanNumber,
-        pfNumber: employee.pfAccountNumber,
-        esiNumber: employee.esiNumber,
-        pranNumber: "",
-        payMonth: `${monthYear.toLocaleString("default", { month: "long" })}-${selectedYear}`,
+function ENum({value,onChange}){
+  return <input type="number" value={value} onChange={onChange} style={{ width:80,textAlign:"right",padding:"2px 4px",border:"1px solid #c4b5f4",borderRadius:4,fontFamily:"inherit",fontSize:11,background:"#faf8ff",color:"#1e1143",fontWeight:600,outline:"none" }}/>;
+}
 
-        calendarMonth: totalDays.toString(),
-        paidDays: totalDays.toString(),
-        lopDays: "0",
+export default function PayslipPreview(){
+  const location=useLocation(), navigate=useNavigate();
+  const { employee, monthYear } = location.state||{};
+  const [loading,setLoading]=useState(false);
 
-        // Earnings
-        basicSalary: employee.basicSalary,
-        hra: employee.hra,
-        conveyanceAllowance: employee.conveyanceAllowance,
-        medicalAllowance: employee.medicalAllowance,
-        specialAllowance: employee.specialAllowance,
+  const mDate=new Date(monthYear);
+  const totalDays=new Date(mDate.getFullYear(),mDate.getMonth()+1,0).getDate();
+  const payMonthStr=dayjs(monthYear).format("MMMM YYYY");
+  const doj=employee.doj?dayjs(employee.doj).format("DD-MM-YYYY"):"—";
 
-        // Deductions
-        employeePf: "1800.00",
-        professionalTax: "1250.00",
+  const [p,setP]=useState({
+    employeeName: employee.fullName||`${employee.firstName||""} ${employee.lastName||""}`.trim(),
+    employeeId:   employee.employeeId||"",
+    designation:  employee.designation||"",
+    department:   employee.department||"",
+    location:     employee.workLocation||"",
+    bankDetails:  employee.accountNumber||"",
+    doj,
+    pfNumber:     employee.pfAccountNumber||"",
+    esiNumber:    employee.esiNumber||"",
+    panNumber:    employee.panNumber||"",
+    uanNumber:    employee.uanNumber||"",
+    ctc:          employee.ctc||"",
+    payMonth:     payMonthStr,
+    workingDays:  String(totalDays),
+    lopDays:      "0",
+    extraPayDays: "0",
+    // Earnings
+    basicSalary:           parseFloat(employee.basicSalary)||0,
+    hra:                   parseFloat(employee.hra)||0,
+    conveyanceAllowance:   parseFloat(employee.conveyanceAllowance)||0,
+    medicalAllowance:      parseFloat(employee.medicalAllowance)||0,
+    specialAllowance:      parseFloat(employee.specialAllowance)||0,
+    arrears:               0,
+    reimbursement:         0,
+    // Deductions
+    employeePf:        1800,
+    employeeEsi:       0,
+    professionalTax:   0,
+    incomeTax:         0,
+    trainingCab:       0,
+    others:            0,
+    // Employer
+    employerPf:        1800,
+    employerEsi:       0,
+    // Computed
+    totalEarnings:0, totalDeductions:0, netPayable:0, netInWords:"",
+  });
 
-        totalEarnings: "0.00",
-        totalDeductions: "0.00",
-        netAmount: "0.00",
-        netInWords: "",
-    });
+  useEffect(()=>{
+    const te=[p.basicSalary,p.hra,p.conveyanceAllowance,p.medicalAllowance,p.specialAllowance,p.arrears,p.reimbursement].reduce((a,b)=>a+(parseFloat(b)||0),0);
+    const td=[p.employeePf,p.employeeEsi,p.professionalTax,p.incomeTax,p.trainingCab,p.others].reduce((a,b)=>a+(parseFloat(b)||0),0);
+    const net=te-td;
+    setP(prev=>({...prev,totalEarnings:te,totalDeductions:td,netPayable:net,netInWords:numberToWords(Math.round(net))}));
+  },[p.basicSalary,p.hra,p.conveyanceAllowance,p.medicalAllowance,p.specialAllowance,p.arrears,p.reimbursement,p.employeePf,p.employeeEsi,p.professionalTax,p.incomeTax,p.trainingCab,p.others]);
+    if(!employee||!monthYear){
+    return <div style={{textAlign:"center",padding:60}}>
+      No payslip data. <span style={{color:"var(--primary)",cursor:"pointer"}} onClick={()=>navigate("/payslip")}>Go back</span>
+    </div>;
+  }
+  const set=(f)=>(e)=>setP(prev=>({...prev,[f]:e.target.value}));
 
-    // Auto calculate totals and net
-    useEffect(() => {
-        const toNum = (val) => parseFloat(val) || 0;
+  const handleDownload=async()=>{
+    setLoading(true);
+    try{
+      const el=document.getElementById("payslip-doc");
+      const canvas=await html2canvas(el,{scale:2,useCORS:true,backgroundColor:"#fff"});
+      const pdf=new jsPDF({orientation:"portrait",unit:"pt",format:"a4"});
+      const w=pdf.internal.pageSize.getWidth();
+      const h=pdf.internal.pageSize.getHeight();
+      const imgData=canvas.toDataURL("image/png");
+      const imgProps=pdf.getImageProperties(imgData);
+      const ratio=Math.min(w/imgProps.width,h/imgProps.height);
+      pdf.addImage(imgData,"PNG",0,0,imgProps.width*ratio,imgProps.height*ratio);
+      pdf.save(`${p.employeeName.replace(/\s+/g,"_")}_${p.payMonth.replace(/\s/g,"-")}.pdf`);
+      ToastSuccess("Payslip downloaded!");
+    }catch(e){ ToastError("PDF generation failed"); }
+    finally{setLoading(false);}
+  };
 
-        const earnings = [
-            payslipData.basicSalary,
-            payslipData.hra,
-            payslipData.conveyanceAllowance,
-            payslipData.medicalAllowance,
-            payslipData.specialAllowance,
-        ].map(toNum);
+  const handleEmail=async()=>{
+    setLoading(true);
+    try{
+      const el=document.getElementById("payslip-doc");
+      const canvas=await html2canvas(el,{scale:2,useCORS:true,backgroundColor:"#fff"});
+      const pdf=new jsPDF({orientation:"portrait",unit:"pt",format:"a4"});
+      const w=pdf.internal.pageSize.getWidth();
+      const imgData=canvas.toDataURL("image/png");
+      const imgProps=pdf.getImageProperties(imgData);
+      pdf.addImage(imgData,"PNG",0,0,imgProps.width*(w/imgProps.width),imgProps.height*(w/imgProps.width));
+      const b64=pdf.output("datauristring").split(",")[1];
+      await postRequest("User/SendPayslipEmail",{ employeeEmail:employee.userName||employee.email, employeeName:p.employeeName, payMonth:p.payMonth, netAmount:String(p.netPayable), pdfBase64:b64, fileName:`${p.employeeName.replace(/\s+/g,"_")}_${p.payMonth.replace(/\s/g,"-")}.pdf` });
+      ToastSuccess("Payslip emailed successfully!");
+    }catch{ ToastError("Email failed"); }
+    finally{setLoading(false);}
+  };
 
-        const deductions = [
-            payslipData.employeePf,
-            payslipData.professionalTax,
-        ].map(toNum);
+  // Table cell styles
+  const th={padding:"6px 10px",border:"1px solid #bdc3c7",fontWeight:700,background:"#ecf0f1",fontSize:11.5,textAlign:"left",color:"#2c3e50"};
+  const td={padding:"5px 10px",border:"1px solid #d5dbdb",fontSize:11,color:"#2c3e50",verticalAlign:"middle"};
+  const tdr={...td,textAlign:"right"};
+  const tdbold={...td,fontWeight:700};
+  const tdrbold={...tdr,fontWeight:700};
 
-        const totalEarnings = earnings.reduce((a, b) => a + b, 0);
-        const totalDeductions = deductions.reduce((a, b) => a + b, 0);
-        const netAmount = totalEarnings - totalDeductions;
+  return (
+    <div>
+      <LoadingMask loading={loading}/>
+      <div className="page-header" style={{marginBottom:16}}>
+        <div>
+          <Breadcrumb items={[{label:"Payslip",link:"/payslip"},{label:"Preview"}]}/>
+          <h1 className="page-title">Payslip – {p.payMonth}</h1>
+        </div>
+        <div style={{display:"flex",gap:10}}>
+          <button className="btn btn-ghost" onClick={()=>navigate("/payslip")}><ArrowLeft size={15}/> Back</button>
+          <button className="btn btn-outline" onClick={handleEmail}><Mail size={15}/> Email</button>
+          <button className="btn btn-primary" onClick={handleDownload}><FileDown size={15}/> Download PDF</button>
+        </div>
+      </div>
 
-        setPayslipData((prev) => ({
-            ...prev,
-            totalEarnings: totalEarnings.toFixed(2),
-            totalDeductions: totalDeductions.toFixed(2),
-            netAmount: `₹${netAmount.toFixed(2)}`,
-            netInWords: numberToWords(Math.round(netAmount)),
-        }));
-    }, [
-        payslipData.basicSalary,
-        payslipData.hra,
-        payslipData.conveyanceAllowance,
-        payslipData.medicalAllowance,
-        payslipData.specialAllowance,
-        payslipData.employeePf,
-        payslipData.professionalTax,
-    ]);
+      {/* Payslip Document - matches exact PDF format */}
+      <div style={{background:"white",boxShadow:"var(--shadow-lg)",borderRadius:12,overflow:"hidden",maxWidth:820,margin:"0 auto"}}>
+        <div id="payslip-doc" style={{padding:"28px 32px",fontFamily:"Arial,sans-serif",fontSize:12,color:"#2c3e50",background:"white"}}>
 
-    const handleChange = (field, value) => {
-        setPayslipData((prev) => ({
-            ...prev,
-            [field]: value,
-        }));
-    };
+          {/* Header */}
+          <div style={{display:"flex",alignItems:"flex-start",gap:16,marginBottom:16,paddingBottom:12,borderBottom:"2px solid #2c3e50"}}>
+            <img src="/assets/images/natobotics-logo.png" alt="Logo" style={{width:60,height:60,objectFit:"contain",flexShrink:0}}/>
+            <div>
+              <div style={{fontWeight:700,fontSize:15,color:"#2c3e50",marginBottom:3}}>Natobotics Technologies Private Limited</div>
+              <div style={{fontWeight:700,fontSize:13,color:"#2c3e50"}}>Payslip {p.payMonth}</div>
+            </div>
+          </div>
 
-    const handleDownload = async () => {
-        const input = document.getElementById("payslip-content");
-        if (!input) return;
+          {/* Employee Info Grid */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:0,marginBottom:16,border:"1px solid #bdc3c7"}}>
+            {[
+              ["Employee Name", p.employeeName,    "Working Days",     p.workingDays],
+              ["Emp ID",        p.employeeId,       "LOP / Extra Pay Days", `${p.lopDays} / ${p.extraPayDays}`],
+              ["Designation",   p.designation,      "Bank Details",    p.bankDetails],
+              ["Location",      p.location,         "PF Number",       p.pfNumber],
+              ["Date of Joining",p.doj,             "CTC",             p.ctc?`₹${numFmt(p.ctc)}`:"—"],
+              ["ESI Number",    p.esiNumber||"—",   "PAN",             p.panNumber||"—"],
+            ].map(([l1,v1,l2,v2],i)=>(
+              <React.Fragment key={i}>
+                <div style={{display:"grid",gridTemplateColumns:"140px 1fr",borderBottom:"1px solid #d5dbdb",borderRight:"1px solid #bdc3c7"}}>
+                  <span style={{padding:"6px 10px",fontWeight:700,fontSize:11.5,color:"#5d6d7e",background:"#f8f9fa",borderRight:"1px solid #d5dbdb"}}>{l1}</span>
+                  <span style={{padding:"6px 10px",fontSize:11.5,fontWeight:600}}>{v1||"—"}</span>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"150px 1fr",borderBottom:"1px solid #d5dbdb"}}>
+                  <span style={{padding:"6px 10px",fontWeight:700,fontSize:11.5,color:"#5d6d7e",background:"#f8f9fa",borderRight:"1px solid #d5dbdb"}}>{l2}</span>
+                  <span style={{padding:"6px 10px",fontSize:11.5,fontWeight:600}}>{v2||"—"}</span>
+                </div>
+              </React.Fragment>
+            ))}
+          </div>
 
-        // Capture as canvas
-        const canvas = await html2canvas(input, { scale: 2 });
-        const imgData = canvas.toDataURL("image/png");
+          {/* Earnings & Deductions Table */}
+          <table style={{width:"100%",borderCollapse:"collapse",marginBottom:12}}>
+            <thead>
+              <tr>
+                <th style={{...th,width:"30%"}}>Earnings</th>
+                <th style={{...th,width:"20%",textAlign:"right"}}>Amount (Rs)</th>
+                <th style={{...th,width:"30%"}}>Deductions</th>
+                <th style={{...th,width:"20%",textAlign:"right"}}>Amount (Rs)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ["Basic Pay",         "basicSalary",         "Employee PF",         "employeePf"],
+                ["HRA",               "hra",                 "Employee ESI",        "employeeEsi"],
+                ["Conveyance",        "conveyanceAllowance", "Professional Tax",    "professionalTax"],
+                ["Medical Allowance", "medicalAllowance",    "Income Tax",          "incomeTax"],
+                ["Special Allowance", "specialAllowance",    "Training/Cab/Parking","trainingCab"],
+                ["Arrears",           "arrears",             "Others",              "others"],
+                ["Reimbursement",     "reimbursement",       "",                    ""],
+              ].map(([l1,f1,l2,f2],i)=>(
+                <tr key={i}>
+                  <td style={td}>{l1}</td>
+                  <td style={tdr}><ENum value={p[f1]||0} onChange={set(f1)}/></td>
+                  <td style={td}>{l2}</td>
+                  <td style={tdr}>{f2?<ENum value={p[f2]||0} onChange={set(f2)}/>:null}</td>
+                </tr>
+              ))}
+              <tr>
+                <td style={tdbold}>Total Earnings</td>
+                <td style={tdrbold}>{numFmt(p.totalEarnings)}</td>
+                <td style={tdbold}>Total Deductions</td>
+                <td style={{...tdrbold,color:"#c0392b"}}>({numFmt(p.totalDeductions)})</td>
+              </tr>
+            </tbody>
+          </table>
 
-        // Create PDF
-        const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
+          {/* Employer contribution */}
+          <div style={{display:"flex",gap:40,marginBottom:12,padding:"8px 0",borderTop:"1px solid #bdc3c7"}}>
+            <div><span style={{fontWeight:600,fontSize:11.5}}>Employer PF : </span><span style={{fontSize:11.5}}>{numFmt(p.employerPf)}</span></div>
+            <div><span style={{fontWeight:600,fontSize:11.5}}>Employer ESI : </span><span style={{fontSize:11.5}}>{p.employerEsi?numFmt(p.employerEsi):"-"}</span></div>
+          </div>
 
-        const imgProps = pdf.getImageProperties(imgData);
-        const ratio = Math.min(pdfWidth / imgProps.width, pdfHeight / imgProps.height);
+          {/* Net Payable */}
+          <div style={{marginBottom:10}}>
+            <span style={{fontWeight:700,fontSize:14,color:"#2c3e50"}}>NET PAYABLE: </span>
+            <span style={{fontWeight:700,fontSize:16,color:"#1a5276"}}>₹{numFmt(p.netPayable)}</span>
+          </div>
 
-        pdf.addImage(imgData, "PNG", 0, 0, imgProps.width * ratio, imgProps.height * ratio);
+          <div style={{marginBottom:20}}>
+            <span style={{fontWeight:700,fontSize:11.5}}>In Words: </span>
+            <span style={{fontSize:11.5,fontStyle:"italic"}}>{p.netInWords}</span>
+          </div>
 
-        // Save PDF
-        const fileName = `${payslipData.employeeName.replace(/\s+/g, "_")}_${payslipData.payMonth}.pdf`;
-        pdf.save(fileName);
-    };
-
-
-
-    return (
-        <Box className={classes.rootBox}>
-            <Breadcrumb items={breadCrumb} />
-            <Box id="payslip-content" p={2} border={1} borderRadius={2} borderColor="grey.300" sx={{ width: "100%", maxWidth: 900, margin: "auto", fontSize: 12, overflow: "hidden" }}>
-                {/* Header */}
-                <Box className={classes.headerBox}>
-                    <img src="/assets/images/natobotics-logo.png" alt="Logo" className={classes.logo} />
-                    <Box className={classes.centerContent}>
-                        <Typography variant="subtitle2" fontWeight="bold">Natobotics Technologies Pvt Ltd</Typography>
-                        <Typography>No: 9/1, Madhavamani Avenue</Typography>
-                        <Typography>Velachery</Typography>
-                        <Typography>Chennai</Typography>
-                        <Typography variant="subtitle2" fontWeight="bold">Pay Slip</Typography>
-                        <Typography>for {payslipData.payMonth}</Typography>
-                        <Typography fontWeight="bold">{payslipData.employeeName}</Typography>
-                    </Box>
-                    <Box width={80} />
-                </Box>
-
-                <Divider />
-
-                {/* Employee Details */}
-                <Box className={classes.detailBox}>
-                    <Box className={classes.rowFlex}>
-                        <Box className={classes.column}>
-                            {[
-                                ["Employee Number", payslipData.employeeId],
-                                ["Function", payslipData.department],
-                                ["Designation", payslipData.designation],
-                                ["Location", payslipData.location],
-                                ["Bank Details", payslipData.bankDetails],
-                                ["Date of Joining", payslipData.dateOfJoining],
-                            ].map(([label, value], i) => (
-                                <Box key={i} className={classes.detailRow}>
-                                    <Typography className={classes.label}>{label} :</Typography>
-                                    <Typography>{value}</Typography>
-                                </Box>
-                            ))}
-                        </Box>
-
-                        <Box className={classes.column}>
-                            {[
-                                ["Tax Regime", payslipData.taxRegime],
-                                ["PAN", payslipData.panNumber],
-                                ["UAN", payslipData.uanNumber],
-                                ["PF Number", payslipData.pfNumber],
-                                ["ESI Number", payslipData.esiNumber],
-                                ["PRAN", payslipData.pranNumber],
-                            ].map(([label, value], i) => (
-                                <Box key={i} className={classes.detailRow}>
-                                    <Typography className={classes.label}>{label} :</Typography>
-                                    <Typography>{value}</Typography>
-                                </Box>
-                            ))}
-                        </Box>
-                    </Box>
-                </Box>
-
-                <Divider />
-
-                {/* Attendance + Salary */}
-                <Box mt={2} border={1} borderColor="grey.400">
-                    {/* Attendance */}
-                    <Box display="flex" borderBottom={1} borderColor="grey.300">
-                        <Box flex={1} p={1} borderRight={1} borderColor="grey.300">
-                            <Typography fontWeight="bold">Attendance Details</Typography>
-                        </Box>
-                        <Box flex={1} p={1}>
-                            <Typography fontWeight="bold">Value</Typography>
-                        </Box>
-                    </Box>
-
-                    {[
-                        ["Calendar Month", payslipData.calendarMonth],
-                    ].map(([label, value]) => (
-                        <Box display="flex" borderBottom={1} borderColor="grey.300" key={label}>
-                            <Box flex={1} p={1} borderRight={1} borderColor="grey.300">
-                                <Typography>{label}</Typography>
-                            </Box>
-                            <Box flex={1} p={1}>
-                                <Typography>{value}</Typography>
-                            </Box>
-                        </Box>
-                    ))}
-
-                    {/* Earnings and Deductions */}
-                    <Box display="flex" borderTop={1} borderColor="grey.300">
-                        {/* Earnings */}
-                        <Box flex={1} borderRight={1} borderColor="grey.300">
-                            <Box display="flex" p={1} borderBottom={1} borderColor="grey.300">
-                                <Typography flex={1} fontWeight="bold">Earnings</Typography>
-                                <Typography fontWeight="bold">Amount</Typography>
-                            </Box>
-                            {[
-                                ["Basic Salary", "basicSalary"],
-                                ["HRA", "hra"],
-                                ["Conveyance Allowance", "conveyanceAllowance"],
-                                ["Medical Allowance", "medicalAllowance"],
-                                ["Special Allowance", "specialAllowance"],
-                            ].map(([label, field]) => (
-                                <Box display="flex" justifyContent="space-between" p={1} key={field}>
-                                    <Typography>{label}</Typography>
-                                    <TextField
-                                        size="small"
-                                        type="number"
-                                        value={payslipData[field]}
-                                        onChange={(e) => handleChange(field, e.target.value)}
-                                        onBlur={(e) => {
-                                            const val = parseFloat(e.target.value) || 0;
-                                            handleChange(field, val.toFixed(2));
-                                        }}
-                                    />
-                                </Box>
-                            ))}
-                        </Box>
-
-                        {/* Deductions */}
-                        <Box flex={1}>
-                            <Box display="flex" p={1} borderBottom={1} borderColor="grey.300">
-                                <Typography flex={1} fontWeight="bold">Deductions</Typography>
-                                <Typography fontWeight="bold">Amount</Typography>
-                            </Box>
-                            {[
-                                ["Employee PF", "employeePf"],
-                                ["Professional Tax", "professionalTax"],
-                            ].map(([label, field]) => (
-                                <Box display="flex" justifyContent="space-between" p={1} key={field}>
-                                    <Typography>{label}</Typography>
-                                    <TextField
-                                        size="small"
-                                        type="number"
-                                        value={payslipData[field]}
-                                        onChange={(e) => handleChange(field, e.target.value)}
-                                        onBlur={(e) => {
-                                            const val = parseFloat(e.target.value) || 0;
-                                            handleChange(field, val.toFixed(2));
-                                        }}
-                                    />
-                                </Box>
-                            ))}
-                        </Box>
-                    </Box>
-
-                    {/* Totals */}
-                    <Box display="flex" borderTop={1} borderColor="grey.300">
-                        <Box flex={1} borderRight={1} borderColor="grey.300" display="flex" justifyContent="space-between" p={1}>
-                            <Typography fontWeight="bold">Total Earnings</Typography>
-                            <Typography fontWeight="bold">{payslipData.totalEarnings}</Typography>
-                        </Box>
-                        <Box flex={1} display="flex" justifyContent="space-between" p={1}>
-                            <Typography fontWeight="bold">Total Deductions</Typography>
-                            <Typography fontWeight="bold">{payslipData.totalDeductions}</Typography>
-                        </Box>
-                    </Box>
-
-                    {/* Net Amount */}
-                    <Box display="flex" borderTop={1} borderColor="grey.300">
-                        <Box flex={1} /> {/* empty to match left half */}
-                        <Box flex={1} display="flex" justifyContent="space-between" p={1}>
-                            <Typography fontWeight="bold">Net Amount</Typography>
-                            <Typography fontWeight="bold">{payslipData.netAmount}</Typography>
-                        </Box>
-                    </Box>
-                </Box>
-
-                {/* Amount in Words */}
-                <Box mt={2}>
-                    <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                        <Box>
-                            <Typography fontWeight="bold">Amount (in words):</Typography>
-                            <Typography>{payslipData.netInWords}</Typography>
-                        </Box>
-                        <Box textAlign="right">
-                            <Typography fontWeight="bold">for Natobotics Technologies Private Limited</Typography>
-                        </Box>
-                    </Box>
-
-                    <Box mt={4} display="flex" justifyContent="flex-end">
-                        <Typography>Authorised Signatory</Typography>
-                    </Box>
-
-                    <Box mt={2} textAlign="center">
-                        <Typography fontSize={10}>This is a computer-generated document and does not require signature</Typography>
-                    </Box>
-                </Box>
-
-
-            </Box>
-            <Box mt={2} display="flex" justifyContent="center">
-                <Button
-                    variant="contained"
-                    startIcon={<FileDown />}
-                    onClick={handleDownload}
-                >
-                    Download PDF
-                </Button>
-            </Box>
-        </Box>
-    );
-};
-
-export default PayslipPreview;
+          {/* Seal + signature row */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginTop:24,paddingTop:16,borderTop:"1px solid #bdc3c7"}}>
+            <div style={{textAlign:"center"}}>
+              <div style={{width:70,height:70,borderRadius:"50%",border:"3px solid #2c3e50",display:"flex",alignItems:"center",justifyContent:"center",background:"#f8f9fa"}}>
+                <img src="/assets/images/natobotics-logo.png" alt="Seal" style={{width:50,height:50,objectFit:"contain"}}/>
+              </div>
+            </div>
+            <div style={{textAlign:"right"}}>
+              <div style={{marginBottom:24,fontSize:11,color:"#7f8c8d",fontStyle:"italic"}}>This is a computer-generated payslip and does not require a signature.</div>
+              <div style={{borderTop:"1px solid #2c3e50",paddingTop:6,fontSize:11,fontWeight:700}}>Authorised Signatory</div>
+              <div style={{fontSize:10,color:"#5d6d7e"}}>Natobotics Technologies Pvt Ltd</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -29,53 +29,45 @@ import AddProfile from "./pages/JobManagement/AddProfile";
 import CreateJob from "./pages/JobManagement/CreateJob";
 
 const routes = [
-    // Public Route
-    { path: "/", element: <Login /> },
-    { path: "/login", element: <Login /> },
-    { path: "/sign-in", element: <Login /> },
-    { path: "/forgot-password", element: <ForgotPassword/>},
-
-    // Protected Routes
-    {
-        path: "/*", // Wildcard path for nested layout routes
-        element: (
-            <ProtectedRoute>
-                <Layout />
-            </ProtectedRoute>
-        ),
-        children: [
-            { path: "dashboard", element: <Dashboard /> },
-            { path: "employees", element: <Employees /> },
-            { path: "job-management", element: <JobManagement/> },
-            { path: "job-management/add-profile", element: <AddProfile/> },
-            { path: "job-management/create-job", element: <CreateJob/> },
-            { path: "job-management/update-job", element: <CreateJob/> },
-            { path: "attendance", element: <Attendance /> },
-            { path: "employees/working-hours", element: <WorkingHours /> },
-            { path: "employees/add-working-hours", element: <WorkingHoursForm /> },
-            { path: "employees/edit-working-hours", element: <WorkingHoursForm /> },
-            { path: "leave", element: <Leave /> },
-            { path: "leave/apply-leave", element: <LeaveForm /> },
-            { path: "employees/add-employee", element: <AddEmployee /> },
-            { path: "employees/edit-employee/:email", element: <AddEmployee />},
-            { path: "view-employee", element: <ViewEmployee /> },
-            { path: "announcement", element: <Announcement /> },
-            { path: "announcement/announcement-form", element: <AnnouncementForm /> },
-            { path: "payslip", element: <Payslip /> },
-            { path: "payslip/payslip-preview", element: <PayslipPreview /> },
-            { path: "timesheet", element: <TimeSheetLayout /> },
-            { path: "timesheet/timesheet-view", element: <TimesheetCalendar/>},
-            { path: "calendar", element: <Holiday/>},
-            { path: "calendar/create-event", element: <CreateHoliday/>},
-            { path: "calendar/edit-event", element: <CreateHoliday/>},
-            { path: "company-documents", element: <CompanyDocument/>},
-            { path: "company-documents/upload", element: <DocumentUploadForm/>},
-            { path: "company-documents/edit", element: <DocumentUploadForm/>},
-            { path: "*", element: <RoleBasedRedirect /> },
-        ],
-    },
-
-    { path: "*", element: <Navigate to="/" /> },
+  { path: "/", element: <Login /> },
+  { path: "/login", element: <Login /> },
+  { path: "/sign-in", element: <Login /> },
+  { path: "/forgot-password", element: <ForgotPassword /> },
+  {
+    path: "/*",
+    element: (<ProtectedRoute><Layout /></ProtectedRoute>),
+    children: [
+      { path: "dashboard", element: <Dashboard /> },
+      { path: "employees", element: <Employees /> },
+      { path: "job-management", element: <JobManagement /> },
+      { path: "job-management/add-profile", element: <AddProfile /> },
+      { path: "job-management/create-job", element: <CreateJob /> },
+      { path: "job-management/update-job", element: <CreateJob /> },
+      { path: "attendance", element: <Attendance /> },
+      { path: "employees/working-hours", element: <WorkingHours /> },
+      { path: "employees/add-working-hours", element: <WorkingHoursForm /> },
+      { path: "employees/edit-working-hours", element: <WorkingHoursForm /> },
+      { path: "leave", element: <Leave /> },
+      { path: "leave/apply-leave", element: <LeaveForm /> },
+      { path: "employees/add-employee", element: <AddEmployee /> },
+      { path: "employees/edit-employee/:email", element: <AddEmployee /> },
+      { path: "view-employee", element: <ViewEmployee /> },
+      { path: "announcement", element: <Announcement /> },
+      { path: "announcement/announcement-form", element: <AnnouncementForm /> },
+      { path: "payslip", element: <Payslip /> },
+      { path: "payslip/payslip-preview", element: <PayslipPreview /> },
+      { path: "timesheet", element: <TimeSheetLayout /> },
+      { path: "timesheet/timesheet-view", element: <TimesheetCalendar /> },
+      { path: "calendar", element: <Holiday /> },
+      { path: "calendar/create-event", element: <CreateHoliday /> },
+      { path: "calendar/edit-event", element: <CreateHoliday /> },
+      { path: "company-documents", element: <CompanyDocument /> },
+      { path: "company-documents/upload", element: <DocumentUploadForm /> },
+      { path: "company-documents/edit", element: <DocumentUploadForm /> },
+      { path: "*", element: <RoleBasedRedirect /> },
+    ],
+  },
+  { path: "*", element: <Navigate to="/" /> },
 ];
 
 export default routes;

@@ -1,412 +1,180 @@
 import React, { useEffect, useState } from "react";
-import { Card, CardContent, Typography, Box, Avatar, Divider, Button } from "@mui/material";
-import { File } from "lucide-react"
-import { makeStyles } from "@material-ui/core/styles";
 import { getCookie } from "../../services/Cookies";
 import { getRequest } from "../../services/Apiservice";
 import Breadcrumb from "../../services/Breadcrumb";
-import { Edit } from "lucide-react";
+import LoadingMask from "../../services/LoadingMask";
 import { useNavigate } from "react-router-dom";
+import dayjs from "dayjs";
+import {
+  Edit, User, Briefcase, DollarSign, GraduationCap,
+  Phone, MapPin, FileText, Shield, Heart, Clock,
+  Users
+} from "lucide-react";
 
-const useStyles = makeStyles((theme) => ({
-    rootBox: {
-        backgroundColor: "#fff",
-        padding: 16,
-        borderRadius: 8,
-        boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
-    },
-}));
-const ViewEmployee = ({ employee }) => {
-    const classes = useStyles();
-    const navigate = useNavigate();
-    const email = getCookie("email");
-    const breadCrumb = [{ label: "View Profile" }]
-    const [formvalues, setFormvalues] = useState({
-        firstName: "",
-        lastName: "",
-        gender: "",
-        dob: null,
-        maritalStatus: "",
-        nationality: "",
-        bloodGroup: "",
-        contactNumber: "",
-        email: "",
-        address: "",
-        employeeType: "",
-        department: "",
-        designation: "",
-        doj: null,
-        workLocation: "",
-        reportingManager: "",
-        accessRole:"",
-        employmentStatus: "",
-        employeeId: "",
-        ctc:"",
-        basicSalary:"",
-        hra:"",
-        employeePF:"",
-        pfAccountNumber:"",
-        medicalAllowance:"",
-        conveyanceAllowance:"",
-        esiNumber:"",
-        specialAllowance:"",
-        bankName: "",
-        accountNumber: "",
-        ifscCode: "",
-        panNumber: "",
-        uanNumber: "",
-        highestQualification: "",
-        specialization: "",
-        university: "",
-        yearOfPassing: "",
-        previousCompany: "",
-        totalExperience: "",
-        emergencyContactName: "",
-        emergencyContactNumber: "",
-        relationShip: "",
-        workShift: "",
-        workMode: "",
-        notes: "",
-        profilePhoto: null,
-        resume: null,
-        aadharCard: null,
-        panCard: null,
-        offerLetter: null
-    });
-
-    useEffect(() => {
-        fetchEmployeeData(email);
-    }, [email]);
-
-    const sanitize = (obj) => {
-        const ignoreKeys = ["resume", "aadharCard", "panCard", "offerLetter"];
-        const cleaned = {};
-
-        for (const key in obj) {
-            const value = obj[key];
-
-            // Skip cleaning for file-related keys
-            if (ignoreKeys.includes(key)) {
-                cleaned[key] = value;
-                continue;
-            }
-
-            cleaned[key] =
-                value === null || value === "" ? "-" : value;
-        }
-
-        return cleaned;
-    };
-
-
-    const formatDate = (val) => {
-        if (!val || val === "-") return "-";
-        try {
-            return new Date(val).toLocaleDateString("en-GB"); // DD/MM/YYYY
-        } catch {
-            return "-";
-        }
-    };
-
-    const fetchEmployeeData = () => {
-        getRequest(`User/GetUser/${email}`)
-            .then((res) => {
-                if (res.data && res.data.length > 0) {
-
-                    const data = sanitize(res.data[0]);
-                    setFormvalues({
-                        ...data,
-                        dob: formatDate(data.dob),
-                        doj: formatDate(data.doj),
-                       gender: data.gender && data.gender !== "-" ? 
-                        (data.gender === "M" ? "Male" : data.gender === "F" ? "Female" : "Other") : "-",
-                    });
-                }
-            })
-            .catch((err) => {
-                console.error("Error fetching user:", err);
-            });
-    };
-
-    const handleUpdateProfile = (email) => {
-        navigate(`/employees/edit-employee/${email}`);
-    };
-
-
-    const emp = employee || formvalues;
-
-    return (
-        <Box className={classes.rootBox} display="flex" flexDirection="column" gap={3}>
-            <Breadcrumb items={breadCrumb} />
-            <Card>
-                <CardContent>
-                    <Box
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="space-between"
-                        mb={1}
-                    >
-                        <Typography variant="h6">
-                            Personal Details
-                        </Typography>
-
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            startIcon={<Edit size={18} />}
-                           onClick={() => handleUpdateProfile(email)}
-                        >
-                            Update Profile
-                        </Button>
-                    </Box>
-
-                    <Divider sx={{ mb: 2 }} />
-
-                    <Box display="flex" gap={2} flexWrap="wrap">
-                        {/* Avatar */}
-                        <Box display="flex" flexDirection="column" alignItems="center" flex={1}>
-                            <Avatar
-                                src={emp.profilePhoto || ""}
-                                sx={{
-                                    width: 100,
-                                    height: 100,
-                                    mb: 1,
-                                    border: "2px solid #1976d2",
-                                    bgcolor: !emp.profilePhoto ? "#e0e0e0" : "transparent",
-                                    color: "#1976d2",
-                                    fontWeight: 500,
-                                }}
-                            >
-                                {!emp.profilePhoto && emp.firstName
-                                    ? emp.firstName.charAt(0) + emp.lastName.charAt(0)
-                                    : ""}
-                            </Avatar>
-
-                            <Typography variant="subtitle1" align="center" sx={{ mb: 1 }}>
-                                {emp.firstName} {emp.middleName} {emp.lastName}
-                            </Typography>
-                            <Typography variant="body2" align="center" sx={{ color: "#555" }}>
-                                {emp.jobTitle}
-                            </Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>First Name</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Last Name</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Gender</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Date of Birth</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Marital Status</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ color: "#555" }}>{emp.firstName}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.lastName}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.gender}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.dob}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.maritalStatus}</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Nationality</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Blood Group</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Phone Number</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Email Address</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Address</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ color: "#555" }}>{emp.nationality}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.bloodGroup}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.contactNumber}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.email}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.address}</Typography>
-                        </Box>
-                    </Box>
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardContent>
-                    <Typography variant="h6" gutterBottom>Employment Details</Typography>
-                    <Divider sx={{ mb: 2 }} />
-
-                    <Box display="flex" gap={2} flexWrap="wrap">
-
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Employee ID</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Employee Type</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Designation</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ color: "#555" }}>{emp.employeeId}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.employeeType}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.designation}</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Date of Joining</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Department</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Work Location (City)</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ color: "#555" }}>{emp.doj}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.department}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.workLocation}</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Employement Status</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Reporting Manager</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Access Role</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ color: "#555" }}>{emp.employmentStatus}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.reportingManager}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.accessRole}</Typography>
-                        </Box>
-                    </Box>
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardContent>
-                    <Typography variant="h6" gutterBottom>Salary Details</Typography>
-                    <Divider sx={{ mb: 2 }} />
-                    <Box display="flex" gap={2} flexWrap="wrap">
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>CTC</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>PF Employer</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Conveyance Allowance</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Bank Name</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>PAN Number</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ color: "#555" }}>{emp.ctc}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.employeePF}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.conveyanceAllowance}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.bankName}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.panNumber}</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Basic Salary</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>PF Account Number</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>ESI Number</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Account Number</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>UAN Number</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ color: "#555" }}>{emp.basicSalary}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.pfAccountNumber}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.esiNumber}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.accountNumber}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.uanNumber}</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>HRA</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Medical Allowance</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Special Allowance</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>IFSC Code</Typography>                            
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ color: "#555" }}>{emp.hra}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.medicalAllowance}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.specialAllowance}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.ifscCode}</Typography>
-                        </Box>
-                    </Box>
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardContent>
-                    <Typography variant="h6" gutterBottom>Education & Experience</Typography>
-                    <Divider sx={{ mb: 2 }} />
-                    <Box display="flex" gap={2} flexWrap="wrap">
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Highest Qualification</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Year of Passing</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ color: "#555" }}>{emp.highestQualification}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.yearOfPassing}</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Specialization</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Previous Company</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ color: "#555" }}>{emp.specialization}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.previousCompany}</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>University</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Total Experience</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ color: "#555" }}>{emp.university}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.totalExperience}</Typography>
-                        </Box>
-                    </Box>
-                </CardContent>
-            </Card>
-
-            {/* <Card>
-                <CardContent>
-                    <Typography variant="h6" gutterBottom>Documents & Other Info</Typography>
-                    <Divider sx={{ mb: 2 }} />
-                    <Box display="flex" gap={2} flexWrap="wrap">
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Resume</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Aadhar Card</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ color: "#555" }}>{emp.resume ? <File /> : "-"}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.aadharCard ? <File /> : "-"}</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>PAN Card</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ color: "#555" }}>{emp.panCard ? <File /> : "-"}</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Offer Letter</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ color: "#555" }}>{emp.offerLetter ? <File /> : "-"}</Typography>
-                        </Box>
-                    </Box>
-                </CardContent>
-            </Card> */}
-
-            <Card>
-                <CardContent>
-                    <Typography variant="h6" gutterBottom>Other Details</Typography>
-                    <Divider sx={{ mb: 2 }} />
-                    <Box display="flex" gap={2} flexWrap="wrap">
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Emerg Contact Name</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Work Shift</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ color: "#555" }}>{emp.emergencyContactName}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.workShift}</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Emerg Contact Number</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Work Mode</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ color: "#555" }}>{emp.emergencyContactNumber}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.workMode}</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Relationship</Typography>
-                            <Typography sx={{ fontWeight: 500, color: "#1976d2" }}>Notes</Typography>
-                        </Box>
-                        <Box display="flex" flexDirection="column" gap={1} flex={1}>
-                            <Typography sx={{ color: "#555" }}>{emp.relationship}</Typography>
-                            <Typography sx={{ color: "#555" }}>{emp.notes}</Typography>
-                        </Box>
-                    </Box>
-                </CardContent>
-            </Card>
-        </Box>
-    );
+const fmt = (v) => {
+  if (!v || v === "-") return "—";
+  if (v instanceof Date || (typeof v === "string" && v.match(/^\d{4}-/))) {
+    return dayjs(v).format("DD-MM-YYYY");
+  }
+  return v;
 };
 
-export default ViewEmployee;
+function Section({ icon, title, children }) {
+  return (
+    <div style={{ background: "var(--bg-card)", borderRadius: "var(--radius-lg)", border: "1px solid var(--border)", overflow: "hidden", boxShadow: "var(--shadow-sm)", marginBottom: 16 }}>
+      <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", background: "linear-gradient(135deg, var(--primary-ghost), #f0fdf4 80%)", display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ width: 34, height: 34, borderRadius: 10, background: "linear-gradient(135deg, var(--primary), var(--teal))", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {React.cloneElement(icon, { size: 17, color: "white" })}
+        </div>
+        <span style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 14, fontWeight: 800, color: "var(--text-primary)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{title}</span>
+      </div>
+      <div style={{ padding: "18px 20px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "12px 24px" }}>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, value }) {
+  return (
+    <div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>{label}</div>
+      <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-primary)" }}>{value || "—"}</div>
+    </div>
+  );
+}
+
+export default function ViewEmployee() {
+  const navigate = useNavigate();
+  const email = getCookie("email");
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getRequest(`User/GetUser/${email}`)
+      .then(res => { if (res.data?.length) setData(res.data[0]); })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [email]);
+
+  const fmtGender = (g) => g === "M" ? "Male" : g === "F" ? "Female" : g || "—";
+
+  if (loading) return <LoadingMask loading />;
+  if (!data) return <div style={{ textAlign: "center", padding: 60, color: "var(--text-muted)" }}>No profile data found</div>;
+
+  const initials = `${data.firstName?.[0] || ""}${data.lastName?.[0] || ""}`.toUpperCase();
+
+  return (
+    <div>
+      <div className="page-header">
+        <div>
+          <Breadcrumb icon={<Users size={13} />} items={[{ label: "View Profile" }]} />
+          <h1 className="page-title">My Profile</h1>
+          <p className="page-subtitle">Your employee information</p>
+        </div>
+        <button className="btn btn-primary" onClick={() => navigate(`/employees/edit-employee/${email}`)}>
+          <Edit size={15} /> Edit Profile
+        </button>
+      </div>
+
+      {/* Profile Hero Card */}
+      <div style={{ background: "linear-gradient(135deg, var(--primary-dark), var(--primary), var(--primary-light))", borderRadius: "var(--radius-xl)", padding: "28px 32px", marginBottom: 20, display: "flex", alignItems: "center", gap: 24, boxShadow: "0 8px 32px var(--primary-glow)", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", right: -30, top: -30, width: 180, height: 180, borderRadius: "50%", background: "rgba(255,255,255,0.07)" }} />
+        <div style={{ position: "absolute", right: 80, bottom: -40, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.05)" }} />
+
+        <div style={{ width: 80, height: 80, borderRadius: "50%", background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 28, fontWeight: 900, color: "white", border: "3px solid rgba(255,255,255,0.3)", flexShrink: 0, backdropFilter: "blur(10px)" }}>
+          {initials}
+        </div>
+        <div style={{ position: "relative", zIndex: 1 }}>
+          <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 22, fontWeight: 900, color: "white", lineHeight: 1.2 }}>
+            {data.firstName} {data.lastName}
+          </div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.8)", marginTop: 4 }}>
+            {data.designation} · {data.department}
+          </div>
+          <div style={{ display: "flex", gap: 12, marginTop: 10, flexWrap: "wrap" }}>
+            {[
+              { label: data.employeeId, icon: "🆔" },
+              { label: data.workLocation, icon: "📍" },
+              { label: data.accessRole, icon: "🔑" },
+            ].filter(b => b.label).map((b, i) => (
+              <span key={i} style={{ background: "rgba(255,255,255,0.15)", color: "white", padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600, backdropFilter: "blur(6px)" }}>
+                {b.icon} {b.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <Section icon={<User />} title="Personal Details">
+        <Field label="First Name" value={data.firstName} />
+        <Field label="Last Name" value={data.lastName} />
+        <Field label="Gender" value={fmtGender(data.gender)} />
+        <Field label="Date of Birth" value={fmt(data.dob)} />
+        <Field label="Marital Status" value={data.maritalStatus} />
+        <Field label="Nationality" value={data.nationality} />
+        <Field label="Blood Group" value={data.bloodGroup} />
+        <Field label="Contact Number" value={data.contactNumber} />
+        <Field label="Email Address" value={data.email} />
+        <Field label="Address" value={data.address} />
+      </Section>
+
+      <Section icon={<Briefcase />} title="Employment Details">
+        <Field label="Employee ID" value={data.employeeId} />
+        <Field label="Employee Type" value={data.employeeType} />
+        <Field label="Department" value={data.department} />
+        <Field label="Designation" value={data.designation} />
+        <Field label="Date of Joining" value={fmt(data.doj)} />
+        <Field label="Work Location" value={data.workLocation} />
+        <Field label="Work Shift" value={data.workShift} />
+        <Field label="Work Mode" value={data.workMode} />
+        <Field label="Employment Status" value={data.employmentStatus} />
+        <Field label="Reporting Manager" value={data.reportingManager} />
+        <Field label="Access Role" value={data.accessRole} />
+      </Section>
+
+      <Section icon={<DollarSign />} title="Salary & Compensation">
+        <Field label="CTC (Annual)" value={data.ctc ? `₹ ${Number(data.ctc).toLocaleString()}` : "—"} />
+        <Field label="Basic Salary" value={data.basicSalary ? `₹ ${Number(data.basicSalary).toLocaleString()}` : "—"} />
+        <Field label="HRA" value={data.hra ? `₹ ${Number(data.hra).toLocaleString()}` : "—"} />
+        <Field label="Medical Allowance" value={data.medicalAllowance ? `₹ ${Number(data.medicalAllowance).toLocaleString()}` : "—"} />
+        <Field label="Conveyance Allowance" value={data.conveyanceAllowance ? `₹ ${Number(data.conveyanceAllowance).toLocaleString()}` : "—"} />
+        <Field label="Special Allowance" value={data.specialAllowance ? `₹ ${Number(data.specialAllowance).toLocaleString()}` : "—"} />
+        <Field label="Employee PF" value={data.employeePF ? `₹ ${Number(data.employeePF).toLocaleString()}` : "—"} />
+        <Field label="PF Account Number" value={data.pfAccountNumber} />
+        <Field label="ESI Number" value={data.esiNumber} />
+      </Section>
+
+      <Section icon={<Shield />} title="Bank & Compliance">
+        <Field label="Bank Name" value={data.bankName} />
+        <Field label="Account Number" value={data.accountNumber} />
+        <Field label="IFSC Code" value={data.ifscCode} />
+        <Field label="PAN Number" value={data.panNumber} />
+        <Field label="UAN Number" value={data.uanNumber} />
+      </Section>
+
+      <Section icon={<GraduationCap />} title="Education & Experience">
+        <Field label="Highest Qualification" value={data.highestQualification} />
+        <Field label="Specialization" value={data.specialization} />
+        <Field label="University" value={data.university} />
+        <Field label="Year of Passing" value={data.yearOfPassing} />
+        <Field label="Previous Company" value={data.previousCompany} />
+        <Field label="Total Experience" value={data.totalExperience} />
+      </Section>
+
+      <Section icon={<Heart />} title="Emergency Contact">
+        <Field label="Contact Name" value={data.emergencyContactName} />
+        <Field label="Contact Number" value={data.emergencyContactNumber} />
+        <Field label="Relationship" value={data.relationship} />
+      </Section>
+
+      {data.notes && (
+        <Section icon={<FileText />} title="Notes">
+          <div style={{ gridColumn: "1 / -1", fontSize: 13.5, color: "var(--text-secondary)", lineHeight: 1.7 }}>{data.notes}</div>
+        </Section>
+      )}
+    </div>
+  );
+}
