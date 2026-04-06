@@ -19,12 +19,17 @@ const LeaveForm = () => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors]   = useState({});
 
+  // Handles both "DD-MM-YYYY" and ISO "2026-04-01T00:00:00" → "YYYY-MM-DD"
   const parseDMY = (s) => {
     if (!s) return "";
+    // ISO datetime string e.g. "2026-04-01T00:00:00"
+    if (s.includes("T")) return s.split("T")[0];
     const parts = s.split(/[-/]/);
     if (parts.length !== 3) return "";
-    // handles DD-MM-YYYY → YYYY-MM-DD for date input
-    const [d,m,y] = parts;
+    const [d, m, y] = parts;
+    // If first part is 4 digits it's already YYYY-MM-DD
+    if (d.length === 4) return `${d}-${m.padStart(2,"0")}-${parts[2].padStart(2,"0")}`;
+    // DD-MM-YYYY → YYYY-MM-DD
     return `${y}-${m.padStart(2,"0")}-${d.padStart(2,"0")}`;
   };
 
@@ -126,9 +131,17 @@ const LeaveForm = () => {
 
             <FormTextarea label="Reason for Leave" value={form.reason} onChange={e => set("reason")(e.target.value)} placeholder="Briefly describe the reason for your leave..." rows={3} />
 
-            {editData && (
-              <FormCheckbox label="Cancel this leave request" checked={form.cancelLeave} onChange={v => set("cancelLeave")(v)} />
-            )}
+            {editData && (() => {
+              // Use raw editData.fromDate for reliable comparison
+              const fromStr = editData.fromDate ? parseDMY(editData.fromDate) : form.fromDate;
+              const today = new Date();
+              const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+              const isPast = fromStr && fromStr < todayStr;
+              if (isPast) return null;
+              return (
+                <FormCheckbox label="Cancel this leave request" checked={form.cancelLeave} onChange={v => set("cancelLeave")(v)} />
+              );
+            })()}
           </FormSection>
         </FormCard>
       </div>
