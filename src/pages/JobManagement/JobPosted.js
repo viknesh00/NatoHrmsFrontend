@@ -19,6 +19,7 @@ export default function JobPosted() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const perPage = 6;
   const isAdmin = getCookie("role") === "Admin";
+  const isAdminOrManager = isAdmin || getCookie("role") === "Manager";
 
   useEffect(() => { loadJobs(); }, []);
 
@@ -136,7 +137,7 @@ export default function JobPosted() {
             </svg>
           </button>
 
-          {isAdmin && (
+          {isAdminOrManager && (
             <button
               className="btn btn-primary btn-sm"
               onClick={() => navigate("/job-management/create-job")}

@@ -4,7 +4,7 @@ import { getRequest, postRequest } from "../../services/Apiservice";
 import LoadingMask from "../../services/LoadingMask";
 import { ToastError, ToastSuccess } from "../../services/ToastMsg";
 import Breadcrumb from "../../services/Breadcrumb";
-import { Upload, Eye, Trash2, Save, X, Briefcase } from "lucide-react";
+import { Upload, Eye, Trash2, Save, X, Briefcase, Users } from "lucide-react";
 
 const STATUS_OPTS = [
   { label: "New",            value: "New" },
@@ -163,7 +163,7 @@ export default function AddProfile() {
       <div className="page-header">
         <div>
           <Breadcrumb
-            icon={<Briefcase size={13} />}
+            icon={<Users size={13} />}
             items={[
               { label: "Job Management", link: "/job-management" },
               { label: "Add Profile" },

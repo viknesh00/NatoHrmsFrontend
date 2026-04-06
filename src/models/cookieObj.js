@@ -3,6 +3,7 @@ export const cookieObj = {
   isLoggedIn: '',
   email: '',
   role: '',
+  department: '',
   isDefaultPasswordChanged: '',
   firstName: '',
   lastName: '',

@@ -25,7 +25,7 @@ const Login = () => {
         if (res.status === 200 && res.data?.token) {
           ToastSuccess("Login successful!");
           const todayClockInTime = isToday(res.data.clockIn) ? res.data.clockIn : "";
-          cookieKeys({ ...cookieObj, token: res.data.token, isLoggedIn: true, email: res.data.email, role: res.data.role, isDefaultPasswordChanged: res.data.isDefaultPasswordChanged, firstName: res.data.firstName, lastName: res.data.lastName, employeeId: res.data.employeeId, clockInTime: todayClockInTime }, new Date(res.data.expiration));
+          cookieKeys({ ...cookieObj, token: res.data.token, isLoggedIn: true, email: res.data.email, role: res.data.role, department: res.data.department || "", isDefaultPasswordChanged: res.data.isDefaultPasswordChanged, firstName: res.data.firstName, lastName: res.data.lastName, employeeId: res.data.employeeId, clockInTime: todayClockInTime }, new Date(res.data.expiration));
           setTimeout(() => navigate("/dashboard"), 800);
         } else ToastError("Invalid credentials!");
       })

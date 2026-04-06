@@ -87,6 +87,7 @@ export default function CreateJob() {
       <div className="page-header">
         <div>
           <Breadcrumb
+            icon={<Briefcase size={13} />}
             items={[
               { label: "Job Management", link: "/job-management" },
               { label: editData ? "Edit Job" : "Create Job" },

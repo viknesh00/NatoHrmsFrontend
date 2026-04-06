@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Eye } from "lucide-react";
+import { ClipboardList, Eye } from "lucide-react";
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
 import { getRequest } from "../../services/Apiservice";
@@ -108,7 +108,7 @@ export default function TimeSheetOverview() {
       <LoadingMask loading={loading} />
       <div className="page-header">
         <div>
-          <Breadcrumb items={[{ label: "Timesheet" }]} />
+          <Breadcrumb icon={<ClipboardList size={13} />} items={[{ label: "Timesheet" }]} />
           <h1 className="page-title">Timesheet</h1>
           <p className="page-subtitle">Monthly working hours overview</p>
         </div>

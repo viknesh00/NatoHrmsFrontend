@@ -14,7 +14,7 @@ const menuItems = [
   { to:"/dashboard",         label:"Dashboard",      icon:<LayoutDashboard size={18}/>, roles:["Admin","Manager","Employee"] },
   { to:"/employees",         label:"Employees",      icon:<Users size={18}/>,           roles:["Admin","Manager"] },
   { to:"/timesheet",         label:"Timesheet",      icon:<ClipboardList size={18}/>,   roles:["Admin","Manager","Employee"] },
-  //{ to:"/job-management",    label:"Job Management", icon:<Briefcase size={18}/>,       roles:["Admin","Manager","Employee"] },
+  //{ to:"/job-management",    label:"Job Management", icon:<Briefcase size={18}/>,       roles:["Admin","Manager","Employee"], departments:["hr-offshore"] },
   { to:"/attendance",        label:"Attendance",     icon:<CalendarCheck2 size={18}/>,  roles:["Admin","Manager","Employee"] },
   //{ to:"/payslip",           label:"Payslip",        icon:<Receipt size={18}/>,         roles:["Admin"] },
   { to:"/company-documents", label:"Documents",      icon:<File size={18}/>,            roles:["Admin","Manager","Employee"] },
@@ -104,7 +104,18 @@ export default function Sidebar() {
   const [showLogout, setShowLogout] = useState(false);
   const navigate = useNavigate();
   const userRole = getCookie("role") || "Employee";
-  const filtered = menuItems.filter(m => m.roles.includes(userRole));
+
+  const userDepartment = (getCookie("department") || "").trim().toLowerCase();
+  const filtered = menuItems.filter(m => {
+    if (!m.roles.includes(userRole)) return false;
+    // Admin sees everything regardless of department
+    if (userRole === "Admin") return true;
+    // For other roles, check department whitelist if present
+    if (m.departments && m.departments.length > 0) {
+      return m.departments.includes(userDepartment);
+    }
+    return true;
+  });
 
   const handleLogout = () => {
     cookieKeys(cookieObj, 0);

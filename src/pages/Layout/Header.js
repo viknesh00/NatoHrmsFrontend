@@ -4,6 +4,7 @@ import { cookieKeys, getCookie, setCookie } from "../../services/Cookies";
 import { cookieObj } from "../../models/cookieObj";
 import PasswordChange from "../../services/PasswordChange";
 import { useNavigate } from "react-router-dom";
+import { refreshUserCookies } from "./Layout";
 import { getRequest, postRequest } from "../../services/Apiservice";
 import LoadingMask from "../../services/LoadingMask";
 import { ToastError, ToastSuccess } from "../../services/ToastMsg";
@@ -195,7 +196,10 @@ const Header = () => {
     checkStatus();
 
     const onVisibility = () => {
-      if (!document.hidden) checkStatus();
+      if (!document.hidden) {
+        checkStatus();
+        refreshUserCookies(); // re-sync cookies whenever tab is focused
+      }
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
