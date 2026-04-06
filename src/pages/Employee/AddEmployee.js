@@ -26,6 +26,10 @@ const WORK_SHIFT_OPTIONS = [{ label: "Day", value: "Day" }, { label: "Night", va
 const WORK_MODE_OPTIONS = [{ label: "Office", value: "Office" }, { label: "Remote", value: "Remote" }, { label: "Hybrid", value: "Hybrid" }];
 const RELATION_OPTIONS = [{ label: "Spouse", value: "Spouse" }, { label: "Parent", value: "Parent" }, { label: "Friend", value: "Friend" }];
 
+// ✅ Helper: prepends an empty placeholder option to any options array
+// This ensures FormSelect shows blank (not first option) when value is ""
+const withPlaceholder = (label, options) => [{ label, value: "" }, ...options];
+
 export default function AddEmployee() {
     const navigate = useNavigate();
     const { email } = useParams();
@@ -91,7 +95,7 @@ export default function AddEmployee() {
         // ── Other ─────────────────────────────────────────────────
         emergencyContactName: "",
         emergencyContactNumber: "",
-        relationship: "",   // ✅ API key (not relationShip)
+        relationship: "",
         workShift: "",
         workMode: "",
         notes: "",
@@ -122,7 +126,7 @@ export default function AddEmployee() {
         getRequest(`User/GetUser/${email}`)
             .then(res => {
                 if (res.data?.length > 0) {
-                    const d = res.data[0]; // ✅ use exact API keys from response
+                    const d = res.data[0];
                     setFormvalues({
                         firstName: d.firstName || "",
                         lastName: d.lastName || "",
@@ -165,7 +169,7 @@ export default function AddEmployee() {
                         totalExperience: d.totalExperience ?? "",
                         emergencyContactName: d.emergencyContactName || "",
                         emergencyContactNumber: d.emergencyContactNumber || "",
-                        relationship: d.relationship || "", // ✅ exact API key
+                        relationship: d.relationship || "",
                         workShift: d.workShift || "",
                         workMode: d.workMode || "",
                         notes: d.notes || "",
@@ -181,7 +185,6 @@ export default function AddEmployee() {
             let value = data[key];
             if (key === "dob" || key === "doj") {
                 if (value && value !== "") {
-                    // ✅ Append time as noon UTC to avoid date shifting across timezones
                     const parsed = new Date(value + "T12:00:00.000Z");
                     value = isNaN(parsed) ? null : parsed.toISOString();
                 } else {
@@ -275,11 +278,12 @@ export default function AddEmployee() {
                         </FormRow>
                         <FormRow cols={3}>
                             <FormDate label="Date of Birth" value={formvalues.dob} onChange={set("dob")} />
-                            <FormSelect label="Gender" options={GENDER_OPTIONS} value={formvalues.gender} onChange={set("gender")} />
-                            <FormSelect label="Marital Status" options={MARITAL_OPTIONS} value={formvalues.maritalStatus} onChange={set("maritalStatus")} />
+                            {/* ✅ withPlaceholder ensures blank selection when value="" (Add mode) */}
+                            <FormSelect label="Gender" options={withPlaceholder("Select Gender", GENDER_OPTIONS)} value={formvalues.gender} onChange={set("gender")} />
+                            <FormSelect label="Marital Status" options={withPlaceholder("Select Status", MARITAL_OPTIONS)} value={formvalues.maritalStatus} onChange={set("maritalStatus")} />
                         </FormRow>
                         <FormRow cols={3}>
-                            <FormSelect label="Blood Group" options={BLOOD_OPTIONS} value={formvalues.bloodGroup} onChange={set("bloodGroup")} />
+                            <FormSelect label="Blood Group" options={withPlaceholder("Select Blood Group", BLOOD_OPTIONS)} value={formvalues.bloodGroup} onChange={set("bloodGroup")} />
                             <FormInput label="Nationality" value={formvalues.nationality} onChange={set("nationality")} placeholder="e.g. Indian" />
                             <FormInput label="Contact Number" type="number" value={formvalues.contactNumber} onChange={set("contactNumber")} placeholder="e.g. 9876543210" />
                         </FormRow>
@@ -295,18 +299,21 @@ export default function AddEmployee() {
                     <FormSection title="Employment Info">
                         <FormRow cols={3}>
                             <FormInput label="Employee ID *" value={formvalues.employeeId} onChange={set("employeeId")} disabled={!isAdminOrManager} placeholder="e.g. EMP-001" />
-                            <FormSelect label="Employee Type" options={EMP_TYPE_OPTIONS} value={formvalues.employeeType} onChange={set("employeeType")} disabled={!isAdminOrManager} />
+                            {/* ✅ withPlaceholder: shows blank in Add mode, shows saved value in Edit mode */}
+                            <FormSelect label="Employee Type" options={withPlaceholder("Select Type", EMP_TYPE_OPTIONS)} value={formvalues.employeeType} onChange={set("employeeType")} disabled={!isAdminOrManager} />
                             <FormInput label="Designation" value={formvalues.designation} onChange={set("designation")} disabled={!isAdminOrManager} placeholder="e.g. Software Engineer" />
                         </FormRow>
                         <FormRow cols={3}>
                             <FormDate label="Date of Joining" value={formvalues.doj} onChange={set("doj")} disabled={!isAdminOrManager} />
-                            <FormSelect label="Department *" options={departmentNames} value={formvalues.department} onChange={set("department")} disabled={!isAdminOrManager} />
+                            {/* ✅ Department: blank placeholder prepended; API options added dynamically */}
+                            <FormSelect label="Department *" options={withPlaceholder("Select Department", departmentNames)} value={formvalues.department} onChange={set("department")} disabled={!isAdminOrManager} />
                             <FormInput label="Work Location (City) *" value={formvalues.workLocation} onChange={set("workLocation")} disabled={!isAdminOrManager} placeholder="e.g. Chennai" />
                         </FormRow>
                         <FormRow cols={3}>
-                            <FormSelect label="Employment Status" options={EMP_STATUS_OPTIONS} value={formvalues.employmentStatus} onChange={set("employmentStatus")} disabled={!isAdminOrManager} />
-                            <FormSelect label="Reporting Manager *" options={managerList} value={formvalues.reportingManager} onChange={set("reportingManager")} disabled={!isAdminOrManager} />
-                            <FormSelect label="Access Role *" options={ACCESS_ROLE_OPTIONS} value={formvalues.accessRole} onChange={set("accessRole")} disabled={!isAdminOrManager} />
+                            <FormSelect label="Employment Status" options={withPlaceholder("Select Status", EMP_STATUS_OPTIONS)} value={formvalues.employmentStatus} onChange={set("employmentStatus")} disabled={!isAdminOrManager} />
+                            {/* ✅ Reporting Manager: blank placeholder; options from API */}
+                            <FormSelect label="Reporting Manager *" options={withPlaceholder("Select Manager", managerList)} value={formvalues.reportingManager} onChange={set("reportingManager")} disabled={!isAdminOrManager} />
+                            <FormSelect label="Access Role *" options={withPlaceholder("Select Role", ACCESS_ROLE_OPTIONS)} value={formvalues.accessRole} onChange={set("accessRole")} disabled={!isAdminOrManager} />
                         </FormRow>
                     </FormSection>
                 );
@@ -367,14 +374,14 @@ export default function AddEmployee() {
                             <FormRow cols={3}>
                                 <FormInput label="Emergency Contact Name" value={formvalues.emergencyContactName} onChange={set("emergencyContactName")} placeholder="e.g. Jane Doe" />
                                 <FormInput label="Emergency Contact Number" type="number" value={formvalues.emergencyContactNumber} onChange={set("emergencyContactNumber")} />
-                                <FormSelect label="Relationship" options={RELATION_OPTIONS} value={formvalues.relationship} onChange={set("relationship")} />
                                 {/* ✅ API key is "relationship" not "relationShip" */}
+                                <FormSelect label="Relationship" options={withPlaceholder("Select Relation", RELATION_OPTIONS)} value={formvalues.relationship} onChange={set("relationship")} />
                             </FormRow>
                         </FormSection>
                         <FormSection title="Work Preferences">
                             <FormRow cols={3}>
-                                <FormSelect label="Work Shift" options={WORK_SHIFT_OPTIONS} value={formvalues.workShift} onChange={set("workShift")} />
-                                <FormSelect label="Work Mode" options={WORK_MODE_OPTIONS} value={formvalues.workMode} onChange={set("workMode")} />
+                                <FormSelect label="Work Shift" options={withPlaceholder("Select Shift", WORK_SHIFT_OPTIONS)} value={formvalues.workShift} onChange={set("workShift")} />
+                                <FormSelect label="Work Mode" options={withPlaceholder("Select Mode", WORK_MODE_OPTIONS)} value={formvalues.workMode} onChange={set("workMode")} />
                                 <FormInput label="Notes" value={formvalues.notes} onChange={set("notes")} placeholder="Any additional notes..." />
                             </FormRow>
                         </FormSection>
