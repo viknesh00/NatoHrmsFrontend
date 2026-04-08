@@ -55,6 +55,7 @@ const LeaveForm = () => {
     if (form.fromDate && form.toDate && form.toDate < form.fromDate) e.toDate = "To date must be after from date";
     if (!form.leaveType) e.leaveType = "Leave type is required";
     if (!form.dayType)   e.dayType   = "Day type is required";
+    if (!form.reason || !form.reason.trim()) e.reason = "Reason is required";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -129,7 +130,8 @@ const LeaveForm = () => {
               <FormDropdown label="Leave Type" required options={LEAVE_TYPES} value={form.leaveType} onChange={o => set("leaveType")(o.value)} error={errors.leaveType} placeholder="Select leave type..." />
             </FormRow>
 
-            <FormTextarea label="Reason for Leave" value={form.reason} onChange={e => set("reason")(e.target.value)} placeholder="Briefly describe the reason for your leave..." rows={3} />
+            <FormTextarea label="Reason for Leave" required value={form.reason} onChange={e => set("reason")(e.target.value)} placeholder="Briefly describe the reason for your leave..." rows={3} error={errors.reason}
+/>
 
             {editData && (() => {
               // Use raw editData.fromDate for reliable comparison
