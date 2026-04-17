@@ -257,6 +257,53 @@ function guessFieldType(values) {
   return "select";
 }
 
+/* ─── smart sort comparator ─── */
+function smartCompare(av, bv) {
+  const s1 = String(av ?? ""), s2 = String(bv ?? "");
+
+  // ISO / YYYY-MM-DD (and datetime variants like "2024-03-15 09:30")
+  const isoRe = /^\d{4}-\d{2}-\d{2}/;
+  if (isoRe.test(s1) && isoRe.test(s2)) return new Date(s1) - new Date(s2);
+
+  // DD-MM-YYYY (hyphen-separated)
+  const dmyHyphenRe = /^(\d{2})-(\d{2})-(\d{4})$/;
+  const dh1 = s1.match(dmyHyphenRe), dh2 = s2.match(dmyHyphenRe);
+  if (dh1 && dh2) {
+    return new Date(`${dh1[3]}-${dh1[2]}-${dh1[1]}`) - new Date(`${dh2[3]}-${dh2[2]}-${dh2[1]}`);
+  }
+
+  // DD/MM/YYYY — reparse as YYYY-MM-DD for correct Date comparison
+  const dmyRe = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+  const d1 = s1.match(dmyRe), d2 = s2.match(dmyRe);
+  if (d1 && d2) {
+    return new Date(`${d1[3]}-${d1[2]}-${d1[1]}`) - new Date(`${d2[3]}-${d2[2]}-${d2[1]}`);
+  }
+
+  // MM/DD/YYYY fallback (US style)
+  const mdyRe = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+  const m1 = s1.match(mdyRe), m2 = s2.match(mdyRe);
+  if (m1 && m2) return new Date(s1) - new Date(s2);
+
+  // HH:MM or H:MM with optional seconds and AM/PM  e.g. "9:05 AM", "14:30", "09:30:00"
+  const timeRe = /^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i;
+  const t1 = s1.match(timeRe), t2 = s2.match(timeRe);
+  if (t1 && t2) {
+    const toSeconds = m => {
+      let h = parseInt(m[1], 10);
+      const min = parseInt(m[2], 10);
+      const sec = m[3] ? parseInt(m[3], 10) : 0;
+      const period = (m[4] || "").toUpperCase();
+      if (period === "PM" && h !== 12) h += 12;
+      if (period === "AM" && h === 12) h = 0;
+      return h * 3600 + min * 60 + sec;
+    };
+    return toSeconds(t1) - toSeconds(t2);
+  }
+
+  // fallback — locale-aware with numeric collation
+  return s1.localeCompare(s2, undefined, { numeric: true, sensitivity: "base" });
+}
+
 /* ─── StatusChip ─── */
 export function StatusChip({ label }) {
   const map = {
@@ -329,8 +376,8 @@ export default function ProTable({
     return meta;
   }, [data, visibleCols]);
 
-  const hasAutoFilters   = Object.keys(filterMeta).length > 0;
-  const hasAnyFilter     = filterComponents || hasAutoFilters;
+  const hasAutoFilters    = Object.keys(filterMeta).length > 0;
+  const hasAnyFilter      = filterComponents || hasAutoFilters;
   const activeFilterCount = Object.values(columnFilters).filter(Boolean).length + externalFilters.filter(f => f.value).length;
 
   /* sync draft when panel opens */
@@ -341,6 +388,8 @@ export default function ProTable({
   /* processed rows */
   const processed = useMemo(() => {
     let rows = [...data];
+
+    // global search
     if (search.trim()) {
       const q = search.toLowerCase();
       rows = rows.filter(row =>
@@ -351,11 +400,12 @@ export default function ProTable({
         })
       );
     }
+
+    // column filters
     Object.entries(columnFilters).forEach(([field, val]) => {
       if (!val) return;
       const meta = filterMeta[field];
       if (meta?.type === "date") {
-        // date range support: val can be { from, to } or plain string
         if (val.from || val.to) {
           rows = rows.filter(row => {
             const rv = row[field];
@@ -371,13 +421,15 @@ export default function ProTable({
         rows = rows.filter(row => String(row[field] ?? "") === String(val));
       }
     });
+
+    // sort — uses smartCompare for correct date/time ordering
     if (sortCol) {
       rows.sort((a, b) => {
-        const av = a[sortCol] ?? ""; const bv = b[sortCol] ?? "";
-        const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
+        const cmp = smartCompare(a[sortCol], b[sortCol]);
         return sortDir === "asc" ? cmp : -cmp;
       });
     }
+
     return rows;
   }, [data, search, columnFilters, sortCol, sortDir, visibleCols, filterMeta]);
 
@@ -561,10 +613,10 @@ export default function ProTable({
 
           <div className="pt-filter-panel-body">
 
-            {/* custom filterComponents from parent — flows inline with auto-fields in the same grid */}
+            {/* custom filterComponents from parent */}
             {filterComponents}
 
-            {/* auto-generated FormComponent fields from filterable columns */}
+            {/* auto-generated fields from filterable columns */}
             {hasAutoFilters && Object.entries(filterMeta).map(([field, meta]) => {
 
               if (meta.type === "select") {
