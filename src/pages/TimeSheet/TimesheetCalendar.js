@@ -134,11 +134,15 @@ export default function TimesheetCalendar() {
     if (date.isAfter(today, "day")) return "future";
     if (!currentMonth.isSame(today, "month") && !isViewMode) return "pastlock";
     const holiday = getHolidayForDay(date); if (holiday) return "holiday";
-    const isWknd  = date.day() === 0 || date.day() === 6;
-    const leave   = getLeaveForDay(date);
+    const isWknd = date.day() === 0 || date.day() === 6;
+    const leave = getLeaveForDay(date);
     if (leave && !leave.approverReason)
       return leave.isApproved === true || leave.isApproved === "true" ? "approved" : "leave";
     const entry = entries[date.format("YYYY-MM-DD")];
+
+    // ✅ NEW: if timesheet entry has a leaveType logged, show as leave
+    if (entry?.leaveType && !entry?.hours) return "leave";
+
     if (isWknd && !entry?.hours) return "weekend";
     if (!entry || entry.hours === 0) return isWknd ? "weekend" : "empty";
     if (entry.hours >= 8) return "filled";
@@ -199,8 +203,8 @@ export default function TimesheetCalendar() {
 
     const upd = { ...entries };
     upd[selDate.format("YYYY-MM-DD")] = {
-      task:      JSON.stringify(validTasks),
-      hours:     totalHrs,
+      task: validTasks.length ? JSON.stringify(validTasks) : "",  // ✅ sends "" when no tasks
+      hours: totalHrs,
       leaveType: !totalHrs ? leaveType : null,
     };
 
@@ -434,7 +438,16 @@ export default function TimesheetCalendar() {
                           <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", height:"100%", padding:"6px", gap:4 }}>
                             <div style={{ position:"absolute", top:6, left:8, fontSize:12, fontWeight: isToday2 ? 900 : 600, color: isToday2 ? "var(--primary)" : s.text, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>{day.format("D")}</div>
                             {holiday && <div style={{ fontSize:10, color:s.text, fontWeight:700, textAlign:"center", maxWidth:"90%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", background:"rgba(255,255,255,0.5)", padding:"2px 5px", borderRadius:4 }}>{holiday.eventName}</div>}
-                            {leave && !holiday && <div style={{ fontSize:10, color:s.text, fontWeight:700, textAlign:"center", maxWidth:"90%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{leave.leaveType}</div>}
+                            {leave && !holiday && (
+                              <div style={{ fontSize: 10, color: s.text, fontWeight: 700, textAlign: "center", maxWidth: "90%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {leave.leaveType}
+                              </div>
+                            )}
+                            {!leave && !holiday && entry?.leaveType && (
+                              <div style={{ fontSize: 10, color: s.text, fontWeight: 700, textAlign: "center", maxWidth: "90%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {entry.leaveType}
+                              </div>
+                            )}
                             {entry?.hours > 0 && !holiday && !leave && <span style={{ fontSize:18, fontWeight:900, color:s.text, fontFamily:"'Plus Jakarta Sans',sans-serif", lineHeight:1 }}>{entry.hours}h</span>}
                             {status === "pastlock" && <div style={{ fontSize:16, color:s.text, textAlign:"center" }}>🔒</div>}
                             {entry?.task && !holiday && !leave && <div style={{ width:5, height:5, borderRadius:"50%", background:s.text, opacity:0.5, flexShrink:0 }} />}

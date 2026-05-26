@@ -238,6 +238,99 @@ export function FormTextarea({ label, required, hint, error, ...props }) {
   );
 }
 
+/* ── FormMultiSelect ── */
+export function FormMultiSelect({ label, required, hint, error, options = [], value = [], onChange, disabled, placeholder = "Select..." }) {
+  injectStyles();
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  // value is always an array of selected values e.g. ["Proj A", "Proj B"]
+  const selected = options.filter(o => value.includes(o.value ?? o));
+
+  useEffect(() => {
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  const toggle = (opt) => {
+    const val = opt.value ?? opt;
+    const next = value.includes(val) ? value.filter(v => v !== val) : [...value, val];
+    onChange && onChange(next);
+  };
+
+  const remove = (val, e) => {
+    e.stopPropagation();
+    onChange && onChange(value.filter(v => v !== val));
+  };
+
+  return (
+    <div className="fc-group" ref={ref}>
+      {label && <label className="fc-label">{label}{required && <span className="req">*</span>}</label>}
+      <div className="fc-dd">
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => !disabled && setOpen(o => !o)}
+          className={`fc-dd-trigger${open ? " open" : ""}${disabled ? " disabled" : ""}`}
+          style={{ flexWrap: "wrap", height: "auto", minHeight: 42, gap: 4, alignItems: "center" }}
+        >
+          {selected.length === 0 ? (
+            <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>{placeholder}</span>
+          ) : (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, flex: 1 }}>
+              {selected.map(o => {
+                const val = o.value ?? o; const lbl = o.label ?? o;
+                return (
+                  <span key={val} style={{
+                    display: "inline-flex", alignItems: "center", gap: 4,
+                    background: "var(--primary-ghost)", color: "var(--primary)",
+                    borderRadius: 6, padding: "2px 8px", fontSize: 12, fontWeight: 600,
+                    border: "1px solid var(--primary)", lineHeight: 1.6
+                  }}>
+                    {lbl}
+                    {!disabled && (
+                      <span onClick={(e) => remove(val, e)} style={{ cursor: "pointer", display: "flex", alignItems: "center", marginLeft: 2 }}>
+                        <X size={11} />
+                      </span>
+                    )}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+          <ChevronDown size={15} color="var(--text-muted)" style={{ transform: open ? "rotate(180deg)" : "", transition: "transform 0.2s", flexShrink: 0, marginLeft: "auto" }} />
+        </button>
+
+        {open && (
+          <div className="fc-dd-menu">
+            {options.length === 0
+              ? <div className="fc-dd-empty">No options</div>
+              : options.map(o => {
+                  const val = o.value ?? o; const lbl = o.label ?? o;
+                  const isSel = value.includes(val);
+                  return (
+                    <div key={val} className={`fc-dd-item${isSel ? " selected" : ""}`} onClick={() => toggle(o)}>
+                      <span>{lbl}</span>
+                      {isSel && <Check size={14} />}
+                    </div>
+                  );
+                })
+            }
+          </div>
+        )}
+      </div>
+      {selected.length > 0 && (
+        <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 5 }}>
+          {selected.length} project{selected.length > 1 ? "s" : ""} selected
+        </div>
+      )}
+      {error && <div className="fc-error">{error}</div>}
+      {hint && !error && <div className="fc-hint">{hint}</div>}
+    </div>
+  );
+}
+
 /* ── FormSelect (native) ── */
 export function FormSelect({ label, required, hint, error, options = [], placeholder, ...props }) {
   injectStyles();

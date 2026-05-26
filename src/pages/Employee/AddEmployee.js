@@ -1,183 +1,299 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getRequest, postRequest } from "../../services/Apiservice";
 import { ToastError, ToastSuccess } from "../../services/ToastMsg";
 import LoadingMask from "../../services/LoadingMask";
 import Breadcrumb from "../../services/Breadcrumb";
-import { Users, X } from "lucide-react";
+import { Users, X, ChevronDown, Check } from "lucide-react";
 import { getCookie } from "../../services/Cookies";
-import { FormInput, FormSelect, FormRow, FormSection, FormDate  } from "../../components/FormComponents";
+import { FormInput, FormSelect, FormRow, FormSection, FormDate } from "../../components/FormComponents";
 
+/* ──────────────────────────────────────────────
+   Inline FormMultiSelect  (no extra file needed)
+   ────────────────────────────────────────────── */
+function FormMultiSelect({
+  label, required, hint, error,
+  options = [], value = [], onChange,
+  disabled, placeholder = "Select...",
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  const selected = options.filter((o) => value.includes(o.value ?? o));
+
+  useEffect(() => {
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  const toggle = (opt) => {
+    const val = opt.value ?? opt;
+    const next = value.includes(val) ? value.filter((v) => v !== val) : [...value, val];
+    onChange && onChange(next);
+  };
+
+  const remove = (val, e) => {
+    e.stopPropagation();
+    onChange && onChange(value.filter((v) => v !== val));
+  };
+
+  return (
+    <div className="fc-group" ref={ref}>
+      {label && (
+        <label className="fc-label">
+          {label}{required && <span className="req">*</span>}
+        </label>
+      )}
+      <div className="fc-dd">
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => !disabled && setOpen((o) => !o)}
+          className={`fc-dd-trigger${open ? " open" : ""}${disabled ? " disabled" : ""}`}
+          style={{
+            flexWrap: "wrap", height: "auto", minHeight: 42,
+            gap: 4, alignItems: "center",
+          }}
+        >
+          {selected.length === 0 ? (
+            <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>{placeholder}</span>
+          ) : (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, flex: 1 }}>
+              {selected.map((o) => {
+                const val = o.value ?? o;
+                const lbl = o.label ?? o;
+                return (
+                  <span
+                    key={val}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 4,
+                      background: "var(--primary-ghost)", color: "var(--primary)",
+                      borderRadius: 6, padding: "2px 8px", fontSize: 12, fontWeight: 600,
+                      border: "1px solid var(--primary)", lineHeight: 1.6,
+                    }}
+                  >
+                    {lbl}
+                    {!disabled && (
+                      <span
+                        onClick={(e) => remove(val, e)}
+                        style={{ cursor: "pointer", display: "flex", alignItems: "center", marginLeft: 2 }}
+                      >
+                        <X size={11} />
+                      </span>
+                    )}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+          <ChevronDown
+            size={15}
+            color="var(--text-muted)"
+            style={{
+              transform: open ? "rotate(180deg)" : "",
+              transition: "transform 0.2s",
+              flexShrink: 0,
+              marginLeft: "auto",
+            }}
+          />
+        </button>
+
+        {open && (
+          <div className="fc-dd-menu">
+            {options.length === 0 ? (
+              <div className="fc-dd-empty">No options</div>
+            ) : (
+              options.map((o) => {
+                const val = o.value ?? o;
+                const lbl = o.label ?? o;
+                const isSel = value.includes(val);
+                return (
+                  <div
+                    key={val}
+                    className={`fc-dd-item${isSel ? " selected" : ""}`}
+                    onClick={() => toggle(o)}
+                  >
+                    <span>{lbl}</span>
+                    {isSel && <Check size={14} />}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+      </div>
+
+      {selected.length > 0 && (
+        <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 5 }}>
+          {selected.length} project{selected.length > 1 ? "s" : ""} selected
+        </div>
+      )}
+      {error && <div className="fc-error">{error}</div>}
+      {hint && !error && <div className="fc-hint">{hint}</div>}
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────
+   Constants
+   ────────────────────────────────────────────── */
 const steps = [
-    "Personal Details",
-    "Employment Details",
-    "Salary Details",
-    "Education & Experience",
-    "Other Details",
+  "Personal Details",
+  "Employment Details",
+  "Salary Details",
+  "Education & Experience",
+  "Other Details",
 ];
 
-const GENDER_OPTIONS = [{ label: "Male", value: "M" }, { label: "Female", value: "F" }, { label: "Other", value: "O" }];
-const MARITAL_OPTIONS = [{ label: "Single", value: "Single" }, { label: "Married", value: "Married" }];
-const BLOOD_OPTIONS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map(g => ({ label: g, value: g }));
-const EMP_TYPE_OPTIONS = [{ label: "Permanent", value: "Permanent" }, { label: "Contract", value: "Contract" }, { label: "Intern", value: "Intern" }];
-const EMP_STATUS_OPTIONS = [{ label: "Active", value: "Active" }, { label: "Probation", value: "Probation" }, { label: "Resigned", value: "Resigned" }];
+const GENDER_OPTIONS      = [{ label: "Male", value: "M" }, { label: "Female", value: "F" }, { label: "Other", value: "O" }];
+const MARITAL_OPTIONS     = [{ label: "Single", value: "Single" }, { label: "Married", value: "Married" }];
+const BLOOD_OPTIONS       = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((g) => ({ label: g, value: g }));
+const EMP_TYPE_OPTIONS    = [{ label: "Permanent", value: "Permanent" }, { label: "Contract", value: "Contract" }, { label: "Intern", value: "Intern" }];
+const EMP_STATUS_OPTIONS  = [{ label: "Active", value: "Active" }, { label: "Probation", value: "Probation" }, { label: "Resigned", value: "Resigned" }];
 const ACCESS_ROLE_OPTIONS = [{ label: "Admin", value: "Admin" }, { label: "Manager", value: "Manager" }, { label: "Employee", value: "Employee" }];
-const WORK_SHIFT_OPTIONS = [{ label: "Day", value: "Day" }, { label: "Night", value: "Night" }, { label: "Rotational", value: "Rotational" }];
-const WORK_MODE_OPTIONS = [{ label: "Office", value: "Office" }, { label: "Remote", value: "Remote" }, { label: "Hybrid", value: "Hybrid" }];
-const RELATION_OPTIONS = [{ label: "Spouse", value: "Spouse" }, { label: "Parent", value: "Parent" }, { label: "Friend", value: "Friend" }];
+const WORK_SHIFT_OPTIONS  = [{ label: "Day", value: "Day" }, { label: "Night", value: "Night" }, { label: "Rotational", value: "Rotational" }];
+const WORK_MODE_OPTIONS   = [{ label: "Office", value: "Office" }, { label: "Remote", value: "Remote" }, { label: "Hybrid", value: "Hybrid" }];
+const RELATION_OPTIONS    = [{ label: "Spouse", value: "Spouse" }, { label: "Parent", value: "Parent" }, { label: "Friend", value: "Friend" }];
 
-// ✅ Helper: prepends an empty placeholder option to any options array
-// This ensures FormSelect shows blank (not first option) when value is ""
 const withPlaceholder = (label, options) => [{ label, value: "" }, ...options];
 
+/* ──────────────────────────────────────────────
+   Component
+   ────────────────────────────────────────────── */
 export default function AddEmployee() {
-    const navigate = useNavigate();
-    const { email } = useParams();
-    const [activeStep, setActiveStep] = useState(0);
-    const [loading, setLoading] = useState(false);
-    const [departmentNames, setDepartmentNames] = useState([]);
-    const [managerList, setManagerList] = useState([]);
+  const navigate = useNavigate();
+  const { email } = useParams();
 
-    const userRole = getCookie("role");
-    const isEditMode = !!email;
-    const isAdminOrManager = userRole === "Admin" || userRole === "Manager";
+  const [activeStep,      setActiveStep]      = useState(0);
+  const [loading,         setLoading]         = useState(false);
+  const [departmentNames, setDepartmentNames] = useState([]);
+  const [managerList,     setManagerList]     = useState([]);
+  const [projectList,     setProjectList]     = useState([]);
 
-    const breadCrumb = !isAdminOrManager
-        ? [{ label: "View Profile", link: "/view-employee" }, { label: "Edit-Employee" }]
-        : !isEditMode
-            ? [{ label: "Employee", link: "/employees" }, { label: "Add-Employee" }]
-            : [{ label: "Employee", link: "/employees" }, { label: "Edit-Employee" }];
+  const userRole         = getCookie("role");
+  const isEditMode       = !!email;
+  const isAdminOrManager = userRole === "Admin" || userRole === "Manager";
 
-    const [formvalues, setFormvalues] = useState({
-        // ── Personal ──────────────────────────────────────────────
-        firstName: "",
-        lastName: "",
-        gender: "",
-        dob: "",
-        maritalStatus: "",
-        nationality: "",
-        bloodGroup: "",
-        contactNumber: "",
-        email: "",
-        address: "",
-        // ── Employment ────────────────────────────────────────────
-        employeeId: "",
-        employeeType: "",
-        designation: "",
-        doj: "",
-        department: "",
-        workLocation: "",
-        employmentStatus: "",
-        reportingManager: "",
-        accessRole: "",
-        // ── Salary ────────────────────────────────────────────────
-        ctc: "",
-        basicSalary: "",
-        hra: "",
-        conveyanceAllowance: "",
-        medicalAllowance: "",
-        specialAllowance: "",
-        employeePF: "",
-        bankName: "",
-        accountNumber: "",
-        ifscCode: "",
-        panNumber: "",
-        uanNumber: "",
-        pfAccountNumber: "",
-        esiNumber: "",
-        // ── Education ─────────────────────────────────────────────
-        highestQualification: "",
-        specialization: "",
-        university: "",
-        yearOfPassing: "",
-        previousCompany: "",
-        totalExperience: "",
-        // ── Other ─────────────────────────────────────────────────
-        emergencyContactName: "",
-        emergencyContactNumber: "",
-        relationship: "",
-        workShift: "",
-        workMode: "",
-        notes: "",
-    });
+  const breadCrumb = !isAdminOrManager
+    ? [{ label: "View Profile", link: "/view-employee" }, { label: "Edit-Employee" }]
+    : !isEditMode
+      ? [{ label: "Employee", link: "/employees" }, { label: "Add-Employee" }]
+      : [{ label: "Employee", link: "/employees" }, { label: "Edit-Employee" }];
 
-    useEffect(() => { if (isEditMode) fetchEmployeeData(); }, [email]);
-    useEffect(() => { getDepartmentName(); getManagerLists(); }, []);
+  /* ── form state ── */
+  const [formvalues, setFormvalues] = useState({
+    // Personal
+    firstName: "", lastName: "", gender: "", dob: "",
+    maritalStatus: "", nationality: "", bloodGroup: "",
+    contactNumber: "", email: "", address: "",
+    // Employment
+    employeeId: "", employeeType: "", designation: "", doj: "",
+    department: "", workLocation: "", employmentStatus: "",
+    reportingManager: "", accessRole: "",
+    projects: [],          // ← multi-select array
+    // Salary
+    ctc: "", basicSalary: "", hra: "", conveyanceAllowance: "",
+    medicalAllowance: "", specialAllowance: "", employeePF: "",
+    bankName: "", accountNumber: "", ifscCode: "", panNumber: "",
+    uanNumber: "", pfAccountNumber: "", esiNumber: "",
+    // Education
+    highestQualification: "", specialization: "", university: "",
+    yearOfPassing: "", previousCompany: "", totalExperience: "",
+    // Other
+    emergencyContactName: "", emergencyContactNumber: "",
+    relationship: "", workShift: "", workMode: "", notes: "",
+  });
 
-    const getDepartmentName = () => {
-        getRequest("Account/GetDepartments")
-            .then(res => {
-                if (res.data?.length > 0)
-                    setDepartmentNames(res.data.map(d => ({ label: d.label || d, value: d.value || d })));
-            })
-            .catch(err => console.error("Error fetching departments:", err));
-    };
+  /* ── lifecycle ── */
+  useEffect(() => { if (isEditMode) fetchEmployeeData(); }, [email]);
+  useEffect(() => { getDepartmentName(); getManagerLists(); getProjectList(); }, []);
 
-    const getManagerLists = () => {
-        getRequest("Account/GetManagerLists")
-            .then(res => {
-                if (res.data?.length > 0)
-                    setManagerList(res.data.map(m => ({ label: m.label || m, value: m.value || m })));
-            })
-            .catch(err => console.error("Error fetching managers:", err));
-    };
+  /* ── API helpers ── */
+  const getDepartmentName = () => {
+    getRequest("Account/GetDepartments")
+      .then((res) => {
+        if (res.data?.length > 0)
+          setDepartmentNames(res.data.map((d) => ({ label: d.label || d, value: d.value || d })));
+      })
+      .catch((err) => console.error("Error fetching departments:", err));
+  };
 
-    const fetchEmployeeData = () => {
-        getRequest(`User/GetUser/${email}`)
-            .then(res => {
-                if (res.data?.length > 0) {
-                    const d = res.data[0];
-                    setFormvalues({
-                        firstName: d.firstName || "",
-                        lastName: d.lastName || "",
-                        gender: d.gender || "",
-                        dob: d.dob ? d.dob.split("T")[0] : "",
-                        maritalStatus: d.maritalStatus || "",
-                        nationality: d.nationality || "",
-                        bloodGroup: d.bloodGroup || "",
-                        contactNumber: d.contactNumber || "",
-                        email: d.email || "",
-                        address: d.address || "",
-                        employeeId: d.employeeId || "",
-                        employeeType: d.employeeType || "",
-                        designation: d.designation || "",
-                        doj: d.doj ? d.doj.split("T")[0] : "",
-                        department: d.department || "",
-                        workLocation: d.workLocation || "",
-                        employmentStatus: d.employmentStatus || "",
-                        reportingManager: d.reportingManager || "",
-                        accessRole: d.accessRole || "",
-                        ctc: d.ctc ?? "",
-                        basicSalary: d.basicSalary ?? "",
-                        hra: d.hra ?? "",
-                        conveyanceAllowance: d.conveyanceAllowance ?? "",
-                        medicalAllowance: d.medicalAllowance ?? "",
-                        specialAllowance: d.specialAllowance ?? "",
-                        employeePF: d.employeePF ?? "",
-                        bankName: d.bankName || "",
-                        accountNumber: d.accountNumber ?? "",
-                        ifscCode: d.ifscCode || "",
-                        panNumber: d.panNumber || "",
-                        uanNumber: d.uanNumber ?? "",
-                        pfAccountNumber: d.pfAccountNumber || "",
-                        esiNumber: d.esiNumber || "",
-                        highestQualification: d.highestQualification || "",
-                        specialization: d.specialization || "",
-                        university: d.university || "",
-                        yearOfPassing: d.yearOfPassing ?? "",
-                        previousCompany: d.previousCompany || "",
-                        totalExperience: d.totalExperience ?? "",
-                        emergencyContactName: d.emergencyContactName || "",
-                        emergencyContactNumber: d.emergencyContactNumber || "",
-                        relationship: d.relationship || "",
-                        workShift: d.workShift || "",
-                        workMode: d.workMode || "",
-                        notes: d.notes || "",
-                    });
-                }
-            })
-            .catch(err => console.error("Error fetching user:", err));
-    };
+  const getManagerLists = () => {
+    getRequest("Account/GetManagerLists")
+      .then((res) => {
+        if (res.data?.length > 0)
+          setManagerList(res.data.map((m) => ({ label: m.label || m, value: m.value || m })));
+      })
+      .catch((err) => console.error("Error fetching managers:", err));
+  };
+
+  const getProjectList = () => {
+    getRequest("Project/All")
+      .then((res) => {
+        if (res.data?.length > 0)
+          setProjectList(res.data.map((p) => ({ label: p.projectName, value: p.projectName })));
+      })
+      .catch((err) => console.error("Error fetching projects:", err));
+  };
+
+  const fetchEmployeeData = () => {
+    getRequest(`User/GetUser/${email}`)
+      .then((res) => {
+        if (res.data?.length > 0) {
+          const d = res.data[0];
+          setFormvalues({
+            firstName:              d.firstName              || "",
+            lastName:               d.lastName               || "",
+            gender:                 d.gender                 || "",
+            dob:                    d.dob    ? d.dob.split("T")[0]  : "",
+            maritalStatus:          d.maritalStatus          || "",
+            nationality:            d.nationality            || "",
+            bloodGroup:             d.bloodGroup             || "",
+            contactNumber:          d.contactNumber          || "",
+            email:                  d.email                  || "",
+            address:                d.address                || "",
+            employeeId:             d.employeeId             || "",
+            employeeType:           d.employeeType           || "",
+            designation:            d.designation            || "",
+            doj:                    d.doj    ? d.doj.split("T")[0]  : "",
+            department:             d.department             || "",
+            workLocation:           d.workLocation           || "",
+            employmentStatus:       d.employmentStatus       || "",
+            reportingManager:       d.reportingManager       || "",
+            accessRole:             d.accessRole             || "",
+            projects: Array.isArray(d.projectAssigned) ? d.projectAssigned : d.projectAssigned ? d.projectAssigned.split(",") : [],
+            ctc:                    d.ctc                    ?? "",
+            basicSalary:            d.basicSalary            ?? "",
+            hra:                    d.hra                    ?? "",
+            conveyanceAllowance:    d.conveyanceAllowance    ?? "",
+            medicalAllowance:       d.medicalAllowance       ?? "",
+            specialAllowance:       d.specialAllowance       ?? "",
+            employeePF:             d.employeePF             ?? "",
+            bankName:               d.bankName               || "",
+            accountNumber:          d.accountNumber          ?? "",
+            ifscCode:               d.ifscCode               || "",
+            panNumber:              d.panNumber              || "",
+            uanNumber:              d.uanNumber              ?? "",
+            pfAccountNumber:        d.pfAccountNumber        || "",
+            esiNumber:              d.esiNumber              || "",
+            highestQualification:   d.highestQualification   || "",
+            specialization:         d.specialization         || "",
+            university:             d.university             || "",
+            yearOfPassing:          d.yearOfPassing          ?? "",
+            previousCompany:        d.previousCompany        || "",
+            totalExperience:        d.totalExperience        ?? "",
+            emergencyContactName:   d.emergencyContactName   || "",
+            emergencyContactNumber: d.emergencyContactNumber || "",
+            relationship:           d.relationship           || "",
+            workShift:              d.workShift              || "",
+            workMode:               d.workMode               || "",
+            notes:                  d.notes                  || "",
+          });
+        }
+      })
+      .catch((err) => console.error("Error fetching user:", err));
+  };
 
     const extractValues = (data) => {
         const newObj = {};
@@ -190,6 +306,10 @@ export default function AddEmployee() {
                 } else {
                     value = null;
                 }
+            } else if (key === "projects") {
+                // ← skip this key; we'll add it as projectAssigned below
+                newObj["projectAssigned"] = Array.isArray(value) ? value.join(",") : value || null;
+                continue;
             } else {
                 value = value === "" ? null : value;
             }
@@ -198,296 +318,334 @@ export default function AddEmployee() {
         return newObj;
     };
 
-    const set = (field) => (e) =>
-        setFormvalues(prev => ({ ...prev, [field]: e.target.value }));
+  /* ── field setter ── */
+  const set = (field) => (e) =>
+    setFormvalues((prev) => ({ ...prev, [field]: e.target.value }));
 
-    const checkEmailExistAsync = async () => {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(formvalues.email)) {
-            ToastError("Please enter a valid email address!");
-            return false;
+  /* ── email check ── */
+  const checkEmailExistAsync = async () => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formvalues.email)) {
+      ToastError("Please enter a valid email address!");
+      return false;
+    }
+    setLoading(true);
+    try {
+      const res = await getRequest(`User/CheckEmail?email=${formvalues.email}`);
+      setLoading(false);
+      if (res.data?.emailExists) { ToastError("Entered Email already exists!"); return false; }
+      return true;
+    } catch (err) {
+      setLoading(false);
+      ToastError(err.response?.data?.message || "Failed to check email");
+      return false;
+    }
+  };
+
+  /* ── step validation ── */
+  const validateStep = async (step) => {
+    switch (step) {
+      case 0:
+        if (!formvalues.firstName || !formvalues.lastName || !formvalues.email) {
+          ToastError("Please fill all mandatory fields"); return false;
         }
-        setLoading(true);
-        try {
-            const res = await getRequest(`User/CheckEmail?email=${formvalues.email}`);
-            setLoading(false);
-            if (res.data?.emailExists) { ToastError("Entered Email already exists!"); return false; }
-            return true;
-        } catch (err) {
-            setLoading(false);
-            ToastError(err.response?.data?.message || "Failed to check email");
-            return false;
+        if (!isEditMode) { const ok = await checkEmailExistAsync(); if (!ok) return false; }
+        return true;
+      case 1:
+        if (!formvalues.employeeId || !formvalues.department || !formvalues.workLocation || !formvalues.reportingManager || !formvalues.accessRole) {
+          ToastError("Please fill all mandatory fields"); return false;
         }
-    };
+        return true;
+      default:
+        return true;
+    }
+  };
 
-    const validateStep = async (step) => {
-        switch (step) {
-            case 0:
-                if (!formvalues.firstName || !formvalues.lastName || !formvalues.email) {
-                    ToastError("Please fill all mandatory fields"); return false;
-                }
-                if (!isEditMode) { const ok = await checkEmailExistAsync(); if (!ok) return false; }
-                return true;
-            case 1:
-                if (!formvalues.employeeId || !formvalues.department || !formvalues.workLocation || !formvalues.reportingManager || !formvalues.accessRole) {
-                    ToastError("Please fill all mandatory fields"); return false;
-                }
-                return true;
-            default:
-                return true;
-        }
-    };
+  /* ── navigation ── */
+  const handleNext = async () => {
+    const isValid = await validateStep(activeStep);
+    if (!isValid) return;
+    if (activeStep === steps.length - 1) {
+      const data = extractValues(formvalues);
+      setLoading(true);
+      postRequest(isEditMode ? "User/Edit" : "User/Add", data)
+        .then((res) => {
+          if (res.status === 200) {
+            ToastSuccess(isEditMode ? "User Updated Successfully" : "User Added Successfully");
+            !isAdminOrManager ? navigate("/view-employee") : navigate("/employees");
+          }
+        })
+        .catch((err) => {
+          if (err.response?.status === 409) ToastError(err.response.data.message);
+          else ToastError("Failed to save user data");
+        })
+        .finally(() => setLoading(false));
+    } else {
+      setActiveStep((prev) => prev + 1);
+    }
+  };
 
-    const handleNext = async () => {
-        const isValid = await validateStep(activeStep);
-        if (!isValid) return;
-        if (activeStep === steps.length - 1) {
-            const data = extractValues(formvalues);
-            setLoading(true);
-            postRequest(isEditMode ? "User/Edit" : "User/Add", data)
-                .then(res => {
-                    if (res.status === 200) {
-                        ToastSuccess(isEditMode ? "User Updated Successfully" : "User Added Successfully");
-                        !isAdminOrManager ? navigate("/view-employee") : navigate("/employees");
-                    }
-                })
-                .catch(err => {
-                    if (err.response?.status === 409) ToastError(err.response.data.message);
-                    else ToastError("Failed to save user data");
-                })
-                .finally(() => setLoading(false));
-        } else {
-            setActiveStep(prev => prev + 1);
-        }
-    };
+  const handleCancel = () => (!isAdminOrManager ? navigate("/view-employee") : navigate("/employees"));
+  const handleBack   = () => setActiveStep((prev) => prev - 1);
 
-    const handleCancel = () => !isAdminOrManager ? navigate("/view-employee") : navigate("/employees");
-    const handleBack = () => setActiveStep(prev => prev - 1);
+  /* ── step content ── */
+  const getStepContent = (step) => {
+    switch (step) {
 
-    const getStepContent = (step) => {
-        switch (step) {
+      /* ── Step 0: Personal Details ── */
+      case 0:
+        return (
+          <FormSection title="Basic Info">
+            <FormRow cols={3}>
+              <FormInput label="First Name" required value={formvalues.firstName} onChange={set("firstName")} placeholder="e.g. John" />
+              <FormInput label="Last Name"  required value={formvalues.lastName}  onChange={set("lastName")}  placeholder="e.g. Doe" />
+              <FormInput label="Email (User ID)" required type="email" value={formvalues.email} onChange={set("email")} disabled={isEditMode} placeholder="e.g. john@company.com" />
+            </FormRow>
+            <FormRow cols={3}>
+              <FormDate   label="Date of Birth"   value={formvalues.dob}           onChange={set("dob")} />
+              <FormSelect label="Gender"           options={withPlaceholder("Select Gender",  GENDER_OPTIONS)}   value={formvalues.gender}         onChange={set("gender")} />
+              <FormSelect label="Marital Status"   options={withPlaceholder("Select Status",  MARITAL_OPTIONS)}  value={formvalues.maritalStatus}  onChange={set("maritalStatus")} />
+            </FormRow>
+            <FormRow cols={3}>
+              <FormSelect label="Blood Group"  options={withPlaceholder("Select Blood Group", BLOOD_OPTIONS)} value={formvalues.bloodGroup} onChange={set("bloodGroup")} />
+              <FormInput  label="Nationality"  value={formvalues.nationality}   onChange={set("nationality")}   placeholder="e.g. Indian" />
+              <FormInput  label="Contact Number" type="number" value={formvalues.contactNumber} onChange={set("contactNumber")} placeholder="e.g. 9876543210" />
+            </FormRow>
+            <FormRow cols={1}>
+              <FormInput label="Address" value={formvalues.address} onChange={set("address")} placeholder="Full address" />
+            </FormRow>
+          </FormSection>
+        );
 
-            // ── Step 0: Personal Details ──────────────────────────────
-            case 0:
-                return (
-                    <FormSection title="Basic Info">
-                        <FormRow cols={3}>
-                            <FormInput label="First Name" required value={formvalues.firstName} onChange={set("firstName")} placeholder="e.g. John" />
-                            <FormInput label="Last Name" required value={formvalues.lastName} onChange={set("lastName")} placeholder="e.g. Doe" />
-                            <FormInput label="Email (User ID)" required type="email" value={formvalues.email} onChange={set("email")} disabled={isEditMode} placeholder="e.g. john@company.com" />
-                        </FormRow>
-                        <FormRow cols={3}>
-                            <FormDate label="Date of Birth" value={formvalues.dob} onChange={set("dob")} />
-                            {/* ✅ withPlaceholder ensures blank selection when value="" (Add mode) */}
-                            <FormSelect label="Gender" options={withPlaceholder("Select Gender", GENDER_OPTIONS)} value={formvalues.gender} onChange={set("gender")} />
-                            <FormSelect label="Marital Status" options={withPlaceholder("Select Status", MARITAL_OPTIONS)} value={formvalues.maritalStatus} onChange={set("maritalStatus")} />
-                        </FormRow>
-                        <FormRow cols={3}>
-                            <FormSelect label="Blood Group" options={withPlaceholder("Select Blood Group", BLOOD_OPTIONS)} value={formvalues.bloodGroup} onChange={set("bloodGroup")} />
-                            <FormInput label="Nationality" value={formvalues.nationality} onChange={set("nationality")} placeholder="e.g. Indian" />
-                            <FormInput label="Contact Number" type="number" value={formvalues.contactNumber} onChange={set("contactNumber")} placeholder="e.g. 9876543210" />
-                        </FormRow>
-                        <FormRow cols={1}>
-                            <FormInput label="Address" value={formvalues.address} onChange={set("address")} placeholder="Full address" />
-                        </FormRow>
-                    </FormSection>
-                );
+      /* ── Step 1: Employment Details ── */
+      case 1:
+        return (
+          <FormSection title="Employment Info">
+            <FormRow cols={3}>
+              <FormInput  label="Employee ID *"  value={formvalues.employeeId}   onChange={set("employeeId")}   disabled={!isAdminOrManager} placeholder="e.g. EMP-001" />
+              <FormSelect label="Employee Type"  options={withPlaceholder("Select Type", EMP_TYPE_OPTIONS)}     value={formvalues.employeeType}  onChange={set("employeeType")}  disabled={!isAdminOrManager} />
+              <FormInput  label="Designation"    value={formvalues.designation}  onChange={set("designation")}  disabled={!isAdminOrManager} placeholder="e.g. Software Engineer" />
+            </FormRow>
+            <FormRow cols={3}>
+              <FormDate   label="Date of Joining" value={formvalues.doj}       onChange={set("doj")}       disabled={!isAdminOrManager} />
+              <FormSelect label="Department *"     options={withPlaceholder("Select Department", departmentNames)} value={formvalues.department} onChange={set("department")} disabled={!isAdminOrManager} />
+              {/* ── Multi-select Projects ── */}
+              <FormMultiSelect
+                label="Projects"
+                options={projectList}
+                value={formvalues.projects}
+                onChange={(vals) => setFormvalues((prev) => ({ ...prev, projects: vals }))}
+                disabled={!isAdminOrManager}
+                placeholder="Select Projects"
+              />
+            </FormRow>
+            <FormRow cols={3}>
+              <FormInput  label="Work Location (City) *" value={formvalues.workLocation}    onChange={set("workLocation")}    disabled={!isAdminOrManager} placeholder="e.g. Chennai" />
+              <FormSelect label="Employment Status"       options={withPlaceholder("Select Status",   EMP_STATUS_OPTIONS)}  value={formvalues.employmentStatus} onChange={set("employmentStatus")} disabled={!isAdminOrManager} />
+              <FormSelect label="Reporting Manager *"     options={withPlaceholder("Select Manager",  managerList)}         value={formvalues.reportingManager} onChange={set("reportingManager")} disabled={!isAdminOrManager} />
+            </FormRow>
+            <FormRow cols={3}>
+              <FormSelect label="Access Role *" options={withPlaceholder("Select Role", ACCESS_ROLE_OPTIONS)} value={formvalues.accessRole} onChange={set("accessRole")} disabled={!isAdminOrManager} />
+            </FormRow>
+          </FormSection>
+        );
 
-            // ── Step 1: Employment Details ────────────────────────────
-            case 1:
-                return (
-                    <FormSection title="Employment Info">
-                        <FormRow cols={3}>
-                            <FormInput label="Employee ID *" value={formvalues.employeeId} onChange={set("employeeId")} disabled={!isAdminOrManager} placeholder="e.g. EMP-001" />
-                            {/* ✅ withPlaceholder: shows blank in Add mode, shows saved value in Edit mode */}
-                            <FormSelect label="Employee Type" options={withPlaceholder("Select Type", EMP_TYPE_OPTIONS)} value={formvalues.employeeType} onChange={set("employeeType")} disabled={!isAdminOrManager} />
-                            <FormInput label="Designation" value={formvalues.designation} onChange={set("designation")} disabled={!isAdminOrManager} placeholder="e.g. Software Engineer" />
-                        </FormRow>
-                        <FormRow cols={3}>
-                            <FormDate label="Date of Joining" value={formvalues.doj} onChange={set("doj")} disabled={!isAdminOrManager} />
-                            {/* ✅ Department: blank placeholder prepended; API options added dynamically */}
-                            <FormSelect label="Department *" options={withPlaceholder("Select Department", departmentNames)} value={formvalues.department} onChange={set("department")} disabled={!isAdminOrManager} />
-                            <FormInput label="Work Location (City) *" value={formvalues.workLocation} onChange={set("workLocation")} disabled={!isAdminOrManager} placeholder="e.g. Chennai" />
-                        </FormRow>
-                        <FormRow cols={3}>
-                            <FormSelect label="Employment Status" options={withPlaceholder("Select Status", EMP_STATUS_OPTIONS)} value={formvalues.employmentStatus} onChange={set("employmentStatus")} disabled={!isAdminOrManager} />
-                            {/* ✅ Reporting Manager: blank placeholder; options from API */}
-                            <FormSelect label="Reporting Manager *" options={withPlaceholder("Select Manager", managerList)} value={formvalues.reportingManager} onChange={set("reportingManager")} disabled={!isAdminOrManager} />
-                            <FormSelect label="Access Role *" options={withPlaceholder("Select Role", ACCESS_ROLE_OPTIONS)} value={formvalues.accessRole} onChange={set("accessRole")} disabled={!isAdminOrManager} />
-                        </FormRow>
-                    </FormSection>
-                );
+      /* ── Step 2: Salary Details ── */
+      case 2:
+        return (
+          <FormSection title="Salary Info">
+            <FormRow cols={3}>
+              <FormInput label="CTC"          type="number" value={formvalues.ctc}          onChange={set("ctc")}          disabled={!isAdminOrManager} placeholder="e.g. 600000" />
+              <FormInput label="Basic Salary" type="number" value={formvalues.basicSalary}  onChange={set("basicSalary")}  disabled={!isAdminOrManager} placeholder="e.g. 300000" />
+              <FormInput label="HRA"          type="number" value={formvalues.hra}          onChange={set("hra")}          disabled={!isAdminOrManager} placeholder="e.g. 120000" />
+            </FormRow>
+            <FormRow cols={3}>
+              <FormInput label="Conveyance Allowance" type="number" value={formvalues.conveyanceAllowance} onChange={set("conveyanceAllowance")} disabled={!isAdminOrManager} />
+              <FormInput label="Medical Allowance"    type="number" value={formvalues.medicalAllowance}    onChange={set("medicalAllowance")}    disabled={!isAdminOrManager} />
+              <FormInput label="Special Allowance"    type="number" value={formvalues.specialAllowance}    onChange={set("specialAllowance")}    disabled={!isAdminOrManager} />
+            </FormRow>
+            <FormRow cols={3}>
+              <FormInput label="Employee PF"    type="number" value={formvalues.employeePF}    onChange={set("employeePF")}    disabled={!isAdminOrManager} />
+              <FormInput label="Bank Name"                    value={formvalues.bankName}       onChange={set("bankName")}       disabled={!isAdminOrManager} placeholder="e.g. HDFC Bank" />
+              <FormInput label="Account Number" type="number" value={formvalues.accountNumber} onChange={set("accountNumber")} disabled={!isAdminOrManager} />
+            </FormRow>
+            <FormRow cols={3}>
+              <FormInput label="IFSC Code"   value={formvalues.ifscCode}  onChange={set("ifscCode")}  disabled={!isAdminOrManager} placeholder="e.g. HDFC0001234" />
+              <FormInput label="PAN Number"  value={formvalues.panNumber} onChange={set("panNumber")} disabled={!isAdminOrManager} placeholder="e.g. ABCDE1234F" />
+              <FormInput label="UAN Number"  type="number" value={formvalues.uanNumber} onChange={set("uanNumber")} disabled={!isAdminOrManager} />
+            </FormRow>
+            <FormRow cols={2}>
+              <FormInput label="PF Account Number" value={formvalues.pfAccountNumber} onChange={set("pfAccountNumber")} disabled={!isAdminOrManager} />
+              <FormInput label="ESI Number"         value={formvalues.esiNumber}       onChange={set("esiNumber")}       disabled={!isAdminOrManager} />
+            </FormRow>
+          </FormSection>
+        );
 
-            // ── Step 2: Salary Details ────────────────────────────────
-            case 2:
-                return (
-                    <FormSection title="Salary Info">
-                        <FormRow cols={3}>
-                            <FormInput label="CTC" type="number" value={formvalues.ctc} onChange={set("ctc")} disabled={!isAdminOrManager} placeholder="e.g. 600000" />
-                            <FormInput label="Basic Salary" type="number" value={formvalues.basicSalary} onChange={set("basicSalary")} disabled={!isAdminOrManager} placeholder="e.g. 300000" />
-                            <FormInput label="HRA" type="number" value={formvalues.hra} onChange={set("hra")} disabled={!isAdminOrManager} placeholder="e.g. 120000" />
-                        </FormRow>
-                        <FormRow cols={3}>
-                            <FormInput label="Conveyance Allowance" type="number" value={formvalues.conveyanceAllowance} onChange={set("conveyanceAllowance")} disabled={!isAdminOrManager} />
-                            <FormInput label="Medical Allowance" type="number" value={formvalues.medicalAllowance} onChange={set("medicalAllowance")} disabled={!isAdminOrManager} />
-                            <FormInput label="Special Allowance" type="number" value={formvalues.specialAllowance} onChange={set("specialAllowance")} disabled={!isAdminOrManager} />
-                        </FormRow>
-                        <FormRow cols={3}>
-                            <FormInput label="Employee PF" type="number" value={formvalues.employeePF} onChange={set("employeePF")} disabled={!isAdminOrManager} />
-                            <FormInput label="Bank Name" value={formvalues.bankName} onChange={set("bankName")} disabled={!isAdminOrManager} placeholder="e.g. HDFC Bank" />
-                            <FormInput label="Account Number" type="number" value={formvalues.accountNumber} onChange={set("accountNumber")} disabled={!isAdminOrManager} />
-                        </FormRow>
-                        <FormRow cols={3}>
-                            <FormInput label="IFSC Code" value={formvalues.ifscCode} onChange={set("ifscCode")} disabled={!isAdminOrManager} placeholder="e.g. HDFC0001234" />
-                            <FormInput label="PAN Number" value={formvalues.panNumber} onChange={set("panNumber")} disabled={!isAdminOrManager} placeholder="e.g. ABCDE1234F" />
-                            <FormInput label="UAN Number" type="number" value={formvalues.uanNumber} onChange={set("uanNumber")} disabled={!isAdminOrManager} />
-                        </FormRow>
-                        <FormRow cols={2}>
-                            <FormInput label="PF Account Number" value={formvalues.pfAccountNumber} onChange={set("pfAccountNumber")} disabled={!isAdminOrManager} />
-                            <FormInput label="ESI Number" value={formvalues.esiNumber} onChange={set("esiNumber")} disabled={!isAdminOrManager} />
-                        </FormRow>
-                    </FormSection>
-                );
+      /* ── Step 3: Education & Experience ── */
+      case 3:
+        return (
+          <FormSection title="Education">
+            <FormRow cols={3}>
+              <FormInput label="Highest Qualification" value={formvalues.highestQualification} onChange={set("highestQualification")} placeholder="e.g. B.E / B.Tech" />
+              <FormInput label="Specialization"        value={formvalues.specialization}       onChange={set("specialization")}       placeholder="e.g. Computer Science" />
+              <FormInput label="University"            value={formvalues.university}           onChange={set("university")}           placeholder="e.g. Anna University" />
+            </FormRow>
+            <FormRow cols={3}>
+              <FormInput label="Year of Passing"        type="number" value={formvalues.yearOfPassing}  onChange={set("yearOfPassing")}  placeholder="e.g. 2020" />
+              <FormInput label="Previous Company"                     value={formvalues.previousCompany} onChange={set("previousCompany")} disabled={!isAdminOrManager} placeholder="e.g. Infosys" />
+              <FormInput label="Total Experience (Yrs)" type="number" value={formvalues.totalExperience} onChange={set("totalExperience")} disabled={!isAdminOrManager} placeholder="e.g. 3" />
+            </FormRow>
+          </FormSection>
+        );
 
-            // ── Step 3: Education & Experience ────────────────────────
-            case 3:
-                return (
-                    <FormSection title="Education">
-                        <FormRow cols={3}>
-                            <FormInput label="Highest Qualification" value={formvalues.highestQualification} onChange={set("highestQualification")} placeholder="e.g. B.E / B.Tech" />
-                            <FormInput label="Specialization" value={formvalues.specialization} onChange={set("specialization")} placeholder="e.g. Computer Science" />
-                            <FormInput label="University" value={formvalues.university} onChange={set("university")} placeholder="e.g. Anna University" />
-                        </FormRow>
-                        <FormRow cols={3}>
-                            <FormInput label="Year of Passing" type="number" value={formvalues.yearOfPassing} onChange={set("yearOfPassing")} placeholder="e.g. 2020" />
-                            <FormInput label="Previous Company" value={formvalues.previousCompany} onChange={set("previousCompany")} disabled={!isAdminOrManager} placeholder="e.g. Infosys" />
-                            <FormInput label="Total Experience (Yrs)" type="number" value={formvalues.totalExperience} onChange={set("totalExperience")} disabled={!isAdminOrManager} placeholder="e.g. 3" />
-                        </FormRow>
-                    </FormSection>
-                );
+      /* ── Step 4: Other Details ── */
+      case 4:
+        return (
+          <>
+            <FormSection title="Emergency Contact">
+              <FormRow cols={3}>
+                <FormInput  label="Emergency Contact Name"   value={formvalues.emergencyContactName}   onChange={set("emergencyContactName")}   placeholder="e.g. Jane Doe" />
+                <FormInput  label="Emergency Contact Number" type="number" value={formvalues.emergencyContactNumber} onChange={set("emergencyContactNumber")} />
+                <FormSelect label="Relationship" options={withPlaceholder("Select Relation", RELATION_OPTIONS)} value={formvalues.relationship} onChange={set("relationship")} />
+              </FormRow>
+            </FormSection>
+            <FormSection title="Work Preferences">
+              <FormRow cols={3}>
+                <FormSelect label="Work Shift" options={withPlaceholder("Select Shift", WORK_SHIFT_OPTIONS)} value={formvalues.workShift} onChange={set("workShift")} />
+                <FormSelect label="Work Mode"  options={withPlaceholder("Select Mode",  WORK_MODE_OPTIONS)}  value={formvalues.workMode}  onChange={set("workMode")} />
+                <FormInput  label="Notes" value={formvalues.notes} onChange={set("notes")} placeholder="Any additional notes..." />
+              </FormRow>
+            </FormSection>
+          </>
+        );
 
-            // ── Step 4: Other Details ─────────────────────────────────
-            case 4:
-                return (
-                    <>
-                        <FormSection title="Emergency Contact">
-                            <FormRow cols={3}>
-                                <FormInput label="Emergency Contact Name" value={formvalues.emergencyContactName} onChange={set("emergencyContactName")} placeholder="e.g. Jane Doe" />
-                                <FormInput label="Emergency Contact Number" type="number" value={formvalues.emergencyContactNumber} onChange={set("emergencyContactNumber")} />
-                                {/* ✅ API key is "relationship" not "relationShip" */}
-                                <FormSelect label="Relationship" options={withPlaceholder("Select Relation", RELATION_OPTIONS)} value={formvalues.relationship} onChange={set("relationship")} />
-                            </FormRow>
-                        </FormSection>
-                        <FormSection title="Work Preferences">
-                            <FormRow cols={3}>
-                                <FormSelect label="Work Shift" options={withPlaceholder("Select Shift", WORK_SHIFT_OPTIONS)} value={formvalues.workShift} onChange={set("workShift")} />
-                                <FormSelect label="Work Mode" options={withPlaceholder("Select Mode", WORK_MODE_OPTIONS)} value={formvalues.workMode} onChange={set("workMode")} />
-                                <FormInput label="Notes" value={formvalues.notes} onChange={set("notes")} placeholder="Any additional notes..." />
-                            </FormRow>
-                        </FormSection>
-                    </>
-                );
+      default:
+        return "Unknown step";
+    }
+  };
 
-            default:
-                return "Unknown step";
-        }
-    };
+  /* ── render ── */
+  return (
+    <div>
+      <LoadingMask loading={loading} />
 
-    return (
+      {/* Page Header */}
+      <div className="page-header">
         <div>
-            <LoadingMask loading={loading} />
+          <Breadcrumb icon={<Users size={13} />} items={breadCrumb} />
+          <h1 className="page-title">{isEditMode ? "Update Employee" : "Add Employee"}</h1>
+          <p className="page-subtitle">
+            Fill in all sections to {isEditMode ? "update" : "create"} the employee profile
+          </p>
+        </div>
+        <button className="icon-btn" onClick={handleCancel} style={{ color: "var(--coral)" }}>
+          <X size={20} />
+        </button>
+      </div>
 
-            {/* Page Header */}
-            <div className="page-header">
-                <div>
-                    <Breadcrumb icon={<Users size={13} />} items={breadCrumb} />
-                    <h1 className="page-title">{isEditMode ? "Update Employee" : "Add Employee"}</h1>
-                    <p className="page-subtitle">Fill in all sections to {isEditMode ? "update" : "create"} the employee profile</p>
-                </div>
-                <button className="icon-btn" onClick={handleCancel} style={{ color: "var(--coral)" }}>
-                    <X size={20} />
-                </button>
+      <div className="form-centered-wrap">
+        <div className="card">
+
+          {/* Gradient bar */}
+          <div style={{ height: 5, background: "linear-gradient(90deg,var(--primary),var(--teal))" }} />
+
+          {/* Card Header */}
+          <div style={{
+            padding: "20px 24px 16px", borderBottom: "1px solid var(--border)",
+            display: "flex", alignItems: "center", gap: 12,
+          }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: 12,
+              background: "linear-gradient(135deg,var(--primary),var(--teal))",
+              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            }}>
+              <Users size={20} color="white" />
             </div>
-
-            <div className="form-centered-wrap">
-                <div className="card">
-
-                    {/* Gradient bar */}
-                    <div style={{ height: 5, background: "linear-gradient(90deg,var(--primary),var(--teal))" }} />
-
-                    {/* Card Header */}
-                    <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12 }}>
-                        <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg,var(--primary),var(--teal))", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                            <Users size={20} color="white" />
-                        </div>
-                        <div>
-                            <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 17, fontWeight: 800, color: "var(--text-primary)" }}>
-                                {isEditMode ? "Edit Employee" : "Add New Employee"}
-                            </div>
-                            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
-                                Fill in all sections to {isEditMode ? "update" : "create"} the employee profile
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Stepper */}
-                    <div style={{ padding: "20px 24px 0", borderBottom: "1px solid var(--border)" }}>
-                        <div style={{ display: "flex", alignItems: "center" }}>
-                            {steps.map((label, index) => (
-                                <React.Fragment key={index}>
-                                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, flex: index < steps.length - 1 ? 0 : undefined }}>
-                                        <div style={{
-                                            width: 36, height: 36, borderRadius: "50%",
-                                            display: "flex", alignItems: "center", justifyContent: "center",
-                                            background: activeStep > index ? "var(--teal)" : activeStep === index ? "linear-gradient(135deg,var(--primary),var(--primary-light))" : "var(--bg)",
-                                            color: activeStep >= index ? "white" : "var(--text-muted)",
-                                            fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 14, fontWeight: 800,
-                                            border: `2px solid ${activeStep > index ? "var(--teal)" : activeStep === index ? "var(--primary)" : "var(--border)"}`,
-                                            transition: "all 0.3s", flexShrink: 0
-                                        }}>
-                                            {activeStep > index ? "✓" : (index + 1)}
-                                        </div>
-                                        <span style={{ fontSize: 10.5, fontWeight: 700, color: activeStep >= index ? "var(--primary)" : "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>
-                                            {label}
-                                        </span>
-                                    </div>
-                                    {index < steps.length - 1 && (
-                                        <div style={{ flex: 1, height: 2, background: activeStep > index ? "var(--teal)" : "var(--border)", margin: "0 6px", marginBottom: 20, transition: "background 0.3s" }} />
-                                    )}
-                                </React.Fragment>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Step Content */}
-                    <div style={{ padding: "24px", maxHeight: "60vh", overflowY: "auto" }}>
-                        {getStepContent(activeStep)}
-                    </div>
-
-                    {/* Footer */}
-                    <div style={{ padding: "16px 24px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "space-between", background: "#faf8ff" }}>
-                        <button
-                            disabled={activeStep === 0}
-                            onClick={handleBack}
-                            className={`btn btn-ghost ${activeStep === 0 ? "" : "btn-outline"}`}
-                            style={{ opacity: activeStep === 0 ? 0.4 : 1 }}
-                        >
-                            ← Previous
-                        </button>
-                        <button onClick={handleNext} className="btn btn-primary">
-                            {activeStep === steps.length - 1 ? (isEditMode ? "Update Employee" : "Save Employee") : "Next →"}
-                        </button>
-                    </div>
-
-                </div>
+            <div>
+              <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 17, fontWeight: 800, color: "var(--text-primary)" }}>
+                {isEditMode ? "Edit Employee" : "Add New Employee"}
+              </div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+                Fill in all sections to {isEditMode ? "update" : "create"} the employee profile
+              </div>
             </div>
+          </div>
 
-            <style>{`
+          {/* Stepper */}
+          <div style={{ padding: "20px 24px 0", borderBottom: "1px solid var(--border)" }}>
+            <div style={{ display: "flex", alignItems: "center" }}>
+              {steps.map((label, index) => (
+                <React.Fragment key={index}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, flex: index < steps.length - 1 ? 0 : undefined }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: "50%",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      background: activeStep > index
+                        ? "var(--teal)"
+                        : activeStep === index
+                          ? "linear-gradient(135deg,var(--primary),var(--primary-light))"
+                          : "var(--bg)",
+                      color: activeStep >= index ? "white" : "var(--text-muted)",
+                      fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 14, fontWeight: 800,
+                      border: `2px solid ${activeStep > index ? "var(--teal)" : activeStep === index ? "var(--primary)" : "var(--border)"}`,
+                      transition: "all 0.3s", flexShrink: 0,
+                    }}>
+                      {activeStep > index ? "✓" : (index + 1)}
+                    </div>
+                    <span style={{
+                      fontSize: 10.5, fontWeight: 700,
+                      color: activeStep >= index ? "var(--primary)" : "var(--text-muted)",
+                      textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap",
+                    }}>
+                      {label}
+                    </span>
+                  </div>
+                  {index < steps.length - 1 && (
+                    <div style={{
+                      flex: 1, height: 2,
+                      background: activeStep > index ? "var(--teal)" : "var(--border)",
+                      margin: "0 6px", marginBottom: 20, transition: "background 0.3s",
+                    }} />
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+
+          {/* Step Content */}
+          <div style={{ padding: "24px", maxHeight: "60vh", overflowY: "auto" }}>
+            {getStepContent(activeStep)}
+          </div>
+
+          {/* Footer */}
+          <div style={{
+            padding: "16px 24px", borderTop: "1px solid var(--border)",
+            display: "flex", justifyContent: "space-between", background: "#faf8ff",
+          }}>
+            <button
+              disabled={activeStep === 0}
+              onClick={handleBack}
+              className={`btn btn-ghost ${activeStep === 0 ? "" : "btn-outline"}`}
+              style={{ opacity: activeStep === 0 ? 0.4 : 1 }}
+            >
+              ← Previous
+            </button>
+            <button onClick={handleNext} className="btn btn-primary">
+              {activeStep === steps.length - 1
+                ? (isEditMode ? "Update Employee" : "Save Employee")
+                : "Next →"}
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      <style>{`
         .fc-label { display:block; font-family:'Plus Jakarta Sans',sans-serif; font-size:11.5px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:7px; }
         .fc-input { width:100%; padding:10px 13px; border-radius:10px; border:1.5px solid var(--border); background:var(--bg); font-family:'DM Sans',sans-serif; font-size:13.5px; color:var(--text-primary); outline:none; transition:all 0.2s; box-sizing:border-box; }
         .fc-input:focus { border-color:var(--primary); box-shadow:0 0 0 3px var(--primary-ghost); background:#fff; }
         .fc-input:disabled { opacity:0.5; cursor:not-allowed; }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Pencil, Plus, Clock, X, Check, Users, Building } from "lucide-react";
+import { Pencil, Plus, Clock, X, Check, Users, Building, Briefcase } from "lucide-react";
 import { ToastError, ToastSuccess } from "../../services/ToastMsg";
 import { useNavigate } from "react-router-dom";
 import { getRequest, postRequest } from "../../services/Apiservice";
@@ -77,10 +77,13 @@ export default function Employees() {
         </div>
         <div style={{ display:"flex", gap:10 }}>
           {isAdmin && (
-            <button className="btn btn-outline" onClick={() => navigate("/employees/working-hours")}>
+            <button className="btn btn-primary" onClick={() => navigate("/employees/working-hours")}>
               <Building size={15} /> Departments
             </button>
           )}
+          <button className="btn btn-primary" onClick={() => navigate("/employees/projects")}>
+            <Briefcase size={15} /> Projects
+          </button>
           <button className="btn btn-primary" onClick={() => navigate("/employees/add-employee")}>
             <Plus size={15} /> Add Employee
           </button>

@@ -125,6 +125,7 @@ export default function ViewEmployee() {
         <Field label="Employee ID" value={data.employeeId} />
         <Field label="Employee Type" value={data.employeeType} />
         <Field label="Department" value={data.department} />
+        <Field label="Project Assigned" value={data.projectAssigned} />
         <Field label="Designation" value={data.designation} />
         <Field label="Date of Joining" value={fmt(data.doj)} />
         <Field label="Work Location" value={data.workLocation} />

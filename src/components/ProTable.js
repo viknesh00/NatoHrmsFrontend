@@ -320,6 +320,9 @@ export function StatusChip({ label }) {
     wo:              { cls: "badge-red" },
     holiday:         { cls: "badge-red" },
     new:             { cls: "badge-purple" },
+    completed:       { cls: "badge-teal" },    // ← added
+    "on hold":       { cls: "badge-yellow" },  // ← added
+    cancelled:       { cls: "badge-red" },     // ← added
   };
   const key = (label || "").toLowerCase();
   const c = map[key] || { cls: "badge-gray" };

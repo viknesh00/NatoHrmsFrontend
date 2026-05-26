@@ -27,6 +27,8 @@ import ForgotPassword from "./pages/Login/ForgotPassword";
 import JobManagement from "./pages/JobManagement/JobManagement";
 import AddProfile from "./pages/JobManagement/AddProfile";
 import CreateJob from "./pages/JobManagement/CreateJob";
+import Projects from "./pages/Projects/Projects";
+import CreateProject from "./pages/Projects/CreateProject";
 
 const routes = [
   { path: "/", element: <Login /> },
@@ -47,6 +49,8 @@ const routes = [
       { path: "employees/working-hours", element: <WorkingHours /> },
       { path: "employees/add-working-hours", element: <WorkingHoursForm /> },
       { path: "employees/edit-working-hours", element: <WorkingHoursForm /> },
+      { path: "employees/projects", element: <Projects /> },
+      { path: "employees/projects/create", element: <CreateProject /> },
       { path: "leave", element: <Leave /> },
       { path: "leave/apply-leave", element: <LeaveForm /> },
       { path: "employees/add-employee", element: <AddEmployee /> },
