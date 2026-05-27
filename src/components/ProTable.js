@@ -558,9 +558,9 @@ export default function ProTable({
 
           <button
             className="icon-btn"
-            onClick={handleExportExcel}
+            onClick={onExport ? () => onExport(exportData) : handleExportExcel}
             title="Export to Excel"
-            style={{ color:"var(--teal)" }}
+            style={{ color: "var(--teal)" }}
           >
             <FileSpreadsheet size={15}/>
             <span style={{ fontSize:11, fontWeight:700 }}>Excel</span>
