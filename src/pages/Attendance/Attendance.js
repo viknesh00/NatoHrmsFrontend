@@ -14,18 +14,18 @@ import { FormDate } from "../../components/FormComponents";
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 
-const fmt     = (d) => d ? dayjs(d).format("DD-MM-YYYY") : "—";
-const fmtTime = (d) => d ? dayjs(d).format("hh:mm A")   : "—";
+const fmt = (d) => d ? dayjs(d).format("DD-MM-YYYY") : "—";
+const fmtTime = (d) => d ? dayjs(d).format("hh:mm A") : "—";
 
 export default function Attendance() {
-  const [logType,    setLogType]    = useState("daily");
-  const [fromDate,   setFromDate]   = useState(dayjs().subtract(1, "month").format("YYYY-MM-DD"));
-  const [toDate,     setToDate]     = useState(dayjs().format("YYYY-MM-DD"));
+  const [logType, setLogType] = useState("daily");
+  const [fromDate, setFromDate] = useState(dayjs().subtract(1, "month").format("YYYY-MM-DD"));
+  const [toDate, setToDate] = useState(dayjs().format("YYYY-MM-DD"));
   const [singleDate, setSingleDate] = useState(dayjs().format("YYYY-MM-DD"));
   const [filteredData, setFilteredData] = useState([]);
-  const [loading,    setLoading]    = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const userRole        = getCookie("role");
+  const userRole = getCookie("role");
   const isAdminOrManager = userRole === "Admin" || userRole === "Manager";
 
   useEffect(() => {
@@ -52,9 +52,9 @@ export default function Attendance() {
         if (res.data)
           setFilteredData(res.data.map(d => ({
             ...d,
-            attendanceDate: d.attendanceDate ? fmt(d.attendanceDate)         : "—",
-            firstClockIn:   d.firstClockIn   ? fmtTime(d.firstClockIn)       : "—",
-            latestClockOut: d.latestClockOut  ? fmtTime(d.latestClockOut)     : "—",
+            attendanceDate: d.attendanceDate ? fmt(d.attendanceDate) : "—",
+            firstClockIn: d.firstClockIn ? fmtTime(d.firstClockIn) : "—",
+            latestClockOut: d.latestClockOut ? fmtTime(d.latestClockOut) : "—",
           })));
       })
       .catch(console.error)
@@ -76,7 +76,7 @@ export default function Attendance() {
 
   const handleReset = () => {
     const today = dayjs().format("YYYY-MM-DD");
-    const prev  = dayjs().subtract(1, "month").format("YYYY-MM-DD");
+    const prev = dayjs().subtract(1, "month").format("YYYY-MM-DD");
     if (logType === "daily") {
       setSingleDate(today);
       getDailyLog(today);
@@ -90,12 +90,16 @@ export default function Attendance() {
 
   /* ── columns ── */
   const columnsDaily = [
-    { field: "slNo",      label: "#", width: 50 },
-    ...(isAdminOrManager ? [{ field: "userName", label: "Employee", filterable: true }] : []),
-    { field: "time",      label: "Time" },
-    { field: "type",      label: "Type", filterable: true },
+    { field: "slNo", label: "#", width: 50 },
+    ...(isAdminOrManager ? [
+      { field: "userName", label: "Employee", filterable: true },
+      { field: "department", label: "Department", filterable: true },
+      { field: "projectAssigned", label: "Project", filterable: true },
+    ] : []),
+    { field: "time", label: "Time" },
+    { field: "type", label: "Type", filterable: true },
     { field: "ipAddress", label: "IP Address" },
-    { field: "location",  label: "Location" },
+    { field: "location", label: "Location" },
   ];
 
   const columnsMonthly = [
@@ -107,15 +111,19 @@ export default function Attendance() {
         </span>
       ),
     },
-    { field: "status",          label: "Status",   filterable: true, renderCell: (row) => <StatusChip label={row.status} /> },
-    ...(isAdminOrManager ? [{ field: "userEmail", label: "Employee", filterable: true }] : []),
-    { field: "firstClockIn",    label: "Clock In" },
-    { field: "latestClockOut",  label: "Clock Out" },
+    { field: "status", label: "Status", filterable: true, renderCell: (row) => <StatusChip label={row.status} /> },
+    ...(isAdminOrManager ? [
+      { field: "userEmail", label: "Employee", filterable: true },
+      { field: "department", label: "Department", filterable: true },
+      { field: "projectAssigned", label: "Project", filterable: true },
+    ] : []),
+    { field: "firstClockIn", label: "Clock In" },
+    { field: "latestClockOut", label: "Clock Out" },
     { field: "totalWorkDuration", label: "Work Hrs" },
-    { field: "breakCount",      label: "Breaks" },
-    { field: "breakDuration",   label: "Break Hrs" },
-    { field: "clockInIp",       label: "Clock In IP" },
-    { field: "clockOutIp",      label: "Clock Out IP" },
+    { field: "breakCount", label: "Breaks" },
+    { field: "breakDuration", label: "Break Hrs" },
+    { field: "clockInIp", label: "Clock In IP" },
+    { field: "clockOutIp", label: "Clock Out IP" },
     { field: "clockInLocation", label: "Clock In Location" },
     { field: "clockOutLocation", label: "Clock Out Location" },
   ];
@@ -155,7 +163,7 @@ export default function Attendance() {
       </div>
 
       {/* Tab switcher */}
-      <div style={{ display:"flex", gap:4, background:"var(--bg-card)", padding:4, borderRadius:10, border:"1px solid var(--border)", width:"fit-content", marginBottom:20, boxShadow:"var(--shadow-sm)" }}>
+      <div style={{ display: "flex", gap: 4, background: "var(--bg-card)", padding: 4, borderRadius: 10, border: "1px solid var(--border)", width: "fit-content", marginBottom: 20, boxShadow: "var(--shadow-sm)" }}>
         {["daily", "monthly"].map(t => (
           <button
             key={t}
@@ -164,8 +172,8 @@ export default function Attendance() {
               padding: "7px 20px", borderRadius: 8, border: "none", cursor: "pointer",
               fontFamily: "'DM Sans',sans-serif", fontSize: 13, fontWeight: 600,
               background: logType === t ? "linear-gradient(135deg,var(--primary),var(--primary-light))" : "transparent",
-              color:      logType === t ? "white" : "var(--text-secondary)",
-              boxShadow:  logType === t ? "0 2px 8px var(--primary-glow)" : "none",
+              color: logType === t ? "white" : "var(--text-secondary)",
+              boxShadow: logType === t ? "0 2px 8px var(--primary-glow)" : "none",
               transition: "all 0.2s",
             }}
           >

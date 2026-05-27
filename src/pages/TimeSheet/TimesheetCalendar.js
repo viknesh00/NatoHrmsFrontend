@@ -259,9 +259,31 @@ export default function TimesheetCalendar() {
     };
 
     const applyToDate = (d) => {
+      const isWknd = d.day() === 0 || d.day() === 6;
+      if (isWknd) return;                                               // skip weekends
+      if (getHolidayForDay(d)) return;                                  // skip API holidays
+      if (getLeaveForDay(d) && !getLeaveForDay(d)?.approverReason) return; // skip API leaves
       if (!d.isAfter(today, "day") && d.month() === currentMonth.month())
-        upd[d.format("YYYY-MM-DD")] = { task: JSON.stringify(validTasks), hours: totalHrs, leaveType: null };
+        upd[d.format("YYYY-MM-DD")] = { task: JSON.stringify(validTasks), hours: totalHours, leaveType: null };
     };
+
+    if (copyOpt === "week") {
+      let d = selDate.startOf("isoWeek");
+      const weekEnd = selDate.endOf("isoWeek");
+      while (d.isBefore(weekEnd, "day") || d.isSame(weekEnd, "day")) {
+        applyToDate(d);
+        d = d.add(1, "day");
+      }
+    } else if (copyOpt === "month") {
+  let d = currentMonth.startOf("month");
+  const copyEnd = today; // always copy up to today, regardless of selected date
+  while (d.isBefore(copyEnd, "day") || d.isSame(copyEnd, "day")) {
+    applyToDate(d);
+    d = d.add(1, "day");
+  }
+} else if (copyOpt === "custom") {
+      otherDays.forEach(d => applyToDate(d));
+    }
     if (copyOpt === "week") {
       let d = selDate.startOf("isoWeek");
       while (d.isBefore(selDate.endOf("isoWeek")) || d.isSame(selDate.endOf("isoWeek"), "day")) { applyToDate(d); d = d.add(1, "day"); }
@@ -303,16 +325,26 @@ export default function TimesheetCalendar() {
 
   // ─── Task helpers ─────────────────────────────────────────────────────────────
   const updateTask = (idx, field, value) => {
-    const upd = tasks.map((t, i) => i === idx ? { ...t, [field]: value } : t);
-    if (field === "hours") {
-      const newTotal = sumTaskHours(upd);
-      if (newTotal > 24) { ToastError("Total hours cannot exceed 24"); return; }
+  const upd = tasks.map((t, i) => i === idx ? { ...t, [field]: value } : t);
+  if (field === "hours") {
+    const newTotal = sumTaskHours(upd);
+    if (newTotal > 24) { ToastError("Total hours cannot exceed 24"); return; }
+    // ── Auto-clear dayMode when user starts entering hours ──
+    if (newTotal > 0) {
+      setDayMode("");
+      setLeaveType("");
+      setManualHolidayName("");
     }
-    if (field === "name" && value.trim()) {
-      setNameErrors(prev => { const n = { ...prev }; delete n[idx]; return n; });
-    }
-    setTasks(upd);
-  };
+  }
+  if (field === "name" && value.trim()) {
+    setNameErrors(prev => { const n = { ...prev }; delete n[idx]; return n; });
+    // ── Auto-clear dayMode when user starts typing a task name ──
+    setDayMode("");
+    setLeaveType("");
+    setManualHolidayName("");
+  }
+  setTasks(upd);
+};
   const removeTask = (idx) => {
     setTasks(tasks.filter((_, i) => i !== idx));
     setNameErrors(prev => {
@@ -777,7 +809,7 @@ export default function TimesheetCalendar() {
                   {!dayMode && (
                     <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
                       <AlertCircle size={11} color="var(--coral)" />
-                      <span style={{ fontSize: 11, color: "var(--coral)", fontWeight: 600 }}>Please select a day type above</span>
+                      <span style={{ fontSize: 11, color: "var(--coral)", fontWeight: 600 }}>Since hours is 0, please select a day type above</span>
                     </div>
                   )}
                 </div>
