@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { postRequest } from "../../services/Apiservice";
+import { postRequest, getRequest } from "../../services/Apiservice";
 import { ToastSuccess, ToastError } from "../../services/ToastMsg";
 import LoadingMask from "../../services/LoadingMask";
 import Breadcrumb from "../../services/Breadcrumb";
@@ -15,37 +15,101 @@ import {
 } from "../../components/FormComponents";
 import { Briefcase, Save, X } from "lucide-react";
 
-// helper at the top of the file
+/* ── helpers ── */
 const parseDMY = (d) => {
   if (!d) return "";
-  // already ISO format (YYYY-MM-DD)
   if (/^\d{4}-\d{2}-\d{2}/.test(d)) return d.substring(0, 10);
-  // DD-MM-YYYY → YYYY-MM-DD
   const [day, month, year] = d.split("-");
   if (day && month && year) return `${year}-${month}-${day}`;
   return "";
 };
 
-const CreateProject = () => {
-  const navigate  = useNavigate();
-  const location  = useLocation();
-  const editData  = location.state?.editData || null;
+const deptStringToArray = (str) =>
+  str ? str.split(",").map((s) => s.trim()).filter(Boolean) : [];
 
-  const [loading, setLoading] = useState(false);
-  const [errors,  setErrors]  = useState({});
+/* ── Input styles (same as DocumentUploadForm) ── */
+const IS = {
+  label: { display:"block", fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:11.5, fontWeight:700, color:"var(--text-secondary)", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:7 },
+  input: { width:"100%", padding:"10px 13px", borderRadius:10, border:"1.5px solid var(--border)", background:"var(--bg)", fontFamily:"'DM Sans',sans-serif", fontSize:13.5, color:"var(--text-primary)", outline:"none", transition:"all 0.2s", boxSizing:"border-box" },
+  error: { fontSize:12, color:"var(--coral)", marginTop:4 },
+};
+
+function FocusInput({ style: s, ...props }) {
+  return (
+    <input
+      {...props}
+      style={{ ...IS.input, ...s }}
+      onFocus={(e) => { e.target.style.borderColor="var(--primary)"; e.target.style.boxShadow="0 0 0 3px var(--primary-ghost)"; e.target.style.background="#fff"; }}
+      onBlur={(e)  => { e.target.style.borderColor="var(--border)";  e.target.style.boxShadow="none"; e.target.style.background="var(--bg)"; }}
+    />
+  );
+}
+
+const CreateProject = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const editData = location.state?.editData || null;
+
+  const [loading,     setLoading]     = useState(false);
+  const [errors,      setErrors]      = useState({});
+  const [deptOptions, setDeptOptions] = useState([]);
+  const [deptSearch,  setDeptSearch]  = useState("");
+  const [showDeptDrop, setShowDeptDrop] = useState(false);
+
+  /* ── ref for outside-click close (same as peopleDropdownRef) ── */
+  const deptDropdownRef = useRef(null);
 
   const [form, setForm] = useState({
-  projectId:    editData?.projectId    ?? null,
-  projectName:  editData?.projectName  || "",
-  description:  editData?.description  || "",
-  clientName:   editData?.clientName   || "",
-  managerEmail: editData?.managerEmail || "",
-  startDate:    parseDMY(editData?.startDate),  // ← was editData.startDate.substring(0,10)
-  endDate:      parseDMY(editData?.endDate),    // ← was editData.endDate.substring(0,10)
-  status:       editData?.status || "Active",
-});
+    projectId:    editData?.projectId    ?? null,
+    projectName:  editData?.projectName  || "",
+    description:  editData?.description  || "",
+    clientName:   editData?.clientName   || "",
+    managerEmail: editData?.managerEmail || "",
+    startDate:    parseDMY(editData?.startDate),
+    endDate:      parseDMY(editData?.endDate),
+    status:       editData?.status || "Active",
+    assignedDepts: deptStringToArray(editData?.department),
+  });
+
+  /* ── Load departments ── */
+  useEffect(() => {
+    getRequest("Attendance/GetAllDepartments")
+      .then((res) => {
+        if (res.data)
+          setDeptOptions(res.data.map((d) => ({ label: d.departmentName, value: d.departmentName })));
+      })
+      .catch(console.error);
+  }, []);
+
+  /* ── Close dept dropdown on outside click ── */
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (deptDropdownRef.current && !deptDropdownRef.current.contains(e.target))
+        setShowDeptDrop(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const set = (f) => (e) => setForm((prev) => ({ ...prev, [f]: e.target.value }));
+
+  /* ── Department multi-select helpers (mirrors togglePerson / removePerson) ── */
+  const toggleDept = (option) => {
+    const already  = form.assignedDepts.some((d) => d.value === option.value);
+    setForm((prev) => ({
+      ...prev,
+      assignedDepts: already
+        ? prev.assignedDepts.filter((d) => d.value !== option.value)
+        : [...prev.assignedDepts, option],
+    }));
+  };
+
+  const removeDept = (val) =>
+    setForm((prev) => ({ ...prev, assignedDepts: prev.assignedDepts.filter((d) => d.value !== val) }));
+
+  const filteredDepts = deptOptions.filter((o) =>
+    o.label.toLowerCase().includes(deptSearch.toLowerCase())
+  );
 
   /* ── Validation ── */
   const validate = () => {
@@ -85,6 +149,7 @@ const CreateProject = () => {
       startDate:    form.startDate    || null,
       endDate:      form.endDate      || null,
       status:       form.status,
+      department:   form.assignedDepts.map((d) => d.value).join(",") || null,
     };
 
     setLoading(true);
@@ -116,13 +181,9 @@ const CreateProject = () => {
               { label: editData ? "Edit Project" : "Create Project" },
             ]}
           />
-          <h1 className="page-title">
-            {editData ? "Edit Project" : "Create Project"}
-          </h1>
+          <h1 className="page-title">{editData ? "Edit Project" : "Create Project"}</h1>
           <p className="page-subtitle">
-            {editData
-              ? "Update the project details"
-              : "Set up a new project for your team"}
+            {editData ? "Update the project details" : "Set up a new project for your team"}
           </p>
         </div>
       </div>
@@ -134,10 +195,7 @@ const CreateProject = () => {
           subtitle="Fill in the project details, timeline, and status"
           footer={
             <>
-              <button
-                className="btn btn-ghost"
-                onClick={() => navigate("/employees/projects")}
-              >
+              <button className="btn btn-ghost" onClick={() => navigate("/employees/projects")}>
                 <X size={15} /> Cancel
               </button>
               <button className="btn btn-primary" onClick={handleSave}>
@@ -169,6 +227,55 @@ const CreateProject = () => {
               onChange={set("clientName")}
               placeholder="e.g. Acme Corp (leave blank if internal)"
             />
+
+            {/* ── Department multi-select (same pattern as Assign People) ── */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={IS.label}>Department</label>
+
+              {/* Selected chips */}
+              <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom: form.assignedDepts.length ? 8 : 0 }}>
+                {form.assignedDepts.map((d) => (
+                  <span key={d.value} style={{ display:"flex", alignItems:"center", gap:4, background:"var(--primary-ghost)", color:"var(--primary)", fontSize:12, fontWeight:600, padding:"3px 10px", borderRadius:20 }}>
+                    {d.label}
+                    <span onClick={() => removeDept(d.value)} style={{ cursor:"pointer", fontSize:14, lineHeight:1 }}>×</span>
+                  </span>
+                ))}
+              </div>
+
+              {/* Search input + dropdown container */}
+              <div style={{ position:"relative" }} ref={deptDropdownRef}>
+                <FocusInput
+                  value={deptSearch}
+                  onChange={(e) => { setDeptSearch(e.target.value); setShowDeptDrop(true); }}
+                  onFocus={() => setShowDeptDrop(true)}
+                  placeholder="Search and select departments..."
+                />
+
+                {/* Dropdown */}
+                {showDeptDrop && (
+                  <div style={{ position:"absolute", top:"100%", left:0, right:0, background:"white", border:"1.5px solid var(--border)", borderRadius:10, boxShadow:"var(--shadow-lg)", zIndex:100, maxHeight:200, overflowY:"auto", marginTop:4 }}>
+                    {filteredDepts.length === 0 ? (
+                      <div style={{ padding:"10px 14px", fontSize:13, color:"var(--text-muted)" }}>No results</div>
+                    ) : filteredDepts.map((o) => {
+                      const isSelected = form.assignedDepts.some((d) => d.value === o.value);
+                      return (
+                        <div
+                          key={o.value}
+                          onMouseDown={() => toggleDept(o)}
+                          style={{ padding:"9px 14px", fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"space-between",
+                            background: isSelected ? "var(--primary-ghost)" : "white",
+                            color:      isSelected ? "var(--primary)"       : "var(--text-primary)",
+                          }}
+                        >
+                          {o.label}
+                          {isSelected && <span style={{ fontSize:16, color:"var(--primary)" }}>✓</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
           </FormSection>
 
           {/* ── Timeline ── */}
@@ -190,33 +297,10 @@ const CreateProject = () => {
             </FormRow>
 
             {duration && (
-              <div
-                style={{
-                  background: "var(--teal-ghost)",
-                  border: "1px solid var(--teal)",
-                  borderRadius: 10,
-                  padding: "10px 14px",
-                  marginBottom: 18,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
+              <div style={{ background:"var(--teal-ghost)", border:"1px solid var(--teal)", borderRadius:10, padding:"10px 14px", marginBottom:18, display:"flex", alignItems:"center", gap:8 }}>
                 <Briefcase size={15} color="var(--teal)" />
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: "var(--teal)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                  }}
-                >
-                  Duration:
-                </span>
-                <span style={{ fontSize: 14, fontWeight: 800, color: "var(--teal)" }}>
-                  {duration}
-                </span>
+                <span style={{ fontSize:12, fontWeight:700, color:"var(--teal)", textTransform:"uppercase", letterSpacing:"0.05em" }}>Duration:</span>
+                <span style={{ fontSize:14, fontWeight:800, color:"var(--teal)" }}>{duration}</span>
               </div>
             )}
           </FormSection>

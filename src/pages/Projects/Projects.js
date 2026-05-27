@@ -12,10 +12,8 @@ const fmt = (d) => (d ? dayjs(d).format("DD-MM-YYYY") : "—");
 
 export default function Projects() {
   const navigate = useNavigate();
-
   const [projectList, setProjectList] = useState([]);
   const [loading, setLoading] = useState(false);
-
   const userRole = getCookie("role");
   const isAdmin = userRole === "Admin";
 
@@ -32,7 +30,7 @@ export default function Projects() {
             res.data.map((d) => ({
               ...d,
               startDate: fmt(d.startDate),
-              endDate: fmt(d.endDate),
+              endDate:   fmt(d.endDate),
             }))
           );
       })
@@ -41,12 +39,19 @@ export default function Projects() {
   };
 
   const columnsProjects = [
-    { field: "projectId", label: "#", width: 60 },
+    { field: "projectId",   label: "#",            width: 60 },
     { field: "projectName", label: "Project Name", filterable: true },
     { field: "description", label: "Description" },
-    { field: "clientName", label: "Client" },
-    { field: "startDate", label: "Start Date" },
-    { field: "endDate", label: "End Date" },
+    { field: "clientName",  label: "Client" },
+    // ── NEW: department column ──
+    {
+      field: "department",
+      label: "Department",
+      filterable: true,
+      renderCell: (row) => row.department || "—",
+    },
+    { field: "startDate",   label: "Start Date" },
+    { field: "endDate",     label: "End Date" },
     {
       field: "status",
       label: "Status",
@@ -72,7 +77,6 @@ export default function Projects() {
   return (
     <div>
       <LoadingMask loading={loading} />
-
       <div className="page-header">
         <div>
           <Breadcrumb
@@ -91,12 +95,7 @@ export default function Projects() {
           </button>
         )}
       </div>
-
-      <ProTable
-        title="Project List"
-        columns={columnsProjects}
-        data={projectList}
-      />
+      <ProTable title="Project List" columns={columnsProjects} data={projectList} />
     </div>
   );
 }
