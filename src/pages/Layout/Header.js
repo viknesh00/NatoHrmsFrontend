@@ -155,6 +155,7 @@ const Header = () => {
   const lastName     = getCookie("lastName")   || "";
   const employeeId   = getCookie("employeeId") || "";
   const employeeRole = getCookie("role")       || "";
+  const isDeizeisau  = (getCookie("department") || "").trim().toLowerCase() === "deizeisau";
   const initials     = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 
   // ── Timer helpers ────────────────────────────────────────────────────────
@@ -396,20 +397,23 @@ const Header = () => {
 
       <div className="header-right">
         {/* Clock button */}
-        <button
-          className={`clock-btn ${clockedIn ? "clock-btn-active" : "clock-btn-idle"}`}
-          onClick={handleClock}
-          disabled={loading}
-        >
-          {clockedIn ? (
-            <>
-              <span style={{ fontSize: 10, opacity: 0.85 }}>{formatDate(clockInTime)}</span>
-              <span style={{ fontSize: 13, letterSpacing: "0.05em" }}>{formatTime(timer)}</span>
-            </>
-          ) : (
-            "Clock In"
-          )}
-        </button>
+        {/* Clock button — hidden for Deizeisau department */}
+        {!isDeizeisau && (
+          <button
+            className={`clock-btn ${clockedIn ? "clock-btn-active" : "clock-btn-idle"}`}
+            onClick={handleClock}
+            disabled={loading}
+          >
+            {clockedIn ? (
+              <>
+                <span style={{ fontSize: 10, opacity: 0.85 }}>{formatDate(clockInTime)}</span>
+                <span style={{ fontSize: 13, letterSpacing: "0.05em" }}>{formatTime(timer)}</span>
+              </>
+            ) : (
+              "Clock In"
+            )}
+          </button>
+        )}
 
         {/* User info */}
         <div className="header-user-info">

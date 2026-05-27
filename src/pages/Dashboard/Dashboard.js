@@ -317,6 +317,7 @@ export default function Dashboard() {
   // Use fresh API data for current user (projectAssigned, department)
   const myDepartment      = myUserData?.department || getCookie("department") || "";
   const myProjectAssigned = myUserData?.projectAssigned || null;
+  const isDeizeisau = myDepartment.trim().toLowerCase() === "deizeisau";
 
   // Manager → their department's projects only
   // Admin   → all projects
@@ -343,14 +344,14 @@ export default function Dashboard() {
 
   // ── Stat cards ──────────────────────────────────────────────────────────────
   const statCards = isAdminOrMgr ? [
-    { label:"Total Employees", value:totalEmp,             sub:`${activeEmp} active`,    icon:<Users size={22}/>,          accent:ACCENT_COLORS[0], link:"/employees"    },
-    { label:"Present Today",   value:presentToday,         sub:`of ${activeEmp} active`, icon:<CalendarCheck2 size={22}/>, accent:ACCENT_COLORS[1], link:"/attendance"   },
-    { label:"Pending Leaves",  value:allPendingLeaves,     sub:"Awaiting approval",       icon:<UserMinus size={22}/>,      accent:ACCENT_COLORS[2], link:"/leave"        },
-    { label:"Announcements",   value:announcements.length, sub:"Active notices",          icon:<Megaphone size={22}/>,      accent:ACCENT_COLORS[3], link:"/announcement" },
+    { label: "Total Employees", value: totalEmp, sub: `${activeEmp} active`, icon: <Users size={22} />, accent: ACCENT_COLORS[0], link: "/employees" },
+    { label: "Present Today", value: presentToday, sub: `of ${activeEmp} active`, icon: <CalendarCheck2 size={22} />, accent: ACCENT_COLORS[1], link: "/attendance" },
+    { label: "Pending Leaves", value: allPendingLeaves, sub: "Awaiting approval", icon: <UserMinus size={22} />, accent: ACCENT_COLORS[2], link: "/leave" },
+    { label: "Announcements", value: announcements.length, sub: "Active notices", icon: <Megaphone size={22} />, accent: ACCENT_COLORS[3], link: "/announcement" },
   ] : [
-    { label:"My Leaves",     value:leaves.length,           sub:`${leaves.filter(l=>l.isApproved&&l.approvedBy).length} approved`, icon:<UserMinus size={22}/>,      accent:ACCENT_COLORS[0], link:"/leave"        },
-    { label:"Present Today", value:presentToday > 0 ? "Yes":"—", sub:"Clock-in recorded",                                          icon:<CalendarCheck2 size={22}/>, accent:ACCENT_COLORS[1], link:"/attendance"   },
-    { label:"Announcements", value:announcements.length,   sub:"Active notices",                                                    icon:<Megaphone size={22}/>,      accent:ACCENT_COLORS[3], link:"/announcement" },
+    { label: "My Leaves", value: leaves.length, sub: `${leaves.filter(l => l.isApproved && l.approvedBy).length} approved`, icon: <UserMinus size={22} />, accent: ACCENT_COLORS[0], link: "/leave" },
+    ...(!isDeizeisau ? [{ label: "Present Today", value: presentToday > 0 ? "Yes" : "—", sub: "Clock-in recorded", icon: <CalendarCheck2 size={22} />, accent: ACCENT_COLORS[1], link: "/attendance" }] : []),
+    { label: "Announcements", value: announcements.length, sub: "Active notices", icon: <Megaphone size={22} />, accent: ACCENT_COLORS[3], link: "/announcement" },
   ];
 
   const leaveStatus = (row) => {
