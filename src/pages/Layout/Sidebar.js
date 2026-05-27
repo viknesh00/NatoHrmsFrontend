@@ -15,7 +15,7 @@ const menuItems = [
   { to:"/employees",         label:"Employees",      icon:<Users size={18}/>,           roles:["Admin","Manager"] },
   { to:"/timesheet",         label:"Timesheet",      icon:<ClipboardList size={18}/>,   roles:["Admin","Manager","Employee"] },
   //{ to:"/job-management",    label:"Job Management", icon:<Briefcase size={18}/>,       roles:["Admin","Manager","Employee"], departments:["hr-offshore"] },
-  { to:"/attendance",        label:"Attendance",     icon:<CalendarCheck2 size={18}/>,  roles:["Admin","Manager","Employee"] },
+  { to:"/attendance", label:"Attendance", icon:<CalendarCheck2 size={18}/>, roles:["Admin","Manager","Employee"], hiddenDepartments:["deizeisau"] },
   //{ to:"/payslip",           label:"Payslip",        icon:<Receipt size={18}/>,         roles:["Admin"] },
   { to:"/company-documents", label:"Documents",      icon:<File size={18}/>,            roles:["Admin","Manager","Employee"] },
   { to:"/announcement",      label:"Announcements",  icon:<Megaphone size={18}/>,       roles:["Admin","Manager","Employee"] },
@@ -110,6 +110,8 @@ export default function Sidebar() {
     if (!m.roles.includes(userRole)) return false;
     // Admin sees everything regardless of department
     if (userRole === "Admin") return true;
+    // Hide item if user's department is in the blocklist
+    if (m.hiddenDepartments && m.hiddenDepartments.includes(userDepartment)) return false;
     // For other roles, check department whitelist if present
     if (m.departments && m.departments.length > 0) {
       return m.departments.includes(userDepartment);
