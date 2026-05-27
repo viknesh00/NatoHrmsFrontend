@@ -46,6 +46,7 @@ export default function Employees() {
     { field: "lastName",   label: "Last Name" },
     { field: "email",      label: "Email" },
     { field: "department", label: "Department", filterable: true },
+    { field: "projectAssigned", label: "Project Assigned", filterable: true },
     { field: "accessRole", label: "Role", filterable: true },
     { field: "lastLoginAt",label: "Last Login" },
     {
@@ -81,9 +82,11 @@ export default function Employees() {
               <Building size={15} /> Departments
             </button>
           )}
-          <button className="btn btn-primary" onClick={() => navigate("/employees/projects")}>
-            <Briefcase size={15} /> Projects
-          </button>
+          {isAdmin && (
+            <button className="btn btn-primary" onClick={() => navigate("/employees/projects")}>
+              <Briefcase size={15} /> Projects
+            </button>
+          )}
           <button className="btn btn-primary" onClick={() => navigate("/employees/add-employee")}>
             <Plus size={15} /> Add Employee
           </button>
