@@ -25,7 +25,7 @@ const parseDMY = (d) => {
 };
 
 const deptStringToArray = (str) =>
-  str ? str.split(",").map((s) => s.trim()).filter(Boolean) : [];
+  str ? str.split(",").map((s) => s.trim()).filter(Boolean).map((s) => ({ label: s, value: s })) : [];
 
 /* ── Input styles (same as DocumentUploadForm) ── */
 const IS = {

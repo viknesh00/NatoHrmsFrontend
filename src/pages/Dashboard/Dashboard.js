@@ -44,7 +44,7 @@ function projectStatusBadge(status) {
 }
 
 // ── ProjectProgress ───────────────────────────────────────────────────────────
-function ProjectProgress({ project }) {
+function ProjectProgress({ project, userDept }) {
   if (!project) return (
     <div style={{ textAlign:"center", padding:"28px 0", color:"var(--text-muted)", fontSize:13 }}>
       <div style={{ fontSize:32, marginBottom:8 }}>📋</div>
@@ -100,7 +100,16 @@ function ProjectProgress({ project }) {
         {[
           { label:"Start Date",  value: project.startDate  || "—" },
           { label:"End Date",    value: project.endDate    || "—" },
-          { label:"Department",  value: project.department || "—" },
+          {
+            label: "Department", value: (() => {
+              if (!project.department) return "—";
+              if (!userDept) return project.department;
+              const projDepts = project.department.split(",").map(d => d.trim());
+              const userDepts = userDept.split(",").map(d => d.trim());
+              const matched = projDepts.filter(d => userDepts.map(u => u.toLowerCase()).includes(d.toLowerCase()));
+              return matched.length ? matched.join(", ") : project.department;
+            })()
+          },
           { label:"Description", value: project.description
               ? project.description.slice(0, 40) + (project.description.length > 40 ? "…" : "")
               : "—" },
@@ -517,7 +526,7 @@ export default function Dashboard() {
               <div className="card-body">
                 {loading
                   ? <><Skel h={20} w="60%" mb={8}/><Skel h={14} mb={12}/><Skel h={6} mb={14}/><Skel h={60}/></>
-                  : <ProjectProgress project={myProject} />
+                  : <ProjectProgress project={myProject} userDept={myDepartment} />
                 }
               </div>
             )}
