@@ -16,7 +16,10 @@ function App() {
       <BrowserRouter>
             <AppRoutes />
         </BrowserRouter>
-        <ToastContainer transition={Zoom} />
+        <ToastContainer
+          transition={Zoom}
+          style={{ zIndex: 999999 }}
+        />
     </React.Fragment>
   );
 }
