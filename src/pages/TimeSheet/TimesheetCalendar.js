@@ -60,7 +60,10 @@ export default function TimesheetCalendar() {
   const location  = useLocation();
   const { viewData, selectedMonth: viewMonth } = location.state || {};
 
-  const [currentMonth, setCurrentMonth] = useState(dayjs());
+  const [currentMonth, setCurrentMonth] = useState(
+    viewMonth ? dayjs(viewMonth, "MMM-YYYY") : dayjs()
+  );
+
   const [entries,      setEntries]      = useState({});
   const [leaveList,    setLeaveList]    = useState([]);
   const [holidayList,  setHolidayList]  = useState([]);

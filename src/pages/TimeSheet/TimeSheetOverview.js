@@ -33,7 +33,11 @@ export default function TimeSheetOverview() {
   const [appliedMonth, setAppliedMonth]   = useState(null);
   const [tableData, setTableData]         = useState([]);
 
-  useEffect(() => { fetchTimesheet(selectedMonth); }, []);
+  useEffect(() => {
+    const m = dayjs().format("YYYY-MM");
+    setAppliedMonth(m); // ← add this
+    fetchTimesheet(m);
+  }, []);
 
   // ── Group API rows by user and compute regular / overtime / total ─────────
   const groupByUser = (data) => {
@@ -85,7 +89,7 @@ export default function TimeSheetOverview() {
   const handleReset = () => {
     const m = dayjs().format("YYYY-MM");
     setSelectedMonth(m);
-    setAppliedMonth(null);
+    setAppliedMonth(m); // ← was null before, now matches actual fetch
     fetchTimesheet(m);
   };
 
@@ -262,7 +266,7 @@ export default function TimeSheetOverview() {
           onClick={() => navigate("/timesheet/timesheet-view", {
             state: {
               viewData: row,
-              selectedMonth: dayjs(selectedMonth + "-01").format("MMM-YYYY"),
+              selectedMonth: dayjs((appliedMonth ?? selectedMonth) + "-01").format("MMM-YYYY"),
             },
           })}
         >
