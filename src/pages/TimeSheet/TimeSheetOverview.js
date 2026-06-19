@@ -35,45 +35,58 @@ export default function TimeSheetOverview() {
 
   useEffect(() => {
     const m = dayjs().format("YYYY-MM");
-    setAppliedMonth(m); // ← add this
+    setAppliedMonth(m);
     fetchTimesheet(m);
   }, []);
 
-  // ── Group API rows by user and compute regular / overtime / total ─────────
+  /** Collapse any "Holiday: X" variant into a single "Holiday" bucket */
+  const normalizeLeaveType = (leaveType) => {
+    if (!leaveType) return leaveType;
+    if (/^holiday\s*:/i.test(leaveType.trim())) return "Holiday";
+    return leaveType.trim();
+  };
+
+  // ── Group API rows by user and compute regular / overtime / total / leave counts ──
   const groupByUser = (data) => {
     const grouped = {};
     data.forEach(item => {
       const uid = item.userId;
       if (!grouped[uid]) {
         grouped[uid] = {
-          employeeName:    item.employeeName,
-          employeeId:      item.employeeId,
-          username:        item.username,
-          department:      item.department,
+          employeeName: item.employeeName,
+          employeeId: item.employeeId,
+          username: item.username,
+          department: item.department,
           projectAssigned: item.projectAssigned,
-          totalWorkingHours:  0,
-          totalRegularHours:  0,
+          totalWorkingHours: 0,
+          totalRegularHours: 0,
           totalOvertimeHours: 0,
+          leaveCounts: {},
           timesheet: [],
         };
       }
-      const dayTotal    = Number(item.workingHours || 0);
+      const dayTotal = Number(item.workingHours || 0);
       const { regular, overtime } = splitHours(dayTotal);
       grouped[uid].timesheet.push(item);
-      grouped[uid].totalWorkingHours  += dayTotal;
-      grouped[uid].totalRegularHours  += regular;
+      grouped[uid].totalWorkingHours += dayTotal;
+      grouped[uid].totalRegularHours += regular;
       grouped[uid].totalOvertimeHours += overtime;
+
+      if (item.leaveType) {
+        const key = normalizeLeaveType(item.leaveType);
+        grouped[uid].leaveCounts[key] = (grouped[uid].leaveCounts[key] || 0) + 1;
+      }
     });
 
     return Object.values(grouped).map(d => ({
       ...d,
-      totalWorkingHours:  decimalToHHMM(d.totalWorkingHours),
-      totalRegularHours:  decimalToHHMM(d.totalRegularHours),
+      totalWorkingHours: decimalToHHMM(d.totalWorkingHours),
+      totalRegularHours: decimalToHHMM(d.totalRegularHours),
       totalOvertimeHours: decimalToHHMM(d.totalOvertimeHours),
-      // keep raw numbers too so export can use them
-      _rawTotal:    d.totalWorkingHours,
-      _rawRegular:  d.totalRegularHours,
+      _rawTotal: d.totalWorkingHours,
+      _rawRegular: d.totalRegularHours,
       _rawOvertime: d.totalOvertimeHours,
+      _totalLeaveDays: Object.values(d.leaveCounts).reduce((a, b) => a + b, 0),
     }));
   };
 
@@ -89,7 +102,7 @@ export default function TimeSheetOverview() {
   const handleReset = () => {
     const m = dayjs().format("YYYY-MM");
     setSelectedMonth(m);
-    setAppliedMonth(m); // ← was null before, now matches actual fetch
+    setAppliedMonth(m);
     fetchTimesheet(m);
   };
 
@@ -98,10 +111,86 @@ export default function TimeSheetOverview() {
     return dayjs(raw.toString().split("T")[0]).format("DD-MM-YYYY");
   };
 
+  // ── Build the "Leave Summary" sheet ──────────────────────────────────────
+  const buildLeaveSummarySheet = (data) => {
+    // Collect all distinct leave types present this month
+    const leaveTypesSet = new Set();
+    data.forEach(emp => {
+      Object.keys(emp.leaveCounts || {}).forEach(lt => leaveTypesSet.add(lt));
+    });
+
+    // Fixed priority order: Holiday → Sick Leave → Casual Leave → anything new (alphabetical)
+    const LEAVE_ORDER = ["Holiday", "Sick Leave", "Casual Leave"];
+    const leaveTypes = [
+      ...LEAVE_ORDER.filter(lt => leaveTypesSet.has(lt)),
+      ...Array.from(leaveTypesSet).filter(lt => !LEAVE_ORDER.includes(lt)).sort(),
+    ];
+
+    // Column layout:
+    // [0-4] Emp ID | Employee Name | Email | Department | Project Assigned
+    // [5..4+N] leave type columns (Holiday, Sick Leave, Casual Leave, …)
+    // [5+N..7+N] TOTAL → Regular | Overtime | Total
+    const leaveStartCol  = 5;
+    const totalStartCol  = leaveStartCol + leaveTypes.length;
+
+    const headerRow1 = [
+      "Emp ID", "Employee Name", "Email", "Department", "Project Assigned",
+      ...leaveTypes,
+      "TOTAL", "", "",
+    ];
+    const headerRow2 = [
+      "", "", "", "", "",
+      ...leaveTypes.map(() => ""),
+      "Regular", "Overtime", "Total",
+    ];
+
+    const dataRows = data.map(emp => [
+      emp.employeeId,
+      emp.employeeName,
+      emp.username,
+      emp.department,
+      emp.projectAssigned,
+      ...leaveTypes.map(lt => emp.leaveCounts?.[lt] || 0),
+      emp.totalRegularHours,
+      emp.totalOvertimeHours,
+      emp.totalWorkingHours,
+    ]);
+
+    // Grand total row — leave columns intentionally left blank
+    let grandReg = 0, grandOt = 0, grandAll = 0;
+    data.forEach(emp => {
+      grandReg += emp._rawRegular  || 0;
+      grandOt  += emp._rawOvertime || 0;
+      grandAll += emp._rawTotal    || 0;
+    });
+    const totalRow = [
+      "", "", "", "",
+      ...leaveTypes.map(() => ""), 
+      "TOTAL",
+      decimalToHHMM(grandReg), decimalToHHMM(grandOt), decimalToHHMM(grandAll),
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet([headerRow1, headerRow2, ...dataRows, totalRow]);
+
+    // Merges: only TOTAL spans 3 cols across row 1; leave columns are single cells (no merge)
+    const merges = [
+      { s: { r: 0, c: totalStartCol }, e: { r: 0, c: totalStartCol + 2 } }, // TOTAL
+    ];
+    ws["!merges"] = merges;
+
+    ws["!cols"] = [
+      { wch: 12 }, { wch: 24 }, { wch: 30 }, { wch: 18 }, { wch: 20 },
+      ...leaveTypes.map(() => ({ wch: 16 })),
+      { wch: 10 }, { wch: 10 }, { wch: 10 },
+    ];
+
+    return ws;
+  };
+
   // ── Excel export — per-day columns split into Reg / OT / Total ───────────
   const handleExport = (data) => {
-    const mObj     = dayjs(selectedMonth + "-01");
-    const end      = mObj.endOf("month");
+    const mObj = dayjs(selectedMonth + "-01");
+    const end = mObj.endOf("month");
     const allDates = [];
     let d = mObj.startOf("month");
     while (d.isBefore(end) || d.isSame(end, "day")) {
@@ -123,7 +212,7 @@ export default function TimeSheetOverview() {
 
     const dataRows = data.map(emp => {
       const dayCells = allDates.flatMap(ds => {
-        const entry    = emp.timesheet?.find(t => normalizeDate(t.entryDate) === ds);
+        const entry = emp.timesheet?.find(t => normalizeDate(t.entryDate) === ds);
         const dayTotal = Number(entry?.workingHours || 0);
         const { regular, overtime } = splitHours(dayTotal);
         return [decimalToHHMM(regular), decimalToHHMM(overtime), decimalToHHMM(dayTotal)];
@@ -148,16 +237,16 @@ export default function TimeSheetOverview() {
     allDates.forEach(ds => {
       let colReg = 0, colOt = 0, colTotal = 0;
       data.forEach(emp => {
-        const entry    = emp.timesheet?.find(t => normalizeDate(t.entryDate) === ds);
+        const entry = emp.timesheet?.find(t => normalizeDate(t.entryDate) === ds);
         const dayTotal = Number(entry?.workingHours || 0);
         const { regular, overtime } = splitHours(dayTotal);
-        colReg   += regular;
-        colOt    += overtime;
+        colReg += regular;
+        colOt += overtime;
         colTotal += dayTotal;
       });
-      grandReg  += colReg;
-      grandOt   += colOt;
-      grandAll  += colTotal;
+      grandReg += colReg;
+      grandOt += colOt;
+      grandAll += colTotal;
       totalRow.push(decimalToHHMM(colReg), decimalToHHMM(colOt), decimalToHHMM(colTotal));
     });
     totalRow.push(decimalToHHMM(grandReg), decimalToHHMM(grandOt), decimalToHHMM(grandAll));
@@ -168,20 +257,27 @@ export default function TimeSheetOverview() {
     const merges = [];
     allDates.forEach((_, i) => {
       const col = 5 + i * 3;
-      merges.push({ s:{ r:0, c:col }, e:{ r:0, c:col+2 } });
+      merges.push({ s: { r: 0, c: col }, e: { r: 0, c: col + 2 } });
     });
     const totalStartCol = 5 + allDates.length * 3;
-    merges.push({ s:{ r:0, c:totalStartCol }, e:{ r:0, c:totalStartCol+2 } });
+    merges.push({ s: { r: 0, c: totalStartCol }, e: { r: 0, c: totalStartCol + 2 } });
     ws["!merges"] = merges;
 
     ws["!cols"] = [
-      { wch:12 }, { wch:24 }, { wch:30 }, { wch:18 }, { wch:20 },
-      ...allDates.flatMap(() => [{ wch:10 }, { wch:10 }, { wch:10 }]),
-      { wch:10 }, { wch:10 }, { wch:10 },
+      { wch: 12 }, { wch: 24 }, { wch: 30 }, { wch: 18 }, { wch: 20 },
+      ...allDates.flatMap(() => [{ wch: 10 }, { wch: 10 }, { wch: 10 }]),
+      { wch: 10 }, { wch: 10 }, { wch: 10 },
     ];
 
     const wb = XLSX.utils.book_new();
+
+    // Leave Summary first
+    const leaveSummaryWs = buildLeaveSummarySheet(data);
+    XLSX.utils.book_append_sheet(wb, leaveSummaryWs, "Leave Summary");
+
+    // Timesheet second
     XLSX.utils.book_append_sheet(wb, ws, "Timesheet");
+
     XLSX.writeFile(wb, `Timesheet_${mObj.format("MMM-YYYY")}.xlsx`);
   };
 
