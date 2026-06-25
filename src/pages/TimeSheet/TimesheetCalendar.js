@@ -403,22 +403,28 @@ export default function TimesheetCalendar() {
     while (day.isSame(currentMonth,"month")) { daysInMonth.push(day.clone()); day=day.add(1,"day"); }
 
     daysInMonth.forEach(d => {
-      const iso     = d.format("YYYY-MM-DD");
-      const entry   = entries[iso];
+      const iso = d.format("YYYY-MM-DD");
+      const entry = entries[iso];
       const holiday = getHolidayForDay(d);
-      const leave   = getLeaveForDay(d);
-      const isWknd  = d.day()===0||d.day()===6;
+      const leave = getLeaveForDay(d);
+      const isWknd = d.day() === 0 || d.day() === 6;
+      const isFuture = d.isAfter(today, "day");
       const { regularTasks: rt, overtimeTasks: ot } = parseAllTasks(entry?.task, entry?.hours);
       rows.push({
-        "Date":           d.format("DD-MM-YYYY"),
-        "Day":            d.format("dddd"),
-        "Status":         holiday?"Holiday":leave?"On Leave":isWknd?"Weekend":entry?.hours>0?"Present":"Absent",
-        "Regular Hours":  roundH(Math.min(entry?.hours||0, MAX_REGULAR)),
-        "Overtime Hours": roundH(Math.max((entry?.hours||0)-MAX_REGULAR, 0)),
-        "Total Hours":    entry?.hours||0,
-        "Regular Tasks":  rt.filter(t=>t.name).map(t=>`${t.name} (${t.hours}h)`).join("; "),
-        "Overtime Tasks": ot.filter(t=>t.name).map(t=>`${t.name} (${t.hours}h)`).join("; "),
-        "Leave Type":     entry?.leaveType||leave?.leaveType||"",
+        "Date": d.format("DD-MM-YYYY"),
+        "Day": d.format("dddd"),
+        "Status": holiday ? "Holiday"
+          : leave ? "On Leave"
+            : isWknd ? "Weekend"
+              : isFuture ? ""
+                : entry?.hours > 0 ? "Present"
+                  : "Absent",
+        "Regular Hours": roundH(Math.min(entry?.hours || 0, MAX_REGULAR)),
+        "Overtime Hours": roundH(Math.max((entry?.hours || 0) - MAX_REGULAR, 0)),
+        "Total Hours": entry?.hours || 0,
+        "Regular Tasks": rt.filter(t => t.name).map(t => `${t.name} (${t.hours}h)`).join("; "),
+        "Overtime Tasks": ot.filter(t => t.name).map(t => `${t.name} (${t.hours}h)`).join("; "),
+        "Leave Type": entry?.leaveType || leave?.leaveType || "",
       });
     });
 
