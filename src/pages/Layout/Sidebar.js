@@ -19,7 +19,7 @@ const menuItems = [
   //{ to:"/payslip",           label:"Payslip",        icon:<Receipt size={18}/>,         roles:["Admin"] },
   { to:"/company-documents", label:"Documents",      icon:<File size={18}/>,            roles:["Admin","Manager","Employee"] },
   { to:"/announcement",      label:"Announcements",  icon:<Megaphone size={18}/>,       roles:["Admin","Manager","Employee"] },
-  { to:"/leave",             label:"Leave",          icon:<UserMinus size={18}/>,       roles:["Admin","Manager","Employee"] },
+  { to:"/leave",             label:"Leave",          icon:<UserMinus size={18}/>,       roles:["Admin","Manager","Employee"], hiddenDepartments:["deizeisau"] },
   { to:"/Calendar",          label:"Calendar",       icon:<Calendar size={18}/>,        roles:["Admin","Manager","Employee"] },
 ];
 
