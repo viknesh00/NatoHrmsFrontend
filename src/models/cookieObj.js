@@ -9,4 +9,8 @@ export const cookieObj = {
   lastName: '',
   employeeId: '',
   clockInTime: '',
+  includeSaturday: '',
+  includeSunday: '',
+  shiftEndTime: '',
+  shiftStartTime: '',
 };

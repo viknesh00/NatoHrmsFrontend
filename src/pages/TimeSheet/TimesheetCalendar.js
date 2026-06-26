@@ -12,7 +12,7 @@ import LoadingMask from "../../services/LoadingMask";
 import Breadcrumb from "../../services/Breadcrumb";
 import { ToastSuccess, ToastError } from "../../services/ToastMsg";
 import * as XLSX from "xlsx";
-
+import { getCookie } from "../../services/Cookies";
 dayjs.extend(isoWeek);
 
 const MAX_REGULAR = 8;
@@ -83,6 +83,11 @@ export default function TimesheetCalendar() {
   const [dayMode,      setDayMode]      = useState("");
   const [manualHolidayName, setManualHolidayName] = useState("");
 
+  // Department-based weekend working days (set at login from DepartmentTimings)
+const includeSaturday = getCookie("includeSaturday") === "true" || getCookie("includeSaturday") === true;
+const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("includeSunday")   === true;
+
+
   const isViewMode     = !!viewData;
   const today          = dayjs();
   const isCurrentMonth = currentMonth.isSame(today, "month");
@@ -91,6 +96,15 @@ export default function TimesheetCalendar() {
   const startDay = currentMonth.startOf("month").startOf("isoWeek");
   const endDay   = currentMonth.endOf("month").endOf("isoWeek");
   const allDays  = [];
+
+  // Helper: is this date a non-working weekend day for the user's department?
+  const isNonWorkingWeekendDay = (date) => {
+    const dow = date.day(); // dayjs: 0 = Sunday, 6 = Saturday
+    if (dow === 6) return !includeSaturday;
+    if (dow === 0) return !includeSunday;
+    return false;
+  };
+
   let d = startDay;
   while (d.isBefore(endDay,"day") || d.isSame(endDay,"day")) { allDays.push(d); d=d.add(1,"day"); }
   const weeks = [];
@@ -161,18 +175,27 @@ export default function TimesheetCalendar() {
     if (date.isAfter(today,"day")) return "future";
     if (!currentMonth.isSame(today,"month") && !isViewMode) return "pastlock";
 
-    const isWknd  = date.day()===0||date.day()===6;
+    const nonWorkingWeekend = isNonWorkingWeekendDay(date);
     const entry   = entries[date.format("YYYY-MM-DD")];
     const holiday = getHolidayForDay(date);
     const leave   = getLeaveForDay(date);
 
+    // If it's a non-working Sat/Sun for this department, ignore leave/holiday entirely.
+    // Only show actual logged hours (if any were saved), otherwise plain "weekend".
+    if (nonWorkingWeekend) {
+      if (!entry || !entry.hours) return "weekend";
+      if (entry.hours > MAX_REGULAR) return "overtime";
+      if (entry.hours === MAX_REGULAR) return "filled";
+      return "partial";
+    }
+
+    // Working Sat/Sun (or a weekday) — behaves like a normal day, leave/holiday apply
     if (holiday) return "holiday";
     if (leave && !leave.approverReason && !entry?.hours) {
       return leave.isApproved===true||leave.isApproved==="true" ? "approved" : "leave";
     }
     if (entry?.leaveType && !entry?.hours) return "leave";
-    if (isWknd && !entry?.hours) return "weekend";
-    if (!entry || entry.hours===0) return isWknd ? "weekend" : "empty";
+    if (!entry || entry.hours===0) return "empty";
     if (entry.hours > MAX_REGULAR)  return "overtime";
     if (entry.hours === MAX_REGULAR) return "filled";
     return "partial";
@@ -224,8 +247,10 @@ export default function TimesheetCalendar() {
     const holiday= getHolidayForDay(date);
     const leave  = getLeaveForDay(date);
     const status = getCellStatus(date);
+    const nonWorkingWeekend = isNonWorkingWeekendDay(date);
+    if (nonWorkingWeekend) return;
     if (status==="outside") return;
-    if (!entry?.task && !holiday && !leave) return;
+    if (!entry?.task && !holiday && !leave && !isNonWorkingWeekendDay(date)) return;
     const rect = e.currentTarget.getBoundingClientRect();
     setTooltip({ visible:true, date, x:rect.left+rect.width/2, y:rect.top-8 });
   };
@@ -347,11 +372,10 @@ export default function TimesheetCalendar() {
     };
 
     const applyToDate = (dd) => {
-      const isWknd = dd.day()===0||dd.day()===6;
-      if (isWknd) return;
+      if (isNonWorkingWeekendDay(dd)) return; // skip non-working Sat/Sun entirely
       if (getHolidayForDay(dd)) return;
-      if (getLeaveForDay(dd)&&!getLeaveForDay(dd)?.approverReason) return;
-      if (!dd.isAfter(today,"day") && dd.month()===currentMonth.month())
+      if (getLeaveForDay(dd) && !getLeaveForDay(dd)?.approverReason) return;
+      if (!dd.isAfter(today, "day") && dd.month() === currentMonth.month())
         upd[dd.format("YYYY-MM-DD")] = { task: taskPayload, hours: totalHrs, leaveType: null };
     };
 
@@ -405,26 +429,26 @@ export default function TimesheetCalendar() {
     daysInMonth.forEach(d => {
       const iso = d.format("YYYY-MM-DD");
       const entry = entries[iso];
+      const isWknd = isNonWorkingWeekendDay(d);
       const holiday = getHolidayForDay(d);
       const leave = getLeaveForDay(d);
-      const isWknd = d.day() === 0 || d.day() === 6;
       const isFuture = d.isAfter(today, "day");
       const { regularTasks: rt, overtimeTasks: ot } = parseAllTasks(entry?.task, entry?.hours);
       rows.push({
         "Date": d.format("DD-MM-YYYY"),
         "Day": d.format("dddd"),
-        "Status": holiday ? "Holiday"
-          : leave ? "On Leave"
-            : isWknd ? "Weekend"
-              : isFuture ? ""
-                : entry?.hours > 0 ? "Present"
-                  : "Absent",
+        "Status": isWknd ? "Weekend"
+                  : holiday ? "Holiday"
+                    : leave ? "On Leave"
+                      : isFuture ? ""
+                        : entry?.hours > 0 ? "Present"
+                          : "Absent",
         "Regular Hours": roundH(Math.min(entry?.hours || 0, MAX_REGULAR)),
         "Overtime Hours": roundH(Math.max((entry?.hours || 0) - MAX_REGULAR, 0)),
         "Total Hours": entry?.hours || 0,
         "Regular Tasks": rt.filter(t => t.name).map(t => `${t.name} (${t.hours}h)`).join("; "),
         "Overtime Tasks": ot.filter(t => t.name).map(t => `${t.name} (${t.hours}h)`).join("; "),
-        "Leave Type": entry?.leaveType || leave?.leaveType || "",
+        "Leave Type": isWknd ? "" : (entry?.leaveType || leave?.leaveType || ""),
       });
     });
 
@@ -451,7 +475,7 @@ export default function TimesheetCalendar() {
 
   const tooltipEntry   = tooltip.date ? entries[tooltip.date.format("YYYY-MM-DD")] : null;
   const tooltipHoliday = tooltip.date ? getHolidayForDay(tooltip.date) : null;
-  const tooltipLeave   = tooltip.date ? getLeaveForDay(tooltip.date)   : null;
+  const tooltipLeave   = tooltip.date && !isNonWorkingWeekendDay(tooltip.date) ? getLeaveForDay(tooltip.date)   : null;
   const tooltipStatus  = tooltip.date ? getCellStatus(tooltip.date)    : null;
   const tooltipS       = tooltipStatus ? STATUS[tooltipStatus] : null;
   const { regularTasks: ttReg, overtimeTasks: ttOt } = tooltipEntry
@@ -544,6 +568,7 @@ export default function TimesheetCalendar() {
                     const entry   = entries[day.format("YYYY-MM-DD")];
                     const holiday = getHolidayForDay(day);
                     const leave   = getLeaveForDay(day);
+                    const nonWorkingWeekend = isNonWorkingWeekendDay(day);
                     const isToday2    = day.format("YYYY-MM-DD")===today.format("YYYY-MM-DD");
                     const inCurrentMonth = day.month()===currentMonth.month();
                     const apiLeave   = getLeaveForDay(day);
@@ -579,8 +604,8 @@ export default function TimesheetCalendar() {
                               </div>
                             )}
                             {holiday && <div style={{ fontSize:10, color:s.text, fontWeight:700, textAlign:"center", maxWidth:"90%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", background:"rgba(255,255,255,0.5)", padding:"2px 5px", borderRadius:4 }}>{holiday.eventName}</div>}
-                            {leave && !holiday && <div style={{ fontSize:10, color:s.text, fontWeight:700, textAlign:"center", maxWidth:"90%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{leave.leaveType}</div>}
-                            {!leave && !holiday && entry?.leaveType && <div style={{ fontSize:10, color:s.text, fontWeight:700, textAlign:"center", maxWidth:"90%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{entry.leaveType}</div>}
+                            {!nonWorkingWeekend && leave && !holiday && <div style={{ fontSize:10, color:s.text, fontWeight:700, textAlign:"center", maxWidth:"90%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{leave.leaveType}</div>}
+                            {!nonWorkingWeekend && !leave && !holiday && entry?.leaveType && <div style={{ fontSize:10, color:s.text, fontWeight:700, textAlign:"center", maxWidth:"90%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{entry.leaveType}</div>}
                             {status==="pastlock" && <div style={{ fontSize:16, color:s.text, textAlign:"center" }}>🔒</div>}
                             {entry?.task && !holiday && !leave && <div style={{ width:5, height:5, borderRadius:"50%", background:s.text, opacity:0.5, flexShrink:0 }}/>}
                           </div>
