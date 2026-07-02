@@ -88,10 +88,15 @@ const includeSaturday = getCookie("includeSaturday") === "true" || getCookie("in
 const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("includeSunday")   === true;
 
 
-  const isViewMode     = !!viewData;
+  // ── Grace period config ─────────────────────────────────────────────────
+  const GRACE_DAYS = 5; // previous month stays editable for this many days into the new month
   const today          = dayjs();
   const isCurrentMonth = currentMonth.isSame(today, "month");
-  const canEdit        = !isViewMode && isCurrentMonth;
+  const isPrevMonth = currentMonth.isSame(today.subtract(1, "month"), "month");
+  const isPrevMonthGrace = isPrevMonth && today.date() <= GRACE_DAYS;
+
+  const isViewMode = !!viewData;
+  const canEdit    = !isViewMode && (isCurrentMonth || isPrevMonthGrace);
 
   const startDay = currentMonth.startOf("month").startOf("isoWeek");
   const endDay   = currentMonth.endOf("month").endOf("isoWeek");
@@ -173,7 +178,7 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
     const inCurrentMonth = date.month()===currentMonth.month();
     if (!inCurrentMonth) return "outside";
     if (date.isAfter(today,"day")) return "future";
-    if (!currentMonth.isSame(today,"month") && !isViewMode) return "pastlock";
+    if (!isCurrentMonth && !isPrevMonthGrace && !isViewMode) return "pastlock";
 
     const nonWorkingWeekend = isNonWorkingWeekendDay(date);
     const entry   = entries[date.format("YYYY-MM-DD")];
@@ -535,8 +540,13 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
             )}
             {isViewMode && <div style={{ width:30 }}/>}
             {!canEdit && !isViewMode && (
-              <span style={{ background:"#fff7ed", color:"#b45309", fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:20, display:"flex", alignItems:"center", gap:5 }}>
-                <AlertCircle size={12}/> Locked
+              <span style={{ background: "#fff7ed", color: "#b45309", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, display: "flex", alignItems: "center", gap: 5 }}>
+                <AlertCircle size={12} /> Locked
+              </span>
+            )}
+            {canEdit && isPrevMonthGrace && (
+              <span style={{ background: "#eff6ff", color: "#1d4ed8", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, display: "flex", alignItems: "center", gap: 5 }}>
+                <Clock size={12} /> Editable until {today.startOf("month").date(GRACE_DAYS).format("DD MMM")}
               </span>
             )}
           </div>
