@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import ReactDOM from "react-dom";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import {
-  ChevronLeft, ChevronRight, X, Save, Clock, Copy,
+  ChevronLeft, ChevronRight, ChevronDown, X, Save, Clock, Copy,
   FileSpreadsheet, Trash2, AlertCircle, ClipboardList, Plus, CheckCircle2, Zap,
 } from "lucide-react";
 import { getRequest, postRequest } from "../../services/Apiservice";
@@ -33,20 +33,11 @@ const STATUS = {
   outside:  { bg: "transparent", border: "transparent", text: "#e5e7eb", label: "" },
 };
 
-const toMin = (v) => {
-  if (v === null || v === undefined || v === "") return 0;
-  const s = typeof v === "number" ? v.toFixed(2) : String(v);
-  const p = s.split(".");
-  const h = parseInt(p[0], 10) || 0;
-  const mStr = (p[1] || "0").padEnd(2, "0").slice(0, 2); // guarantees 2-digit minute field
-  const m = parseInt(mStr, 10) || 0;
-  return h * 60 + m;
-};
+// True-decimal (h + m/60) -> total minutes. Used to work out how much of the
+// 8h regular budget is left once other rows' hours are subtracted out, and
+// to correctly sum week/month totals (see getWeekTotal/monthTotal below).
+const decToMin = (v) => Math.round((Number(v) || 0) * 60);
 
-const fromMin = (m) => {
-  const h = Math.floor(m / 60), min = m % 60;
-  return min === 0 ? `${h}` : `${h}.${String(min).padStart(2, "0")}`;
-};
 const parseAllTasks = (taskStr, fallbackHours) => {
   const empty = { regularTasks: [{ name:"", hours:"" }], overtimeTasks: [] };
   if (!taskStr) return empty;
@@ -65,6 +56,129 @@ const parseAllTasks = (taskStr, fallbackHours) => {
 };
 
 const sumHours = (tasks) => roundH(tasks.reduce((s,t) => s+(parseFloat(t.hours)||0), 0));
+
+// ── HH:MM duration-picker helpers ───────────────────────────────────────────
+// task.hours is still stored/validated as a decimal number of hours (e.g. 1.25 = 1h15m),
+// these just convert that decimal to/from separate HH and MM dropdown values.
+const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, i) => i); // 0..59
+const hhFromDecimal = (v) => Math.floor(Number(v) || 0);
+const mmFromDecimal = (v) => Math.round((((Number(v) || 0) % 1) + 1e-9) * 60);
+const hmToDecimal = (h, m) => roundH(Number(h || 0) + Number(m || 0) / 60);
+// Display a decimal-hours value as "1h 15m" instead of the raw decimal (1.25),
+// so it never reads like "25 minutes" when it's really the .25 fraction of an hour.
+const fmtHM = (v) => {
+  const totalMin = Math.round((Number(v) || 0) * 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h && m) return `${h}h ${m}m`;
+  if (h) return `${h}h`;
+  return `${m}m`;
+};
+
+// Format an already-summed total-minutes integer as "Xh Ym" — used for week/month
+// totals, which sum multiple days' worth of minutes before formatting once.
+const fmtMin = (totalMin) => {
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h && m) return `${h}h ${m}m`;
+  if (h) return `${h}h`;
+  return `${m}m`;
+};
+
+// Custom dropdown for picking an HH or MM value. Renders its option list through a
+// portal, positioned with fixed coords anchored to the trigger's bottom edge — so it
+// always opens downward and is never clipped or flipped upward by the modal's scroll box.
+function DurationDropdown({ value, options, formatLabel, onChange, ot }) {
+  const [open, setOpen] = useState(false);
+  const [rect, setRect] = useState(null);
+  const btnRef  = useRef(null);
+  const listRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnOutside = (e) => {
+      if (btnRef.current?.contains(e.target)) return;
+      if (listRef.current?.contains(e.target)) return;
+      setOpen(false);
+    };
+    const closeOnScroll = (e) => {
+      if (listRef.current && listRef.current.contains(e.target)) return; // scrolling the option list itself — keep it open
+      setOpen(false);
+    };
+    document.addEventListener("mousedown", closeOnOutside);
+    window.addEventListener("scroll", closeOnScroll, true);
+    window.addEventListener("resize", closeOnScroll);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutside);
+      window.removeEventListener("scroll", closeOnScroll, true);
+      window.removeEventListener("resize", closeOnScroll);
+    };
+  }, [open]);
+
+  const toggle = () => {
+    if (!open && btnRef.current) setRect(btnRef.current.getBoundingClientRect());
+    setOpen(o => !o);
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        ref={btnRef}
+        onClick={toggle}
+        style={{
+          flex: 1, minWidth: 0, width: "100%",
+          padding: "10px 6px", borderRadius: 10,
+          border: `1.5px solid ${open ? "var(--primary)" : (ot ? "#bfdbfe" : "var(--border)")}`,
+          boxShadow: open ? "0 0 0 3px var(--primary-ghost)" : "none",
+          background: ot ? "#f8fbff" : "var(--bg)",
+          fontFamily: "'DM Sans',sans-serif", fontSize: 12, fontWeight: 700,
+          color: "var(--text-primary)", cursor: "pointer", outline: "none", boxSizing: "border-box",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 3,
+          transition: "all 0.15s",
+        }}
+      >
+        {formatLabel(value)} <ChevronDown size={11} style={{ opacity: 0.55, flexShrink: 0 }} />
+      </button>
+      {open && rect && ReactDOM.createPortal(
+        <div
+          ref={listRef}
+          style={{
+            position: "fixed",
+            top: rect.bottom + 4,
+            left: rect.left,
+            width: rect.width,
+            maxHeight: 190,
+            overflowY: "auto",
+            background: "#fff",
+            border: "1.5px solid var(--border)",
+            borderRadius: 10,
+            boxShadow: "0 10px 28px rgba(0,0,0,0.16)",
+            zIndex: 999999,
+          }}
+        >
+          {options.map(o => (
+            <div
+              key={o}
+              onClick={() => { onChange(o); setOpen(false); }}
+              style={{
+                padding: "7px 4px",
+                fontSize: 12, fontWeight: 700, textAlign: "center", cursor: "pointer",
+                background: o === value ? "var(--primary)" : "#fff",
+                color: o === value ? "#fff" : "var(--text-primary)",
+              }}
+              onMouseEnter={e => { if (o !== value) e.currentTarget.style.background = "var(--primary-ghost)"; }}
+              onMouseLeave={e => { if (o !== value) e.currentTarget.style.background = "#fff"; }}
+            >
+              {formatLabel(o)}
+            </div>
+          ))}
+        </div>,
+        document.body
+      )}
+    </>
+  );
+}
 
 export default function TimesheetCalendar({tabSwitcher}) {
   const navigate  = useNavigate();
@@ -288,6 +402,21 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
   const grandTotal    = regularTotal + overtimeTotal;
   const regularOver   = regularTotal > MAX_REGULAR;
 
+  // ── FIX: if a regular task gets deleted (or edited down) and regular hours
+  // drop below the 8h requirement, collapse the Overtime panel back to the
+  // banner state — but only when it's still empty/unfilled. If the person has
+  // already typed real overtime, leave it alone so saveEntry's validation
+  // message ("complete regular 8h first") can guide them instead of us
+  // silently discarding what they entered.
+  useEffect(() => {
+    if (!showOvertime || regularTotal >= MAX_REGULAR) return;
+    const hasRealOt = overtimeTasks.some(t => t.name.trim() && parseFloat(t.hours) > 0);
+    if (!hasRealOt) {
+      setShowOvertime(false);
+      setOvertimeTasks([]);
+    }
+  }, [regularTotal]);
+
   // ── FIX: helper to decide if a regular task row's X button should show ───
   // Hide the X when overtime tasks exist (user must keep regular at 8h)
   // OR when it's the last remaining regular task row
@@ -442,8 +571,13 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
   };
 
   // ── Totals ────────────────────────────────────────────────────────────────
-  const getWeekTotal = (week) => fromMin(week.reduce((s,day)=>s+toMin(entries[day.format("YYYY-MM-DD")]?.hours||0),0));
-  const monthTotal   = fromMin(Object.values(entries).reduce((s,e)=>s+toMin(e.hours||0),0));
+  // FIX: entry.hours is stored as a true decimal fraction (h + m/60, e.g. 2h3m = 2.05)
+  // via hmToDecimal/sumHours — NOT the literal "HH.MM" encoding toMin/fromMin expect.
+  // Summing with toMin silently misreads the minute digits (e.g. reads .05 as "5 min"
+  // instead of converting the fraction back to 3 min) and fromMin then prints the raw
+  // literal string with no unit formatting. decToMin + fmtMin match the actual encoding.
+  const getWeekTotal = (week) => fmtMin(week.reduce((s,day)=>s+decToMin(entries[day.format("YYYY-MM-DD")]?.hours||0),0));
+  const monthTotal   = fmtMin(Object.values(entries).reduce((s,e)=>s+decToMin(e.hours||0),0));
 
   // ── Excel export ───────────────────────────────────────────────────────────
   const handleExcelExport = () => {
@@ -539,7 +673,7 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
           </button>
           <div style={{ background:"var(--primary-ghost)", border:"1px solid var(--border)", borderRadius:10, padding:"8px 16px", textAlign:"center" }}>
             <div style={{ fontSize:11, fontWeight:700, color:"var(--primary)", textTransform:"uppercase", letterSpacing:"0.05em" }}>Month Total</div>
-            <div style={{ fontSize:20, fontWeight:900, color:"var(--primary)", fontFamily:"'Plus Jakarta Sans',sans-serif" }}>{monthTotal} hrs</div>
+            <div style={{ fontSize:20, fontWeight:900, color:"var(--primary)", fontFamily:"'Plus Jakarta Sans',sans-serif" }}>{monthTotal}</div>
           </div>
         </div>
       </div>
@@ -663,11 +797,11 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
                                 {rawTotal > 0 && !holiday && !leave && (
                                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, marginTop: 4 }}>
                                     <span style={{ fontSize: 16, fontWeight: 900, color: s.text, fontFamily: "'Plus Jakarta Sans',sans-serif", lineHeight: 1 }}>
-                                      {regHours}h
+                                      {fmtHM(regHours)}
                                     </span>
                                     {otHours > 0 && (
                                       <span style={{ fontSize: 9, fontWeight: 800, color: "#1d4ed8", background: "#dbeafe", padding: "1px 5px", borderRadius: 20, display: "inline-flex", alignItems: "center", gap: 2, maxWidth: "92%", overflow: "hidden", whiteSpace: "nowrap" }}>
-                                        <Zap size={8} /> +{otHours}h OT
+                                        <Zap size={8} /> +{fmtHM(otHours)} OT
                                       </span>
                                     )}
                                   </div>
@@ -691,7 +825,7 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
                     padding: 0,
                   }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", minHeight: 60, fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 13, fontWeight: 800, color: "var(--primary)" }}>
-                      {getWeekTotal(week)} hrs
+                      {getWeekTotal(week)}
                     </div>
                   </td>
                 </tr>
@@ -713,8 +847,8 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
               <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:tooltipTasks.length?8:0 }}>
                 <Clock size={11} color="var(--text-muted)"/>
                 <span style={{ fontSize:12, fontWeight:700, color:"var(--text-primary)" }}>
-                  {roundH(Math.min(tooltipEntry.hours,MAX_REGULAR))}h regular
-                  {tooltipEntry.hours>MAX_REGULAR && ` + ${roundH(tooltipEntry.hours-MAX_REGULAR)}h OT`}
+                  {fmtHM(roundH(Math.min(tooltipEntry.hours,MAX_REGULAR)))} regular
+                  {tooltipEntry.hours>MAX_REGULAR && ` + ${fmtHM(roundH(tooltipEntry.hours-MAX_REGULAR))} OT`}
                 </span>
               </div>
             )}
@@ -725,7 +859,7 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
                 {tooltipTasks.map((t,i)=>(
                   <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:12, color:"var(--text-primary)", lineHeight:1.8, gap:8 }}>
                     <span style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{t.name}</span>
-                    {t.hours && <span style={{ fontWeight:800, flexShrink:0, color:"var(--primary)" }}>{t.hours}h</span>}
+                    {t.hours && <span style={{ fontWeight:800, flexShrink:0, color:"var(--primary)" }}>{fmtHM(t.hours)}</span>}
                   </div>
                 ))}
               </>
@@ -799,12 +933,12 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
                     <div style={{ display:"flex", gap:8, alignItems:"center" }}>
                       {savedReg.filter(t=>t.name).length>0 && (
                         <span style={{ fontSize:11, fontWeight:700, color:"var(--primary)", background:"white", border:"1.5px solid var(--primary)", padding:"1px 9px", borderRadius:20 }}>
-                          {sumHours(savedReg.filter(t=>t.name))}h regular
+                          {fmtHM(sumHours(savedReg.filter(t=>t.name)))} regular
                         </span>
                       )}
                       {savedOt.filter(t=>t.name).length>0 && (
                         <span style={{ fontSize:11, fontWeight:700, color:"#1d4ed8", background:"#dbeafe", border:"1.5px solid #93c5fd", padding:"1px 9px", borderRadius:20, display:"flex", alignItems:"center", gap:4 }}>
-                          <Zap size={10}/>{sumHours(savedOt.filter(t=>t.name))}h OT
+                          <Zap size={10}/>{fmtHM(sumHours(savedOt.filter(t=>t.name)))} OT
                         </span>
                       )}
                     </div>
@@ -815,7 +949,7 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
                         <div style={{ width:6, height:6, borderRadius:"50%", background:"var(--primary)", opacity:0.45, flexShrink:0 }}/>
                         <span style={{ fontSize:13, color:"var(--text-primary)", fontWeight:500, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{t.name}</span>
                       </div>
-                      <span style={{ fontSize:13, fontWeight:800, color:"var(--primary)", textAlign:"right", fontFamily:"'Plus Jakarta Sans',sans-serif" }}>{t.hours}h</span>
+                      <span style={{ fontSize:13, fontWeight:800, color:"var(--primary)", textAlign:"right", fontFamily:"'Plus Jakarta Sans',sans-serif" }}>{fmtHM(t.hours)}</span>
                     </div>
                   ))}
                 </div>
@@ -843,8 +977,8 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
                 <div style={{ flex:1, background:"var(--primary-ghost)", border:"1.5px solid var(--primary)", borderRadius:12, padding:"10px 14px" }}>
                   <div style={{ fontSize:10, fontWeight:700, color:"var(--primary)", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:4 }}>Regular Hours</div>
                   <div style={{ display:"flex", alignItems:"baseline", gap:4 }}>
-                    <span style={{ fontSize:22, fontWeight:900, color:"var(--primary)", fontFamily:"'Plus Jakarta Sans',sans-serif", lineHeight:1 }}>{regularTotal}</span>
-                    <span style={{ fontSize:12, fontWeight:600, color:"var(--text-muted)" }}>/ {MAX_REGULAR} hrs</span>
+                    <span style={{ fontSize:22, fontWeight:900, color:"var(--primary)", fontFamily:"'Plus Jakarta Sans',sans-serif", lineHeight:1 }}>{fmtHM(regularTotal)}</span>
+                    <span style={{ fontSize:12, fontWeight:600, color:"var(--text-muted)" }}>/ {MAX_REGULAR}h</span>
                   </div>
                   <div style={{ marginTop:6, height:4, borderRadius:99, background:"rgba(0,0,0,0.08)", overflow:"hidden" }}>
                     <div style={{ height:"100%", borderRadius:99, width:`${regularPct}%`, background:regularOver?"var(--coral)":"var(--primary)", transition:"width 0.3s" }}/>
@@ -855,11 +989,10 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
                     <Zap size={10}/> Overtime Hours
                   </div>
                   <div style={{ display:"flex", alignItems:"baseline", gap:4 }}>
-                    <span style={{ fontSize:22, fontWeight:900, color:overtimeTotal>0?"#1d4ed8":"var(--text-muted)", fontFamily:"'Plus Jakarta Sans',sans-serif", lineHeight:1 }}>{overtimeTotal}</span>
-                    <span style={{ fontSize:12, fontWeight:600, color:"var(--text-muted)" }}>hrs</span>
+                    <span style={{ fontSize:22, fontWeight:900, color:overtimeTotal>0?"#1d4ed8":"var(--text-muted)", fontFamily:"'Plus Jakarta Sans',sans-serif", lineHeight:1 }}>{fmtHM(overtimeTotal)}</span>
                   </div>
                   <div style={{ marginTop:6, fontSize:11, color:overtimeTotal>0?"#1d4ed8":"var(--text-muted)", fontWeight:600 }}>
-                    {overtimeTotal>0 ? `Total: ${grandTotal}h logged` : "No overtime logged"}
+                    {overtimeTotal>0 ? `Total: ${fmtHM(grandTotal)} logged` : "No overtime logged"}
                   </div>
                 </div>
               </div>
@@ -874,18 +1007,32 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
                   </label>
                 </div>
 
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 76px 36px", gap:8, marginBottom:6, padding:"0 2px" }}>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 128px 36px", gap:8, marginBottom:6, padding:"0 2px" }}>
                   <span style={{ fontSize:10, fontWeight:700, color:"var(--text-muted)", textTransform:"uppercase", letterSpacing:"0.05em" }}>Task Name <span style={{ color:"var(--coral)" }}>*</span></span>
-                  <span style={{ fontSize:10, fontWeight:700, color:"var(--text-muted)", textTransform:"uppercase", letterSpacing:"0.05em", textAlign:"center" }}>Hrs</span>
+                  <div style={{ display:"flex", gap:4 }}>
+                    <span style={{ flex:1, fontSize:10, fontWeight:700, color:"var(--text-muted)", textTransform:"uppercase", letterSpacing:"0.05em", textAlign:"center" }}>HH</span>
+                    <span style={{ flex:1, fontSize:10, fontWeight:700, color:"var(--text-muted)", textTransform:"uppercase", letterSpacing:"0.05em", textAlign:"center" }}>MM</span>
+                  </div>
                   <span/>
                 </div>
 
                 <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
                   {regularTasks.map((task, idx) => {
                     const removable = canRemoveRegTask(idx);
+                    // ── FIX: cap this row's HH/MM options to whatever's left of the
+                    // 8h regular budget once every OTHER regular task's hours are
+                    // subtracted out (e.g. task 1 = 4h10m -> task 2 maxes at 3h50m).
+                    const otherRegMin  = regularTasks.reduce((s,t,i)=> i===idx ? s : s + decToMin(t.hours), 0);
+                    const remainingMin = Math.max(0, MAX_REGULAR*60 - otherRegMin);
+                    const maxHour      = Math.floor(remainingMin/60);
+                    const maxMinAtMax  = remainingMin % 60;
+                    const curHH        = hhFromDecimal(task.hours);
+                    const curMM        = mmFromDecimal(task.hours);
+                    const hhOptions    = Array.from({ length: maxHour+1 }, (_,i)=>i);
+                    const mmOptions    = curHH>=maxHour ? Array.from({ length: maxMinAtMax+1 }, (_,i)=>i) : MINUTE_OPTIONS;
                     return (
                       <div key={idx} style={{ display:"flex", flexDirection:"column", gap:4 }}>
-                        <div style={{ display:"grid", gridTemplateColumns:"1fr 76px 36px", gap:8, alignItems:"center" }}>
+                        <div style={{ display:"grid", gridTemplateColumns:"1fr 128px 36px", gap:8, alignItems:"center" }}>
                           <input
                             className={`fc-input${nameErrors.reg[idx]?" fc-input-error":""}`}
                             style={{ fontSize:13 }}
@@ -893,14 +1040,24 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
                             value={task.name}
                             onChange={e=>updateTask("reg",idx,"name",e.target.value)}
                           />
-                          <input
-                            type="number" min="0" max={MAX_REGULAR} step="0.5"
-                            className="fc-input"
-                            style={{ fontSize:13, fontWeight:700, textAlign:"center", padding:"10px 4px" }}
-                            placeholder="0"
-                            value={task.hours}
-                            onChange={e=>updateTask("reg",idx,"hours",e.target.value)}
-                          />
+                          <div style={{ display:"flex", gap:4 }}>
+                            <DurationDropdown
+                              value={curHH}
+                              options={hhOptions}
+                              formatLabel={h=>`${h}h`}
+                              onChange={h=>{
+                                // Clamp minutes down if switching to the max-hour row leaves less room than currently selected
+                                const capAtH = h===maxHour ? maxMinAtMax : 59;
+                                updateTask("reg",idx,"hours",hmToDecimal(h, Math.min(curMM, capAtH)));
+                              }}
+                            />
+                            <DurationDropdown
+                              value={curMM}
+                              options={mmOptions}
+                              formatLabel={m=>`${String(m).padStart(2,"0")}m`}
+                              onChange={m=>updateTask("reg",idx,"hours",hmToDecimal(curHH, m))}
+                            />
+                          </div>
                           {/*
                             FIX 3: Hide the X button entirely when overtime tasks exist and
                             removing this row would drop regular below MAX_REGULAR.
@@ -1006,16 +1163,31 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
                     </button>
                   </div>
 
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 76px 36px", gap:8, marginBottom:6, padding:"0 2px" }}>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 128px 36px", gap:8, marginBottom:6, padding:"0 2px" }}>
                     <span style={{ fontSize:10, fontWeight:700, color:"#3b82f6", textTransform:"uppercase", letterSpacing:"0.05em" }}>OT Task Name <span style={{ color:"var(--coral)" }}>*</span></span>
-                    <span style={{ fontSize:10, fontWeight:700, color:"#3b82f6", textTransform:"uppercase", letterSpacing:"0.05em", textAlign:"center" }}>Hrs</span>
+                    <div style={{ display:"flex", gap:4 }}>
+                      <span style={{ flex:1, fontSize:10, fontWeight:700, color:"#3b82f6", textTransform:"uppercase", letterSpacing:"0.05em", textAlign:"center" }}>HH</span>
+                      <span style={{ flex:1, fontSize:10, fontWeight:700, color:"#3b82f6", textTransform:"uppercase", letterSpacing:"0.05em", textAlign:"center" }}>MM</span>
+                    </div>
                     <span/>
                   </div>
 
                   <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                    {overtimeTasks.map((task,idx)=>(
+                    {overtimeTasks.map((task,idx)=>{
+                      // ── FIX: cap this OT row's HH/MM options to whatever's left of the
+                      // 24h total budget once regular hours + every OTHER OT row are
+                      // subtracted out (mirrors the regular-task capping above).
+                      const otherOtMin   = overtimeTasks.reduce((s,t,i)=> i===idx ? s : s + decToMin(t.hours), 0);
+                      const remainingMin = Math.max(0, 24*60 - decToMin(regularTotal) - otherOtMin);
+                      const maxHour      = Math.min(16, Math.floor(remainingMin/60));
+                      const maxMinAtMax  = maxHour===16 ? 0 : remainingMin % 60;
+                      const curHH        = hhFromDecimal(task.hours);
+                      const curMM        = mmFromDecimal(task.hours);
+                      const hhOptions    = Array.from({ length: maxHour+1 }, (_,i)=>i);
+                      const mmOptions    = curHH>=maxHour ? Array.from({ length: maxMinAtMax+1 }, (_,i)=>i) : MINUTE_OPTIONS;
+                      return (
                       <div key={idx} style={{ display:"flex", flexDirection:"column", gap:4 }}>
-                        <div style={{ display:"grid", gridTemplateColumns:"1fr 76px 36px", gap:8, alignItems:"center" }}>
+                        <div style={{ display:"grid", gridTemplateColumns:"1fr 128px 36px", gap:8, alignItems:"center" }}>
                           <input
                             className={`fc-input fc-input-ot${nameErrors.ot[idx]?" fc-input-error":""}`}
                             style={{ fontSize:13 }}
@@ -1023,14 +1195,25 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
                             value={task.name}
                             onChange={e=>updateTask("ot",idx,"name",e.target.value)}
                           />
-                          <input
-                            type="number" min="0" max="16" step="0.5"
-                            className="fc-input fc-input-ot"
-                            style={{ fontSize:13, fontWeight:700, textAlign:"center", padding:"10px 4px" }}
-                            placeholder="0"
-                            value={task.hours}
-                            onChange={e=>updateTask("ot",idx,"hours",e.target.value)}
-                          />
+                          <div style={{ display:"flex", gap:4 }}>
+                            <DurationDropdown
+                              value={curHH}
+                              options={hhOptions}
+                              formatLabel={h=>`${h}h`}
+                              onChange={h=>{
+                                const capAtH = h===maxHour ? maxMinAtMax : 59;
+                                updateTask("ot",idx,"hours",hmToDecimal(h, Math.min(curMM, capAtH)));
+                              }}
+                              ot
+                            />
+                            <DurationDropdown
+                              value={curMM}
+                              options={mmOptions}
+                              formatLabel={m=>`${String(m).padStart(2,"0")}m`}
+                              onChange={m=>updateTask("ot",idx,"hours",hmToDecimal(curHH, m))}
+                              ot
+                            />
+                          </div>
                           <button
                             type="button"
                             onClick={()=>removeTask("ot",idx)}
@@ -1047,7 +1230,8 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
                           </div>
                         )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   <button

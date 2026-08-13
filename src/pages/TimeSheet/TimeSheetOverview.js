@@ -11,21 +11,23 @@ import * as XLSX from "xlsx";
 
 const MAX_REGULAR = 8;
 
-const toMin = (v) => {
-  if (v === null || v === undefined || v === "") return 0;
-  const s = typeof v === "number" ? v.toFixed(2) : String(v);
-  const [hStr, mStrRaw] = s.split(".");
-  const h = parseInt(hStr, 10) || 0;
-  const mStr = (mStrRaw || "0").padEnd(2, "0").slice(0, 2); // guarantee 2-digit minute field
-  const m = parseInt(mStr, 10) || 0;
-  return h * 60 + m;
-};
+// FIX: workingHours is stored as a TRUE decimal fraction (hours + minutes/60,
+// e.g. 2h13m = 2.2167, 10h3m = 10.05) via the calendar's hmToDecimal — NOT a
+// literal "HH.MM" string. The previous toMin/fromMin here read the decimal
+// digits as literal minutes (2.2167.toFixed(2) = "2.22" -> misread as 22 min
+// instead of 13), which is why totals like "10.22 / 2.05 / 12.27" showed up
+// instead of the correct 10h13m / 2h3m / 12h16m. decToMin does the real
+// fraction -> minutes conversion; fmtMin formats minutes as "Xh Ym".
+const decToMin = (v) => Math.round((Number(v) || 0) * 60);
 
-/** Convert total minutes back to "H.MM" display string */
-const fromMin = (m) => {
-  const total = Math.max(0, Math.round(m || 0));
-  const h = Math.floor(total / 60), min = total % 60;
-  return `${h}.${String(min).padStart(2, "0")}`;
+/** Format a total-minutes integer as "Xh Ym" (matches the calendar's display). */
+const fmtMin = (totalMin) => {
+  const total = Math.max(0, Math.round(totalMin || 0));
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  if (h && m) return `${h}h ${m}m`;
+  if (h) return `${h}h`;
+  return `${m}m`;
 };
 
 /** Given total minutes for a day, split into { regularMin, overtimeMin } */
@@ -74,7 +76,7 @@ export default function TimeSheetOverview({ tabSwitcher }) {
           timesheet: [],
         };
       }
-      const dayTotalMin = toMin(item.workingHours);
+      const dayTotalMin = decToMin(item.workingHours);
       const { regularMin, overtimeMin } = splitMinutes(dayTotalMin);
       grouped[uid].timesheet.push(item);
       grouped[uid].totalWorkingMin  += dayTotalMin;
@@ -89,10 +91,10 @@ export default function TimeSheetOverview({ tabSwitcher }) {
 
     return Object.values(grouped).map(d => ({
       ...d,
-      totalWorkingHours: fromMin(d.totalWorkingMin),
-      totalRegularHours: fromMin(d.totalRegularMin),
-      totalOvertimeHours: fromMin(d.totalOvertimeMin),
-      _rawTotal: d.totalWorkingMin,    // minutes (not decimal hours)
+      totalWorkingHours: fmtMin(d.totalWorkingMin),
+      totalRegularHours: fmtMin(d.totalRegularMin),
+      totalOvertimeHours: fmtMin(d.totalOvertimeMin),
+      _rawTotal: d.totalWorkingMin,    // minutes
       _rawRegular: d.totalRegularMin,  // minutes
       _rawOvertime: d.totalOvertimeMin,// minutes
       _totalLeaveDays: Object.values(d.leaveCounts).reduce((a, b) => a + b, 0),
@@ -166,7 +168,7 @@ export default function TimeSheetOverview({ tabSwitcher }) {
     ]);
 
     // Grand total row — leave columns intentionally left blank
-    // NOTE: _rawRegular / _rawOvertime / _rawTotal are now in MINUTES
+    // NOTE: _rawRegular / _rawOvertime / _rawTotal are in MINUTES
     let grandRegMin = 0, grandOtMin = 0, grandAllMin = 0;
     data.forEach(emp => {
       grandRegMin += emp._rawRegular  || 0;
@@ -177,7 +179,7 @@ export default function TimeSheetOverview({ tabSwitcher }) {
       "", "", "", "",
       ...leaveTypes.map(() => ""),
       "TOTAL",
-      fromMin(grandRegMin), fromMin(grandOtMin), fromMin(grandAllMin),
+      fmtMin(grandRegMin), fmtMin(grandOtMin), fmtMin(grandAllMin),
     ];
 
     const ws = XLSX.utils.aoa_to_sheet([headerRow1, headerRow2, ...dataRows, totalRow]);
@@ -223,9 +225,9 @@ export default function TimeSheetOverview({ tabSwitcher }) {
     const dataRows = data.map(emp => {
       const dayCells = allDates.flatMap(ds => {
         const entry = emp.timesheet?.find(t => normalizeDate(t.entryDate) === ds);
-        const dayTotalMin = toMin(entry?.workingHours);
+        const dayTotalMin = decToMin(entry?.workingHours);
         const { regularMin, overtimeMin } = splitMinutes(dayTotalMin);
-        return [fromMin(regularMin), fromMin(overtimeMin), fromMin(dayTotalMin)];
+        return [fmtMin(regularMin), fmtMin(overtimeMin), fmtMin(dayTotalMin)];
       });
 
       return [
@@ -248,7 +250,7 @@ export default function TimeSheetOverview({ tabSwitcher }) {
       let colRegMin = 0, colOtMin = 0, colTotalMin = 0;
       data.forEach(emp => {
         const entry = emp.timesheet?.find(t => normalizeDate(t.entryDate) === ds);
-        const dayTotalMin = toMin(entry?.workingHours);
+        const dayTotalMin = decToMin(entry?.workingHours);
         const { regularMin, overtimeMin } = splitMinutes(dayTotalMin);
         colRegMin += regularMin;
         colOtMin  += overtimeMin;
@@ -257,9 +259,9 @@ export default function TimeSheetOverview({ tabSwitcher }) {
       grandRegMin += colRegMin;
       grandOtMin  += colOtMin;
       grandAllMin += colTotalMin;
-      totalRow.push(fromMin(colRegMin), fromMin(colOtMin), fromMin(colTotalMin));
+      totalRow.push(fmtMin(colRegMin), fmtMin(colOtMin), fmtMin(colTotalMin));
     });
-    totalRow.push(fromMin(grandRegMin), fromMin(grandOtMin), fromMin(grandAllMin));
+    totalRow.push(fmtMin(grandRegMin), fmtMin(grandOtMin), fmtMin(grandAllMin));
 
     const ws = XLSX.utils.aoa_to_sheet([headerRow1, headerRow2, ...dataRows, totalRow]);
 
