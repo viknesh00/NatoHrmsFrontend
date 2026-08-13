@@ -41,6 +41,8 @@ const Login = () => {
             includeSunday: res.data.includeSunday,
             shiftStartTime: res.data.shiftStartTime || "",
             shiftEndTime: res.data.shiftEndTime || "",
+            workLocationCity: res.data.workLocationCity || "",
+            geoFenceEnabled: res.data.geoFenceEnabled,
           }, new Date(res.data.expiration));
           setTimeout(() => navigate("/dashboard"), 800);
         } else ToastError("Invalid credentials!");

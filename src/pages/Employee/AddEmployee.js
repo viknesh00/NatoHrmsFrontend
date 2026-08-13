@@ -47,6 +47,7 @@ const ACCESS_ROLE_OPTIONS = [{ label: "Admin", value: "Admin" }, { label: "Manag
 const WORK_SHIFT_OPTIONS  = [{ label: "Day", value: "Day" }, { label: "Night", value: "Night" }, { label: "Rotational", value: "Rotational" }];
 const WORK_MODE_OPTIONS   = [{ label: "Office", value: "Office" }, { label: "Remote", value: "Remote" }, { label: "Hybrid", value: "Hybrid" }];
 const RELATION_OPTIONS    = [{ label: "Spouse", value: "Spouse" }, { label: "Parent", value: "Parent" }, { label: "Friend", value: "Friend" }];
+const GEO_FENCE_OPTIONS = [{ label: "No", value: "No" }, { label: "Yes", value: "Yes" }];
 
 const withPlaceholder = (label, options) => [{ label, value: "" }, ...options];
 
@@ -87,7 +88,7 @@ export default function AddEmployee() {
     // Employment
     employeeId: "", employeeType: "", designation: "", doj: "",
     department: "", workLocation: "", employmentStatus: "",
-    reportingManager: "", accessRole: "",
+    reportingManager: "", accessRole: "",restrictToWorkLocation: "No",
     projects: [],          // array of projectName strings
     // Salary
     ctc: "", basicSalary: "", hra: "", conveyanceAllowance: "",
@@ -174,6 +175,7 @@ export default function AddEmployee() {
             employmentStatus:       d.employmentStatus       || "",
             reportingManager:       d.reportingManager       || "",
             accessRole:             d.accessRole             || "",
+            restrictToWorkLocation: (d.restrictToWorkLocation === 1 || d.restrictToWorkLocation === "1") ? "Yes" : "No",
             projects: Array.isArray(d.projectAssigned)
               ? d.projectAssigned
               : d.projectAssigned ? d.projectAssigned.split(",").map(s => s.trim()).filter(Boolean) : [],
@@ -223,6 +225,8 @@ export default function AddEmployee() {
       } else if (key === "projects") {
         newObj["projectAssigned"] = Array.isArray(value) ? value.join(",") : value || null;
         continue;
+      } else if (key === "restrictToWorkLocation") {
+        value = value === "Yes";
       } else {
         value = value === "" ? null : value;
       }
@@ -443,10 +447,11 @@ export default function AddEmployee() {
 
             <FormRow cols={3}>
               <FormInput  label="Work Location (City) *" value={formvalues.workLocation}    onChange={set("workLocation")}    disabled={!isAdminOrManager} placeholder="e.g. Chennai" />
+              <FormSelect label="Geo-Fence Enabled"       options={GEO_FENCE_OPTIONS}              value={formvalues.restrictToWorkLocation} onChange={set("restrictToWorkLocation")} disabled={!isAdminOrManager} />
               <FormSelect label="Employment Status"       options={withPlaceholder("Select Status",  EMP_STATUS_OPTIONS)}  value={formvalues.employmentStatus} onChange={set("employmentStatus")} disabled={!isAdminOrManager} />
-              <FormSelect label="Reporting Manager *"     options={withPlaceholder("Select Manager", managerList)}         value={formvalues.reportingManager} onChange={set("reportingManager")} disabled={!isAdminOrManager} />
             </FormRow>
             <FormRow cols={3}>
+              <FormSelect label="Reporting Manager *"     options={withPlaceholder("Select Manager", managerList)}         value={formvalues.reportingManager} onChange={set("reportingManager")} disabled={!isAdminOrManager} />
               <FormSelect label="Access Role *" options={withPlaceholder("Select Role", ACCESS_ROLE_OPTIONS)} value={formvalues.accessRole} onChange={set("accessRole")} disabled={!isAdminOrManager} />
             </FormRow>
           </FormSection>

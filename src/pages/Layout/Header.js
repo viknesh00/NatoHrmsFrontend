@@ -38,7 +38,7 @@ const fetchIp = async (retries = 2) => {
   return "Unknown";
 };
 
-/** Reverse-geocode from browser geolocation. Returns city string or "Unknown". */
+/** Reverse-geocode from coordinates (BigDataCloud). Returns city string or "Unknown". */
 const fetchCityFromCoords = async (lat, lon) => {
   try {
     const controller = new AbortController();
@@ -50,41 +50,86 @@ const fetchCityFromCoords = async (lat, lon) => {
     clearTimeout(timeout);
     if (r.ok) {
       const d = await r.json();
-      return d.city || d.locality || d.principalSubdivision || "Unknown";
+      // Small towns often only populate locality / localityInfo, not "city"
+      const resolved =
+        d.city ||
+        d.locality ||
+        d.localityInfo?.administrative?.find((a) => a.order >= 6)?.name ||
+        d.principalSubdivision ||
+        "Unknown";
+      if (resolved === "Unknown") {
+        console.warn("BigDataCloud reverse geocode returned no usable field:", d);
+      }
+      return resolved;
+    } else {
+      console.warn("BigDataCloud reverse geocode HTTP error:", r.status);
     }
-  } catch {}
+  } catch (err) {
+    console.warn("BigDataCloud reverse geocode failed:", err);
+  }
   return "Unknown";
 };
 
-/** Get browser geolocation (lower accuracy = faster, less battery). */
-const getBrowserLocation = () =>
-  new Promise((resolve) => {
-    if (!navigator.geolocation) return resolve("Unknown");
+/** Fallback reverse-geocode using OpenStreetMap Nominatim (no API key needed). */
+const fetchCityFromCoordsNominatim = async (lat, lon) => {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=10`,
+      { signal: controller.signal, headers: { "Accept-Language": "en" } }
+    );
+    clearTimeout(timeout);
+    if (r.ok) {
+      const d = await r.json();
+      return (
+        d.address?.town ||
+        d.address?.village ||
+        d.address?.city ||
+        d.address?.county ||
+        "Unknown"
+      );
+    } else {
+      console.warn("Nominatim reverse geocode HTTP error:", r.status);
+    }
+  } catch (err) {
+    console.warn("Nominatim reverse geocode failed:", err);
+  }
+  return "Unknown";
+};
 
-    const geoTimeout = setTimeout(() => resolve("Unknown"), 8000);
+/** Resolve coordinates to a city name, trying BigDataCloud first, then Nominatim. */
+const resolveCityFromCoords = async (lat, lon) => {
+  const city = await fetchCityFromCoords(lat, lon);
+  if (city !== "Unknown") return city;
+  return fetchCityFromCoordsNominatim(lat, lon);
+};
+
+/** Get high-accuracy GPS coordinates. Returns {lat, lon} or null. */
+const getAccurateCoords = () =>
+  new Promise((resolve) => {
+    if (!navigator.geolocation) return resolve(null);
+
+    const geoTimeout = setTimeout(() => resolve(null), 10000);
 
     navigator.geolocation.getCurrentPosition(
-      async ({ coords }) => {
+      ({ coords }) => {
         clearTimeout(geoTimeout);
-        const city = await fetchCityFromCoords(
-          coords.latitude,
-          coords.longitude
-        );
-        resolve(city);
+        resolve({ lat: coords.latitude, lon: coords.longitude });
       },
       () => {
         clearTimeout(geoTimeout);
-        resolve("Unknown");
+        resolve(null);
       },
       {
-        enableHighAccuracy: false, // faster; WiFi/cell-tower based
-        timeout: 7000,
-        maximumAge: 5 * 60 * 1000, // reuse cached position for 5 min
+        enableHighAccuracy: true, // GPS chip, not WiFi/cell-tower — accurate to ~10-50m
+        timeout: 9000,
+        maximumAge: 0, // force a fresh fix, don't reuse stale cached position
       }
     );
   });
 
-/** Fetch city via IP-geolocation as fallback (no permission needed). */
+/** Fetch city via IP-geolocation (used only as a last-resort fallback). */
 const fetchCityFromIp = async () => {
   try {
     const controller = new AbortController();
@@ -102,17 +147,47 @@ const fetchCityFromIp = async () => {
 };
 
 /**
- * Best-effort location: tries browser geolocation first, falls back to IP
- * geolocation. Both run in a race so we always finish within ~8 s.
+ * Best-effort location for the clock-in/out action itself: tries accurate
+ * GPS first, falls back to IP geolocation if GPS is denied/unavailable.
  */
 const fetchLocation = async () => {
-  // Run both in parallel; take whichever gives a real city first
-  const [browserCity, ipCity] = await Promise.all([
-    getBrowserLocation(),
-    fetchCityFromIp(),
-  ]);
-  // Prefer browser (more accurate), fall back to IP-based
-  return browserCity !== "Unknown" ? browserCity : ipCity;
+  const coords = await getAccurateCoords();
+  if (coords) {
+    const city = await resolveCityFromCoords(coords.lat, coords.lon);
+    if (city !== "Unknown") return city;
+  }
+  return fetchCityFromIp();
+};
+
+/**
+ * Refresh cached GPS-based location, but only if the last cache is stale
+ * (older than 15 min) — avoids re-prompting for permission on every tab focus.
+ */
+const refreshGpsLocationCookie = async () => {
+  try {
+    const lastFetched = getCookie("locationFetchedAt");
+    const cacheAgeMs = lastFetched ? Date.now() - Number(lastFetched) : Infinity;
+    if (cacheAgeMs < 15 * 60 * 1000) return; // still fresh, skip
+
+    const coords = await getAccurateCoords();
+    if (!coords) return; // permission denied / unavailable — keep old cached value
+
+    let city = await resolveCityFromCoords(coords.lat, coords.lon);
+    if (city === "Unknown") {
+      // GPS reverse-geocode failed (rural/small-town coords, CORS block, etc.)
+      // — fall back to IP-based city instead of caching "Unknown" for a day.
+      city = await fetchCityFromIp();
+    }
+
+    const expiry = new Date(new Date().setDate(new Date().getDate() + 1));
+
+    setCookie("networkLocation", city, expiry);
+    setCookie("locationLat", coords.lat, expiry);
+    setCookie("locationLon", coords.lon, expiry);
+    setCookie("locationFetchedAt", Date.now(), expiry);
+  } catch {
+    // best-effort — leave whatever was cached before
+  }
 };
 
 /** Format seconds → HH:MM:SS */
@@ -158,6 +233,9 @@ const Header = () => {
   const isDeizeisau  = (getCookie("department") || "").trim().toLowerCase() === "deizeisau";
   const initials     = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 
+  const geoFenceEnabled = getCookie("geoFenceEnabled") === "true";
+  const workLocationCity = (getCookie("workLocationCity") || "").trim();
+
   // ── Timer helpers ────────────────────────────────────────────────────────
   const startTimer = useCallback((clockTime) => {
     clearInterval(intervalRef.current);
@@ -195,10 +273,12 @@ const Header = () => {
     };
 
     checkStatus();
+    refreshGpsLocationCookie(); // fetch accurate GPS location on mount (cached)
 
     const onVisibility = () => {
       if (!document.hidden) {
         checkStatus();
+        refreshGpsLocationCookie(); // only re-fetches if cache is stale (>15 min)
         refreshUserCookies(); // re-sync cookies whenever tab is focused
       }
     };
@@ -232,54 +312,68 @@ const Header = () => {
 
   // ── Clock in / out ───────────────────────────────────────────────────────
   const handleClock = async () => {
-    setLoading(true);
-    try {
-      // Fetch IP and location IN PARALLEL for speed
-      const [ip, city] = await Promise.all([fetchIp(), fetchLocation()]);
+  setLoading(true);
+  try {
+    // Fetch IP and location IN PARALLEL for speed
+    const [ip, city] = await Promise.all([fetchIp(), fetchLocation()]);
 
-      const now      = new Date();
-      // Local ISO without UTC offset suffix (backend expects local time)
-      const localISO = new Date(now - now.getTimezoneOffset() * 60000)
-        .toISOString()
-        .slice(0, -1);
+    // ── Geo-fence check: only enforced when clocking IN ─────────────────
+    if (!clockedIn && geoFenceEnabled && workLocationCity) {
+      const currentCity = (city || "").trim().toLowerCase();
+      const assignedCity = workLocationCity.toLowerCase();
 
-      const endpoint = clockedIn ? "Attendance/clock-out" : "Attendance/clock-in";
-      const res = await postRequest(endpoint, {
-        location:  city,
-        ipAddress: ip,
-        timestamp: localISO,
-      });
-
-      if (res.status === 200) {
-        if (!clockedIn) {
-          // Clock IN
-          setClockedIn(true);
-          setClockInTime(now);
-          startTimer(now);
-          setCookie(
-            "clockInTime",
-            now,
-            new Date(new Date().setDate(new Date().getDate() + 1))
-          );
-          ToastSuccess("Clock-In successful!");
-        } else {
-          // Clock OUT
-          stopTimer();
-          setCookie("clockInTime", null, new Date(0));
-          ToastSuccess("Clock-Out successful!");
-        }
-        // Notify Dashboard (and any other listener) to re-fetch attendance
-        window.dispatchEvent(new CustomEvent("attendance:updated"));
-      } else {
-        ToastError("Attendance action failed. Please try again.");
+      if (currentCity !== "unknown" && currentCity !== assignedCity) {
+        ToastError(
+          `Clock-In blocked: you're in ${city}, but your work location is ${workLocationCity}.`
+        );
+        setLoading(false);
+        return;
       }
-    } catch (err) {
-      console.error("Clock action error:", err);
-      ToastError("Attendance action failed. Check your connection.");
-    } finally {
-      setLoading(false);
     }
-  };
+
+    const now      = new Date();
+    // Local ISO without UTC offset suffix (backend expects local time)
+    const localISO = new Date(now - now.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, -1);
+
+    const endpoint = clockedIn ? "Attendance/clock-out" : "Attendance/clock-in";
+    const res = await postRequest(endpoint, {
+      location:  city,
+      ipAddress: ip,
+      timestamp: localISO,
+    });
+
+    if (res.status === 200) {
+      if (!clockedIn) {
+        // Clock IN
+        setClockedIn(true);
+        setClockInTime(now);
+        startTimer(now);
+        setCookie(
+          "clockInTime",
+          now,
+          new Date(new Date().setDate(new Date().getDate() + 1))
+        );
+        ToastSuccess("Clock-In successful!");
+      } else {
+        // Clock OUT
+        stopTimer();
+        setCookie("clockInTime", null, new Date(0));
+        ToastSuccess("Clock-Out successful!");
+      }
+      // Notify Dashboard (and any other listener) to re-fetch attendance
+      window.dispatchEvent(new CustomEvent("attendance:updated"));
+    } else {
+      ToastError("Attendance action failed. Please try again.");
+    }
+  } catch (err) {
+    console.error("Clock action error:", err);
+    ToastError("Attendance action failed. Check your connection.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   // ── Logout ───────────────────────────────────────────────────────────────
   const handleLogout = () => {

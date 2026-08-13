@@ -33,9 +33,20 @@ const STATUS = {
   outside:  { bg: "transparent", border: "transparent", text: "#e5e7eb", label: "" },
 };
 
-const toMin   = (v) => { if (!v) return 0; const p = String(v).split("."); return parseInt(p[0]||0)*60+parseInt(p[1]||0); };
-const fromMin = (m) => { const h=Math.floor(m/60), min=m%60; return min===0?`${h}`:`${h}.${String(min).padStart(2,"0")}`; };
+const toMin = (v) => {
+  if (v === null || v === undefined || v === "") return 0;
+  const s = typeof v === "number" ? v.toFixed(2) : String(v);
+  const p = s.split(".");
+  const h = parseInt(p[0], 10) || 0;
+  const mStr = (p[1] || "0").padEnd(2, "0").slice(0, 2); // guarantees 2-digit minute field
+  const m = parseInt(mStr, 10) || 0;
+  return h * 60 + m;
+};
 
+const fromMin = (m) => {
+  const h = Math.floor(m / 60), min = m % 60;
+  return min === 0 ? `${h}` : `${h}.${String(min).padStart(2, "0")}`;
+};
 const parseAllTasks = (taskStr, fallbackHours) => {
   const empty = { regularTasks: [{ name:"", hours:"" }], overtimeTasks: [] };
   if (!taskStr) return empty;
@@ -55,7 +66,7 @@ const parseAllTasks = (taskStr, fallbackHours) => {
 
 const sumHours = (tasks) => roundH(tasks.reduce((s,t) => s+(parseFloat(t.hours)||0), 0));
 
-export default function TimesheetCalendar() {
+export default function TimesheetCalendar({tabSwitcher}) {
   const navigate  = useNavigate();
   const location  = useLocation();
   const { viewData, selectedMonth: viewMonth } = location.state || {};
@@ -87,6 +98,11 @@ export default function TimesheetCalendar() {
 const includeSaturday = getCookie("includeSaturday") === "true" || getCookie("includeSaturday") === true;
 const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("includeSunday")   === true;
 
+  const geoFenceEnabled  = getCookie("geoFenceEnabled") === "true" || getCookie("geoFenceEnabled") === true;
+  const networkLocation  = (getCookie("networkLocation")  || "").trim();
+  const workLocationCity = (getCookie("workLocationCity") || "").trim();
+
+  const locationMismatch = geoFenceEnabled && networkLocation && workLocationCity && networkLocation.toLowerCase() !== workLocationCity.toLowerCase();
 
   // ── Grace period config ─────────────────────────────────────────────────
   const GRACE_DAYS = 5; // previous month stays editable for this many days into the new month
@@ -136,17 +152,20 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
   }, [currentMonth]);
 
   const loadLeaves = () => {
-    const url = viewData ? `User/GetEmployeeLeave?userName=${viewData.username}` : `User/GetEmployeeLeave`;
+    const month = currentMonth.format("YYYY-MM");
+    const url = viewData
+      ? `User/GetLeaveForUser?userName=${viewData.username}&month=${month}`
+      : `User/GetMyLeave?month=${month}`;
     getRequest(url).then(res => {
       if (res.data) {
         setLeaveList(res.data.leaves.map(l => ({
           ...l,
           fromDate: l.fromDate ? dayjs(l.fromDate).format("YYYY-MM-DD") : l.fromDate,
-          toDate:   l.toDate   ? dayjs(l.toDate).format("YYYY-MM-DD")   : l.toDate,
+          toDate: l.toDate ? dayjs(l.toDate).format("YYYY-MM-DD") : l.toDate,
         })));
         setHolidayList(
-          res.data.holidays?.filter(h=>h.eventType==="Holiday")
-            .map(h=>({ ...h, eventDate: dayjs(h.eventDate).format("YYYY-MM-DD") })) || []
+          res.data.holidays?.filter(h => h.eventType === "Holiday")
+            .map(h => ({ ...h, eventDate: dayjs(h.eventDate).format("YYYY-MM-DD") })) || []
         );
       }
     }).catch(console.error);
@@ -154,18 +173,19 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
 
   const loadEntries = () => {
     setLoading(true);
-    getRequest(`TimeSheet/GetTimeSheet?month=${currentMonth.format("YYYY-MM")}`).then(res => {
-      if (res.data) {
-        const fmt = res.data.reduce((acc,item) => {
-          if (item.entryDate) {
-            const dt = item.entryDate.split("T")[0];
-            acc[dt] = { task: item.taskDetails||"", hours: item.workingHours??0, leaveType: item.leaveType||null };
-          }
-          return acc;
-        }, {});
-        setEntries(fmt);
-      }
-    }).catch(console.error).finally(() => setLoading(false));
+    getRequest(`TimeSheet/GetMyTimeSheet?month=${currentMonth.format("YYYY-MM")}`)  // ← was TimeSheet/GetTimeSheet
+      .then(res => {
+        if (res.data) {
+          const fmt = res.data.reduce((acc, item) => {
+            if (item.entryDate) {
+              const dt = item.entryDate.split("T")[0];
+              acc[dt] = { task: item.taskDetails || "", hours: item.workingHours ?? 0, leaveType: item.leaveType || null };
+            }
+            return acc;
+          }, {});
+          setEntries(fmt);
+        }
+      }).catch(console.error).finally(() => setLoading(false));
   };
 
   const getLeaveForDay   = (date) => leaveList.find(l => {
@@ -209,6 +229,7 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
   const handleCellClick = (date) => {
     if (isViewMode) return;
     if (!canEdit) { ToastError("Previous month timesheets are locked for editing"); return; }
+    if (locationMismatch) { ToastError(`You're in ${networkLocation}, but your work location is ${workLocationCity}. Timesheet entry is disabled until you're on-site.`); return; }
     const status    = getCellStatus(date);
     const apiLeave  = getLeaveForDay(date);
     const apiHoliday= getHolidayForDay(date);
@@ -510,6 +531,7 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
           <p className="page-subtitle">
             {canEdit ? "Click a date to log hours ·" : isViewMode ? "View only ·" : "Previous months are locked ·"} {currentMonth.format("MMMM YYYY")}
           </p>
+          {tabSwitcher}
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <button className="icon-btn" onClick={handleExcelExport} title="Export to Excel" style={{ color:"var(--teal)", width:38, height:38 }}>
@@ -549,6 +571,11 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
                 <Clock size={12} /> Editable until {today.startOf("month").date(GRACE_DAYS).format("DD MMM")}
               </span>
             )}
+            {canEdit && !isViewMode && locationMismatch && (
+              <span style={{ background: "#fff1f2", color: "#be123c", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, display: "flex", alignItems: "center", gap: 5 }}>
+                <AlertCircle size={12} /> Off-site — entry disabled
+              </span>
+            )}
           </div>
           <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
             {legend.map(({ key, label }) => (
@@ -560,12 +587,30 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
           </div>
         </div>
 
-        <div style={{ overflowX:"auto", padding:"4px 8px 8px" }}>
-          <table style={{ width:"100%", borderCollapse:"collapse", minWidth:680 }}>
+        <div style={{ overflowX: "auto", padding: "4px 8px 8px" }}>
+          <table style={{ width: "100%", maxWidth: 880, margin: "0 auto", borderCollapse: "separate", borderSpacing: 0, tableLayout: "fixed" }}>
+            <colgroup>
+              {/* 7 equal day columns + 1 slightly wider total column */}
+              {Array.from({ length: 7 }).map((_, i) => (
+                <col key={i} style={{ width: "12.2%" }} />
+              ))}
+              <col style={{ width: "13.5%" }} />
+            </colgroup>
             <thead>
               <tr>
-                {["Mon","Tue","Wed","Thu","Fri","Sat","Sun","Week Total"].map(h=>(
-                  <th key={h} style={{ padding:"10px 6px", textAlign:"center", fontSize:11, fontWeight:700, color:"var(--text-muted)", textTransform:"uppercase", letterSpacing:"0.05em", borderBottom:"1px solid var(--border)", background:"var(--bg)", whiteSpace:"nowrap" }}>{h}</th>
+                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun", "Week Total"].map(h => (
+                  <th key={h} style={{
+                    padding: "10px 6px",
+                    textAlign: "center",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--text-muted)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    borderBottom: "1px solid var(--border)",
+                    background: "var(--bg)",
+                    whiteSpace: "nowrap",
+                  }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -573,59 +618,81 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
               {weeks.map((week, wi) => (
                 <tr key={wi}>
                   {week.map(day => {
-                    const status  = getCellStatus(day);
-                    const s       = STATUS[status]||STATUS.outside;
-                    const entry   = entries[day.format("YYYY-MM-DD")];
+                    const status = getCellStatus(day);
+                    const s = STATUS[status] || STATUS.outside;
+                    const entry = entries[day.format("YYYY-MM-DD")];
                     const holiday = getHolidayForDay(day);
-                    const leave   = getLeaveForDay(day);
+                    const leave = getLeaveForDay(day);
                     const nonWorkingWeekend = isNonWorkingWeekendDay(day);
-                    const isToday2    = day.format("YYYY-MM-DD")===today.format("YYYY-MM-DD");
-                    const inCurrentMonth = day.month()===currentMonth.month();
-                    const apiLeave   = getLeaveForDay(day);
+                    const isToday2 = day.format("YYYY-MM-DD") === today.format("YYYY-MM-DD");
+                    const inCurrentMonth = day.month() === currentMonth.month();
+                    const apiLeave = getLeaveForDay(day);
                     const apiHoliday = getHolidayForDay(day);
-                    const clickable  = canEdit
-                      && !["outside","future","approved","pastlock"].includes(status)
+                    const clickable = canEdit
+                      && !locationMismatch
+                      && !["outside", "future", "approved", "pastlock"].includes(status)
                       && !apiHoliday
                       && !(apiLeave && !apiLeave.approverReason);
-                    const hasTooltip = !!(entry?.task||holiday||leave);
-                    const rawTotal   = roundH(entry?.hours || 0);
-                    const regHours   = roundH(Math.min(rawTotal, MAX_REGULAR));
-                    const otHours    = roundH(Math.max(rawTotal - MAX_REGULAR, 0));
+                    const hasTooltip = !!(entry?.task || holiday || leave);
+                    const rawTotal = roundH(entry?.hours || 0);
+                    const regHours = roundH(Math.min(rawTotal, MAX_REGULAR));
+                    const otHours = roundH(Math.max(rawTotal - MAX_REGULAR, 0));
                     return (
                       <td key={day.format("YYYY-MM-DD")}
-                        onClick={()=>handleCellClick(day)}
-                        onMouseEnter={e=>{ if(clickable)e.currentTarget.style.filter="brightness(0.95)"; if(hasTooltip&&inCurrentMonth)handleCellMouseEnter(e,day); }}
-                        onMouseLeave={e=>{ e.currentTarget.style.filter=""; handleCellMouseLeave(); }}
-                        style={{ width:80, height:96, border:"1px solid var(--border)", background:status==="outside"?"transparent":s.bg, cursor:clickable?"pointer":"default", verticalAlign:"middle", padding:0, transition:"all 0.15s", boxShadow:isToday2?"inset 0 0 0 2px var(--primary)":"none", position:"relative", overflow:"hidden" }}
+                        onClick={() => handleCellClick(day)}
+                        onMouseEnter={e => { if (clickable) e.currentTarget.style.filter = "brightness(0.96)"; if (hasTooltip && inCurrentMonth) handleCellMouseEnter(e, day); }}
+                        onMouseLeave={e => { e.currentTarget.style.filter = ""; handleCellMouseLeave(); }}
+                        style={{
+                          border: "1px solid var(--border)",
+                          background: status === "outside" ? "transparent" : s.bg,
+                          cursor: clickable ? "pointer" : "default",
+                          verticalAlign: "middle",
+                          padding: 0,
+                          transition: "filter 0.15s",
+                          boxShadow: isToday2 ? "inset 0 0 0 2px var(--primary)" : "none",
+                          position: "relative",
+                          overflow: "hidden",
+                          height: 84,
+                        }}
                       >
-                        {inCurrentMonth && (
-                          <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", height:"100%", padding:"6px", gap:3 }}>
-                            <div style={{ position:"absolute", top:5, left:7, fontSize:12, fontWeight:isToday2?900:600, color:isToday2?"var(--primary)":s.text, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>{day.format("D")}</div>
-                            {rawTotal>0 && !holiday && !leave && (
-                              <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2, marginTop:4 }}>
-                                <span style={{ fontSize:16, fontWeight:900, color:s.text, fontFamily:"'Plus Jakarta Sans',sans-serif", lineHeight:1 }}>
-                                  {regHours}h
-                                </span>
-                                {otHours>0 && (
-                                  <span style={{ fontSize:9, fontWeight:800, color:"#1d4ed8", background:"#dbeafe", padding:"1px 5px", borderRadius:20, display:"inline-flex", alignItems:"center", gap:2, maxWidth:"92%", overflow:"hidden", whiteSpace:"nowrap" }}>
-                                    <Zap size={8}/> +{otHours}h OT
-                                  </span>
+                        <div style={{ position: "relative", width: "100%", height: "100%" }}>
+                          <div style={{ position: "absolute", inset: 0 }}>
+                            {inCurrentMonth && (
+                              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "6px", gap: 3 }}>
+                                <div style={{ position: "absolute", top: 5, left: 7, fontSize: 12, fontWeight: isToday2 ? 900 : 600, color: isToday2 ? "var(--primary)" : s.text, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{day.format("D")}</div>
+                                {rawTotal > 0 && !holiday && !leave && (
+                                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, marginTop: 4 }}>
+                                    <span style={{ fontSize: 16, fontWeight: 900, color: s.text, fontFamily: "'Plus Jakarta Sans',sans-serif", lineHeight: 1 }}>
+                                      {regHours}h
+                                    </span>
+                                    {otHours > 0 && (
+                                      <span style={{ fontSize: 9, fontWeight: 800, color: "#1d4ed8", background: "#dbeafe", padding: "1px 5px", borderRadius: 20, display: "inline-flex", alignItems: "center", gap: 2, maxWidth: "92%", overflow: "hidden", whiteSpace: "nowrap" }}>
+                                        <Zap size={8} /> +{otHours}h OT
+                                      </span>
+                                    )}
+                                  </div>
                                 )}
+                                {holiday && <div style={{ fontSize: 10, color: s.text, fontWeight: 700, textAlign: "center", maxWidth: "90%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", background: "rgba(255,255,255,0.5)", padding: "2px 5px", borderRadius: 4 }}>{holiday.eventName}</div>}
+                                {!nonWorkingWeekend && leave && !holiday && <div style={{ fontSize: 10, color: s.text, fontWeight: 700, textAlign: "center", maxWidth: "90%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{leave.leaveType}</div>}
+                                {!nonWorkingWeekend && !leave && !holiday && entry?.leaveType && <div style={{ fontSize: 10, color: s.text, fontWeight: 700, textAlign: "center", maxWidth: "90%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.leaveType}</div>}
+                                {status === "pastlock" && <div style={{ fontSize: 16, color: s.text, textAlign: "center" }}>🔒</div>}
+                                {entry?.task && !holiday && !leave && <div style={{ width: 5, height: 5, borderRadius: "50%", background: s.text, opacity: 0.5, flexShrink: 0 }} />}
                               </div>
                             )}
-                            {holiday && <div style={{ fontSize:10, color:s.text, fontWeight:700, textAlign:"center", maxWidth:"90%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", background:"rgba(255,255,255,0.5)", padding:"2px 5px", borderRadius:4 }}>{holiday.eventName}</div>}
-                            {!nonWorkingWeekend && leave && !holiday && <div style={{ fontSize:10, color:s.text, fontWeight:700, textAlign:"center", maxWidth:"90%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{leave.leaveType}</div>}
-                            {!nonWorkingWeekend && !leave && !holiday && entry?.leaveType && <div style={{ fontSize:10, color:s.text, fontWeight:700, textAlign:"center", maxWidth:"90%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{entry.leaveType}</div>}
-                            {status==="pastlock" && <div style={{ fontSize:16, color:s.text, textAlign:"center" }}>🔒</div>}
-                            {entry?.task && !holiday && !leave && <div style={{ width:5, height:5, borderRadius:"50%", background:s.text, opacity:0.5, flexShrink:0 }}/>}
+                            {!inCurrentMonth && <div style={{ padding: "5px 6px", color: "#e5e7eb", fontSize: 12, fontWeight: 500 }}>{day.format("D")}</div>}
                           </div>
-                        )}
-                        {!inCurrentMonth && <div style={{ padding:"5px 6px", color:"#e5e7eb", fontSize:12, fontWeight:500 }}>{day.format("D")}</div>}
+                        </div>
                       </td>
                     );
                   })}
-                  <td style={{ textAlign:"center", border:"1px solid var(--border)", background:"var(--bg)", fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:13, fontWeight:800, color:"var(--primary)", padding:8, whiteSpace:"nowrap" }}>
-                    {getWeekTotal(week)} hrs
+                  <td style={{
+                    border: "1px solid var(--border)",
+                    background: "var(--bg)",
+                    padding: 0,
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", minHeight: 60, fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 13, fontWeight: 800, color: "var(--primary)" }}>
+                      {getWeekTotal(week)} hrs
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -13,4 +13,6 @@ export const cookieObj = {
   includeSunday: '',
   shiftEndTime: '',
   shiftStartTime: '',
+  geoFenceEnabled: '',
+  workLocationCity: '',
 };

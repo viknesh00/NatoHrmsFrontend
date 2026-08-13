@@ -129,6 +129,13 @@ export default function ViewEmployee() {
         <Field label="Designation" value={data.designation} />
         <Field label="Date of Joining" value={fmt(data.doj)} />
         <Field label="Work Location" value={data.workLocation} />
+        <Field label="Geo-Fence Enabled"
+          value={
+            data.restrictToWorkLocation === true ||
+            data.restrictToWorkLocation === 1 ||
+            data.restrictToWorkLocation === "1" ? "Yes" : "No"
+          }
+        />
         <Field label="Work Shift" value={data.workShift} />
         <Field label="Work Mode" value={data.workMode} />
         <Field label="Employment Status" value={data.employmentStatus} />

@@ -11,22 +11,31 @@ import * as XLSX from "xlsx";
 
 const MAX_REGULAR = 8;
 
-/** Format decimal hours → "H.MM" string */
-const decimalToHHMM = (h) => {
-  if (!h || isNaN(h)) return "0.00";
-  const hrs = Math.floor(h), min = Math.round((h - hrs) * 60);
-  return `${hrs}.${String(min).padStart(2, "0")}`;
+const toMin = (v) => {
+  if (v === null || v === undefined || v === "") return 0;
+  const s = typeof v === "number" ? v.toFixed(2) : String(v);
+  const [hStr, mStrRaw] = s.split(".");
+  const h = parseInt(hStr, 10) || 0;
+  const mStr = (mStrRaw || "0").padEnd(2, "0").slice(0, 2); // guarantee 2-digit minute field
+  const m = parseInt(mStr, 10) || 0;
+  return h * 60 + m;
 };
 
-/** Given total hours for a day, return { regular, overtime } */
-const splitHours = (total) => {
-  const t = Number(total) || 0;
-  const regular  = Math.min(t, MAX_REGULAR);
-  const overtime = Math.max(t - MAX_REGULAR, 0);
-  return { regular, overtime };
+/** Convert total minutes back to "H.MM" display string */
+const fromMin = (m) => {
+  const total = Math.max(0, Math.round(m || 0));
+  const h = Math.floor(total / 60), min = total % 60;
+  return `${h}.${String(min).padStart(2, "0")}`;
 };
 
-export default function TimeSheetOverview() {
+/** Given total minutes for a day, split into { regularMin, overtimeMin } */
+const splitMinutes = (totalMin) => {
+  const regularMin  = Math.min(totalMin, MAX_REGULAR * 60);
+  const overtimeMin = Math.max(totalMin - MAX_REGULAR * 60, 0);
+  return { regularMin, overtimeMin };
+};
+
+export default function TimeSheetOverview({ tabSwitcher }) {
   const navigate = useNavigate();
   const [loading, setLoading]             = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(dayjs().format("YYYY-MM"));
@@ -58,19 +67,19 @@ export default function TimeSheetOverview() {
           username: item.username,
           department: item.department,
           projectAssigned: item.projectAssigned,
-          totalWorkingHours: 0,
-          totalRegularHours: 0,
-          totalOvertimeHours: 0,
+          totalWorkingMin: 0,
+          totalRegularMin: 0,
+          totalOvertimeMin: 0,
           leaveCounts: {},
           timesheet: [],
         };
       }
-      const dayTotal = Number(item.workingHours || 0);
-      const { regular, overtime } = splitHours(dayTotal);
+      const dayTotalMin = toMin(item.workingHours);
+      const { regularMin, overtimeMin } = splitMinutes(dayTotalMin);
       grouped[uid].timesheet.push(item);
-      grouped[uid].totalWorkingHours += dayTotal;
-      grouped[uid].totalRegularHours += regular;
-      grouped[uid].totalOvertimeHours += overtime;
+      grouped[uid].totalWorkingMin  += dayTotalMin;
+      grouped[uid].totalRegularMin  += regularMin;
+      grouped[uid].totalOvertimeMin += overtimeMin;
 
       if (item.leaveType) {
         const key = normalizeLeaveType(item.leaveType);
@@ -80,12 +89,12 @@ export default function TimeSheetOverview() {
 
     return Object.values(grouped).map(d => ({
       ...d,
-      totalWorkingHours: decimalToHHMM(d.totalWorkingHours),
-      totalRegularHours: decimalToHHMM(d.totalRegularHours),
-      totalOvertimeHours: decimalToHHMM(d.totalOvertimeHours),
-      _rawTotal: d.totalWorkingHours,
-      _rawRegular: d.totalRegularHours,
-      _rawOvertime: d.totalOvertimeHours,
+      totalWorkingHours: fromMin(d.totalWorkingMin),
+      totalRegularHours: fromMin(d.totalRegularMin),
+      totalOvertimeHours: fromMin(d.totalOvertimeMin),
+      _rawTotal: d.totalWorkingMin,    // minutes (not decimal hours)
+      _rawRegular: d.totalRegularMin,  // minutes
+      _rawOvertime: d.totalOvertimeMin,// minutes
       _totalLeaveDays: Object.values(d.leaveCounts).reduce((a, b) => a + b, 0),
     }));
   };
@@ -157,17 +166,18 @@ export default function TimeSheetOverview() {
     ]);
 
     // Grand total row — leave columns intentionally left blank
-    let grandReg = 0, grandOt = 0, grandAll = 0;
+    // NOTE: _rawRegular / _rawOvertime / _rawTotal are now in MINUTES
+    let grandRegMin = 0, grandOtMin = 0, grandAllMin = 0;
     data.forEach(emp => {
-      grandReg += emp._rawRegular  || 0;
-      grandOt  += emp._rawOvertime || 0;
-      grandAll += emp._rawTotal    || 0;
+      grandRegMin += emp._rawRegular  || 0;
+      grandOtMin  += emp._rawOvertime || 0;
+      grandAllMin += emp._rawTotal    || 0;
     });
     const totalRow = [
       "", "", "", "",
-      ...leaveTypes.map(() => ""), 
+      ...leaveTypes.map(() => ""),
       "TOTAL",
-      decimalToHHMM(grandReg), decimalToHHMM(grandOt), decimalToHHMM(grandAll),
+      fromMin(grandRegMin), fromMin(grandOtMin), fromMin(grandAllMin),
     ];
 
     const ws = XLSX.utils.aoa_to_sheet([headerRow1, headerRow2, ...dataRows, totalRow]);
@@ -213,9 +223,9 @@ export default function TimeSheetOverview() {
     const dataRows = data.map(emp => {
       const dayCells = allDates.flatMap(ds => {
         const entry = emp.timesheet?.find(t => normalizeDate(t.entryDate) === ds);
-        const dayTotal = Number(entry?.workingHours || 0);
-        const { regular, overtime } = splitHours(dayTotal);
-        return [decimalToHHMM(regular), decimalToHHMM(overtime), decimalToHHMM(dayTotal)];
+        const dayTotalMin = toMin(entry?.workingHours);
+        const { regularMin, overtimeMin } = splitMinutes(dayTotalMin);
+        return [fromMin(regularMin), fromMin(overtimeMin), fromMin(dayTotalMin)];
       });
 
       return [
@@ -233,23 +243,23 @@ export default function TimeSheetOverview() {
 
     // Daily summary row
     const totalRow = ["", "", "", "", "DAILY TOTAL"];
-    let grandReg = 0, grandOt = 0, grandAll = 0;
+    let grandRegMin = 0, grandOtMin = 0, grandAllMin = 0;
     allDates.forEach(ds => {
-      let colReg = 0, colOt = 0, colTotal = 0;
+      let colRegMin = 0, colOtMin = 0, colTotalMin = 0;
       data.forEach(emp => {
         const entry = emp.timesheet?.find(t => normalizeDate(t.entryDate) === ds);
-        const dayTotal = Number(entry?.workingHours || 0);
-        const { regular, overtime } = splitHours(dayTotal);
-        colReg += regular;
-        colOt += overtime;
-        colTotal += dayTotal;
+        const dayTotalMin = toMin(entry?.workingHours);
+        const { regularMin, overtimeMin } = splitMinutes(dayTotalMin);
+        colRegMin += regularMin;
+        colOtMin  += overtimeMin;
+        colTotalMin += dayTotalMin;
       });
-      grandReg += colReg;
-      grandOt += colOt;
-      grandAll += colTotal;
-      totalRow.push(decimalToHHMM(colReg), decimalToHHMM(colOt), decimalToHHMM(colTotal));
+      grandRegMin += colRegMin;
+      grandOtMin  += colOtMin;
+      grandAllMin += colTotalMin;
+      totalRow.push(fromMin(colRegMin), fromMin(colOtMin), fromMin(colTotalMin));
     });
-    totalRow.push(decimalToHHMM(grandReg), decimalToHHMM(grandOt), decimalToHHMM(grandAll));
+    totalRow.push(fromMin(grandRegMin), fromMin(grandOtMin), fromMin(grandAllMin));
 
     const ws = XLSX.utils.aoa_to_sheet([headerRow1, headerRow2, ...dataRows, totalRow]);
 
@@ -380,6 +390,7 @@ export default function TimeSheetOverview() {
           <Breadcrumb icon={<ClipboardList size={13} />} items={[{ label: "Timesheet" }]} />
           <h1 className="page-title">Timesheet</h1>
           <p className="page-subtitle">Monthly working hours overview</p>
+          {tabSwitcher}
         </div>
       </div>
       <ProTable
