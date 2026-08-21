@@ -1,6 +1,7 @@
 // Shared form components - pure CSS, no MUI
 
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, X, Calendar, Clock, Eye, EyeOff, Check } from "lucide-react";
 
 /* ── CSS injected once ── */
@@ -403,7 +404,9 @@ export function FormDate({ label, required, hint, error, value, onChange, disabl
   injectStyles();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState("day"); // "day" | "month" | "year"
-  const ref = useRef(null);
+  const [popupPos, setPopupPos] = useState({ top: 0, left: 0, width: 280 });
+  const ref = useRef(null);       // wraps trigger button only
+  const popupRef = useRef(null);  // wraps the portaled popup
 
   const today = new Date();
   const parsed = value ? new Date(value + "T00:00:00") : null;
@@ -414,9 +417,48 @@ export function FormDate({ label, required, hint, error, value, onChange, disabl
   });
   const [yearPage, setYearPage] = useState(Math.floor((view.year) / 12) * 12);
 
-  // Close on outside click
+  // Compute popup position relative to viewport whenever it opens
+  const updatePosition = () => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const popupWidth = 280;
+    let left = rect.left;
+    // keep popup within viewport horizontally
+    if (left + popupWidth > window.innerWidth - 8) {
+      left = window.innerWidth - popupWidth - 8;
+    }
+    let top = rect.bottom + 6;
+    // if not enough room below, flip above
+    const estimatedHeight = 340;
+    if (top + estimatedHeight > window.innerHeight && rect.top > estimatedHeight) {
+      top = rect.top - estimatedHeight - 6;
+    }
+    setPopupPos({ top, left, width: popupWidth });
+  };
+
   useEffect(() => {
-    const h = e => { if (ref.current && !ref.current.contains(e.target)) { setOpen(false); setMode("day"); } };
+    if (!open) return;
+    updatePosition();
+    const onScrollOrResize = () => updatePosition();
+    window.addEventListener("scroll", onScrollOrResize, true);
+    window.addEventListener("resize", onScrollOrResize);
+    return () => {
+      window.removeEventListener("scroll", onScrollOrResize, true);
+      window.removeEventListener("resize", onScrollOrResize);
+    };
+  }, [open, mode, view.year]);
+
+  // Close on outside click (checks both trigger and portaled popup)
+  useEffect(() => {
+    const h = e => {
+      if (
+        ref.current && !ref.current.contains(e.target) &&
+        popupRef.current && !popupRef.current.contains(e.target)
+      ) {
+        setOpen(false);
+        setMode("day");
+      }
+    };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, []);
@@ -436,7 +478,6 @@ export function FormDate({ label, required, hint, error, value, onChange, disabl
 
   function buildDays() {
     const first = new Date(view.year, view.month, 1);
-    // 0=Sun→6, we want Mon=0
     let startDow = first.getDay() - 1;
     if (startDow < 0) startDow = 6;
     const daysInMonth = new Date(view.year, view.month + 1, 0).getDate();
@@ -475,10 +516,79 @@ export function FormDate({ label, required, hint, error, value, onChange, disabl
 
   const cells = buildDays();
 
+  const popup = open && (
+    <div
+      ref={popupRef}
+      className="fc-cal-popup"
+      style={{ position: "fixed", top: popupPos.top, left: popupPos.left, width: popupPos.width, zIndex: 3000 }}
+    >
+      <div className="fc-cal-header">
+        <button className="fc-cal-nav" type="button" onClick={() => {
+          if (mode === "day") setView(v => v.month === 0 ? { month: 11, year: v.year - 1 } : { ...v, month: v.month - 1 });
+          else if (mode === "year") setYearPage(y => y - 12);
+        }}>
+          <ChevronDown size={15} style={{ transform: "rotate(90deg)" }} />
+        </button>
+
+        <div className="fc-cal-title">
+          {mode === "day" && (
+            <>
+              <button className="fc-cal-month-btn" type="button" onClick={() => setMode("month")}>{MONTHS[view.month]}</button>
+              <button className="fc-cal-year-btn" type="button" onClick={() => { setYearPage(Math.floor(view.year / 12) * 12); setMode("year"); }}>{view.year}</button>
+            </>
+          )}
+          {mode === "month" && <span style={{ color: "var(--text-primary)" }}>{view.year}</span>}
+          {mode === "year" && <span style={{ color: "var(--text-primary)" }}>{yearPage} – {yearPage + 11}</span>}
+        </div>
+
+        <button className="fc-cal-nav" type="button" onClick={() => {
+          if (mode === "day") setView(v => v.month === 11 ? { month: 0, year: v.year + 1 } : { ...v, month: v.month + 1 });
+          else if (mode === "year") setYearPage(y => y + 12);
+        }}>
+          <ChevronDown size={15} style={{ transform: "rotate(-90deg)" }} />
+        </button>
+      </div>
+
+      {mode === "day" && (
+        <div className="fc-cal-grid">
+          {DAYS.map(d => <div key={d} className="fc-cal-dow">{d}</div>)}
+          {cells.map((c, i) => (
+            <div key={i}
+              className={`fc-cal-day${!c.current ? " fc-cal-day-empty" : ""}${c.current && isSelected(c.day) ? " fc-cal-day-selected" : ""}${c.current && isToday(c.day) ? " fc-cal-day-today" : ""}${c.current && isDisabled(c.day) ? " fc-cal-day-empty" : ""}`}
+              onClick={() => c.current && !isDisabled(c.day) && selectDay(c.day)}
+            >{c.day}</div>
+          ))}
+        </div>
+      )}
+
+      {mode === "month" && (
+        <div className="fc-cal-overlay">
+          {MONTHS_SHORT.map((m, i) => (
+            <div key={m}
+              className={`fc-cal-overlay-item${view.month === i ? " active" : ""}`}
+              onClick={() => { setView(v => ({ ...v, month: i })); setMode("day"); }}
+            >{m}</div>
+          ))}
+        </div>
+      )}
+
+      {mode === "year" && (
+        <div className="fc-cal-overlay">
+          {Array.from({ length: 12 }, (_, i) => yearPage + i).map(y => (
+            <div key={y}
+              className={`fc-cal-overlay-item${view.year === y ? " active" : ""}`}
+              onClick={() => { setView(v => ({ ...v, year: y })); setMode("day"); }}
+            >{y}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   return (
-    <div className="fc-group" ref={ref}>
+    <div className="fc-group">
       {label && <label className="fc-label">{label}{required && <span className="req">*</span>}</label>}
-      <div className="fc-cal-wrap">
+      <div className="fc-cal-wrap" ref={ref}>
         <button
           type="button"
           disabled={disabled}
@@ -488,76 +598,8 @@ export function FormDate({ label, required, hint, error, value, onChange, disabl
           <span>{displayValue || placeholder}</span>
           <Calendar size={15} color="var(--text-muted)" />
         </button>
-
-        {open && (
-          <div className="fc-cal-popup">
-            {/* ── Header ── */}
-            <div className="fc-cal-header">
-              <button className="fc-cal-nav" type="button" onClick={() => {
-                if (mode === "day") setView(v => v.month === 0 ? { month: 11, year: v.year - 1 } : { ...v, month: v.month - 1 });
-                else if (mode === "year") setYearPage(y => y - 12);
-              }}>
-                <ChevronDown size={15} style={{ transform: "rotate(90deg)" }} />
-              </button>
-
-              <div className="fc-cal-title">
-                {mode === "day" && (
-                  <>
-                    <button className="fc-cal-month-btn" type="button" onClick={() => setMode("month")}>{MONTHS[view.month]}</button>
-                    <button className="fc-cal-year-btn" type="button" onClick={() => { setYearPage(Math.floor(view.year / 12) * 12); setMode("year"); }}>{view.year}</button>
-                  </>
-                )}
-                {mode === "month" && <span style={{ color: "var(--text-primary)" }}>{view.year}</span>}
-                {mode === "year" && <span style={{ color: "var(--text-primary)" }}>{yearPage} – {yearPage + 11}</span>}
-              </div>
-
-              <button className="fc-cal-nav" type="button" onClick={() => {
-                if (mode === "day") setView(v => v.month === 11 ? { month: 0, year: v.year + 1 } : { ...v, month: v.month + 1 });
-                else if (mode === "year") setYearPage(y => y + 12);
-              }}>
-                <ChevronDown size={15} style={{ transform: "rotate(-90deg)" }} />
-              </button>
-            </div>
-
-            {/* ── Day grid ── */}
-            {mode === "day" && (
-              <div className="fc-cal-grid">
-                {DAYS.map(d => <div key={d} className="fc-cal-dow">{d}</div>)}
-                {cells.map((c, i) => (
-                  <div key={i}
-                    className={`fc-cal-day${!c.current ? " fc-cal-day-empty" : ""}${c.current && isSelected(c.day) ? " fc-cal-day-selected" : ""}${c.current && isToday(c.day) ? " fc-cal-day-today" : ""}${c.current && isDisabled(c.day) ? " fc-cal-day-empty" : ""}`}
-                    onClick={() => c.current && !isDisabled(c.day) && selectDay(c.day)}
-                  >{c.day}</div>
-                ))}
-              </div>
-            )}
-
-            {/* ── Month picker ── */}
-            {mode === "month" && (
-              <div className="fc-cal-overlay">
-                {MONTHS_SHORT.map((m, i) => (
-                  <div key={m}
-                    className={`fc-cal-overlay-item${view.month === i ? " active" : ""}`}
-                    onClick={() => { setView(v => ({ ...v, month: i })); setMode("day"); }}
-                  >{m}</div>
-                ))}
-              </div>
-            )}
-
-            {/* ── Year picker ── */}
-            {mode === "year" && (
-              <div className="fc-cal-overlay">
-                {Array.from({ length: 12 }, (_, i) => yearPage + i).map(y => (
-                  <div key={y}
-                    className={`fc-cal-overlay-item${view.year === y ? " active" : ""}`}
-                    onClick={() => { setView(v => ({ ...v, year: y })); setMode("day"); }}
-                  >{y}</div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
       </div>
+      {open && createPortal(popup, document.body)}
       {error && <div className="fc-error">{error}</div>}
       {hint && !error && <div className="fc-hint">{hint}</div>}
     </div>
