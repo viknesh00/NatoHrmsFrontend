@@ -471,15 +471,28 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
     });
   };
 
+  const isTaskIncomplete = (t) => !t.name.trim() || !(parseFloat(t.hours) > 0);
+
   const addTask = (kind) => {
-    if (kind==="reg") {
+    if (kind === "reg") {
+      if (regularTasks.some(isTaskIncomplete)) {
+        ToastError("Please fill in task name and hours before adding another task");
+        return;
+      }
       if (regularTotal >= MAX_REGULAR) { ToastError(`Regular hours full (${MAX_REGULAR}h) — use Overtime`); return; }
-      setRegularTasks(p => [...p, { name:"", hours:"" }]);
+      setRegularTasks(p => [...p, { name: "", hours: "" }]);
     } else {
+      if (overtimeTasks.some(isTaskIncomplete)) {
+        ToastError("Please fill in task name and hours before adding another task");
+        return;
+      }
       if (grandTotal >= 24) { ToastError("Total 24h limit reached"); return; }
-      setOvertimeTasks(p => [...p, { name:"", hours:"" }]);
+      setOvertimeTasks(p => [...p, { name: "", hours: "" }]);
     }
   };
+
+  const otIncomplete = overtimeTasks.some(isTaskIncomplete);
+  const addOtDisabled = grandTotal >= 24 || otIncomplete;
 
   // ── Save ──────────────────────────────────────────────────────────────────
   const saveEntry = () => {
@@ -648,7 +661,8 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
   const currentTaskList = [...savedReg.filter(t=>t.name||t.hours), ...savedOt.filter(t=>t.name||t.hours)];
 
   const regularPct     = Math.min((regularTotal / MAX_REGULAR) * 100, 100);
-  const addRegDisabled = regularTotal >= MAX_REGULAR;
+  const regIncomplete = regularTasks.some(isTaskIncomplete);
+  const addRegDisabled = regularTotal >= MAX_REGULAR || regIncomplete;
 
   // Whether overtime tasks exist (to gate regular task delete buttons)
   const hasOvertimeTasks = overtimeTasks.length > 0;
@@ -1119,7 +1133,7 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
                   style={{ marginTop:10, padding:"8px 14px", borderRadius:9, border:`1.5px dashed ${addRegDisabled?"var(--border)":"var(--primary)"}`, background:addRegDisabled?"#f9fafb":"var(--primary-ghost)", color:addRegDisabled?"#d1d5db":"var(--primary)", fontSize:12, fontWeight:700, cursor:addRegDisabled?"not-allowed":"pointer", width:"100%", transition:"all 0.2s", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}
                 >
                   <Plus size={13}/>
-                  {addRegDisabled ? `${MAX_REGULAR}h limit reached` : "Add Regular Task"}
+                  {addRegDisabled ? (regularTotal >= MAX_REGULAR ? `${MAX_REGULAR}h limit reached` : "Fill task details first") : "Add Regular Task"}
                 </button>
               </div>
 
@@ -1236,12 +1250,12 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
 
                   <button
                     type="button"
-                    disabled={grandTotal>=24}
-                    onClick={()=>addTask("ot")}
-                    style={{ marginTop:10, padding:"8px 14px", borderRadius:9, border:`1.5px dashed ${grandTotal>=24?"#bfdbfe":"#3b82f6"}`, background:grandTotal>=24?"#f0f9ff":"white", color:grandTotal>=24?"#93c5fd":"#1d4ed8", fontSize:12, fontWeight:700, cursor:grandTotal>=24?"not-allowed":"pointer", width:"100%", transition:"all 0.2s", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}
+                    disabled={addOtDisabled}
+                    onClick={() => addTask("ot")}
+                    style={{ marginTop: 10, padding: "8px 14px", borderRadius: 9, border: `1.5px dashed ${addOtDisabled ? "#bfdbfe" : "#3b82f6"}`, background: addOtDisabled ? "#f0f9ff" : "white", color: addOtDisabled ? "#93c5fd" : "#1d4ed8", fontSize: 12, fontWeight: 700, cursor: addOtDisabled ? "not-allowed" : "pointer", width: "100%", transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
                   >
-                    <Plus size={13}/>
-                    {grandTotal>=24 ? "24h total limit reached" : "Add Overtime Task"}
+                    <Plus size={13} />
+                    {grandTotal >= 24 ? "24h total limit reached" : otIncomplete ? "Fill task details first" : "Add Overtime Task"}
                   </button>
                 </div>
               )}
