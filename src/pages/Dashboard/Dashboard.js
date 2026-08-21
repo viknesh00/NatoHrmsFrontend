@@ -454,9 +454,11 @@ export default function Dashboard() {
                 <Briefcase size={17} color="var(--primary)"/>
                 {isAdminOrMgr ? "Projects" : "My Project"}
               </span>
-              <button className="btn btn-ghost btn-sm" onClick={() => navigate("/employees/projects")}>
-                View All <ArrowUpRight size={13}/>
-              </button>
+              {isAdminOrMgr && (
+                <button className="btn btn-ghost btn-sm" onClick={() => navigate("/employees/projects")}>
+                  View All <ArrowUpRight size={13}/>
+                </button>
+              )}
             </div>
 
             {isAdminOrMgr ? (
