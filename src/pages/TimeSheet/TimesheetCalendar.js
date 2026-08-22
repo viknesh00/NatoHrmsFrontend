@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import ReactDOM from "react-dom";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
+import customParseFormat from "dayjs/plugin/customParseFormat"; // FIX: needed so dayjs(str, format) parses deterministically instead of falling back to the native Date constructor (which is browser/engine-dependent and returned "Invalid Date" on Safari/iOS for "Aug-2026" while working fine on desktop Chrome)
 import {
   ChevronLeft, ChevronRight, ChevronDown, X, Save, Clock, Copy,
   FileSpreadsheet, Trash2, AlertCircle, ClipboardList, Plus, CheckCircle2, Zap,
@@ -14,6 +15,7 @@ import { ToastSuccess, ToastError } from "../../services/ToastMsg";
 import * as XLSX from "xlsx";
 import { getCookie } from "../../services/Cookies";
 dayjs.extend(isoWeek);
+dayjs.extend(customParseFormat); // FIX: registers the format-based parser used below
 
 const MAX_REGULAR = 8;
 
@@ -185,9 +187,11 @@ export default function TimesheetCalendar({tabSwitcher}) {
   const location  = useLocation();
   const { viewData, selectedMonth: viewMonth } = location.state || {};
 
-  const [currentMonth, setCurrentMonth] = useState(
-    viewMonth ? dayjs(viewMonth, "MMM-YYYY") : dayjs()
-  );
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    if (!viewMonth) return dayjs();
+    const parsed = dayjs(viewMonth, "MMM-YYYY", true);
+    return parsed.isValid() ? parsed : dayjs();
+  });
 
   const [entries,      setEntries]      = useState({});
   const [leaveList,    setLeaveList]    = useState([]);
