@@ -221,8 +221,20 @@ export default function Dashboard() {
   const firstName    = getCookie("firstName") || "User";
   const userRole     = getCookie("role");
   const userEmail    = getCookie("email");
-  const isAdminOrMgr = userRole === "Admin" || userRole === "Manager";
+
+  /* ── Role flags ──
+     Admin        → sees everything, unscoped
+     Manager      → department-scoped
+     TeamLead     → same admin/manager-style dashboard layout, but data is
+                    already scoped to "self + direct reports" by the backend
+                    procs (Get_All_Users, GetAttendanceRecords[Range],
+                    GetEmployeeLeave, GetAnnouncements). Projects have no
+                    per-employee scope, so TeamLead is department-filtered
+                    there, same as Manager. */
+  const isAdmin      = userRole === "Admin";
   const isManager    = userRole === "Manager";
+  const isTeamLead   = userRole === "TeamLead";
+  const isAdminOrMgr = isAdmin || isManager || isTeamLead;
   const isEmployee   = !isAdminOrMgr;
   const todayStr     = dayjs().format("YYYY-MM-DD");
   const hour         = new Date().getHours();
@@ -319,9 +331,10 @@ export default function Dashboard() {
   const myProjectAssigned = myUserData?.projectAssigned || null;
   const isDeizeisau = myDepartment.trim().toLowerCase() === "deizeisau";
 
-  // Manager → their department's projects only
-  // Admin   → all projects
-  const myDeptProjects = isAdminOrMgr && !isManager
+  // Admin              → all projects, unscoped
+  // Manager / TeamLead → department's projects only (Project entity has no
+  //                      per-employee scope, so department is as granular as it gets)
+  const myDeptProjects = isAdmin
     ? projectsFormatted
     : projectsFormatted.filter(p => deptMatch(p.department, myDepartment));
 
@@ -419,7 +432,7 @@ export default function Dashboard() {
         {/* ── LEFT column ────────────────────────────────────────────────── */}
         <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
 
-          {/* Today's Attendance — admin/mgr only */}
+          {/* Today's Attendance — admin/mgr/teamlead only */}
           {isAdminOrMgr && (
             <div className="card">
               <div className="card-header">
@@ -462,12 +475,12 @@ export default function Dashboard() {
             </div>
 
             {isAdminOrMgr ? (
-              /* Admin / Manager view */
+              /* Admin / Manager / TeamLead view */
               <div>
                 {/* Mini stat strip */}
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:1, borderBottom:"1px solid var(--border)" }}>
                   {[
-                    { label: isManager ? "Dept Total" : "Total", value: myDeptProjects.length, color:"var(--text-primary)" },
+                    { label: isAdmin ? "Total" : "Dept Total", value: myDeptProjects.length, color:"var(--text-primary)" },
                     { label:"Active",   value: activeProjects.length,  color:"var(--emerald)" },
                     { label:"Planning", value: pendingProjects.length, color:"var(--amber)"   },
                   ].map((s, i) => (
@@ -487,7 +500,7 @@ export default function Dashboard() {
                     : recentProjects.length === 0
                       ? (
                         <div style={{ textAlign:"center", padding:"20px 0", color:"var(--text-muted)", fontSize:13 }}>
-                          {isManager ? "No projects in your department" : "No projects found"}
+                          {isAdmin ? "No projects found" : "No projects in your department"}
                         </div>
                       )
                       : recentProjects.map((proj, i) => {
@@ -652,7 +665,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Department distribution — admin/mgr only */}
+          {/* Department distribution — admin/mgr/teamlead only */}
           {isAdminOrMgr && (
             <div className="card">
               <div className="card-header">
