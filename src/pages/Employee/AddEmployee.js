@@ -43,13 +43,25 @@ const MARITAL_OPTIONS     = [{ label: "Single", value: "Single" }, { label: "Mar
 const BLOOD_OPTIONS       = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((g) => ({ label: g, value: g }));
 const EMP_TYPE_OPTIONS    = [{ label: "Permanent", value: "Permanent" }, { label: "Contract", value: "Contract" }, { label: "Intern", value: "Intern" }];
 const EMP_STATUS_OPTIONS  = [{ label: "Active", value: "Active" }, { label: "Probation", value: "Probation" }, { label: "Resigned", value: "Resigned" }];
-const ACCESS_ROLE_OPTIONS = [{ label: "Admin", value: "Admin" }, { label: "Manager", value: "Manager" }, { label: "Employee", value: "Employee" }];
+const ACCESS_ROLE_OPTIONS = [{ label: "Admin", value: "Admin" }, { label: "Manager", value: "Manager" }, { label: "Team Lead", value: "TeamLead" }, { label: "Employee", value: "Employee" }];
 const WORK_SHIFT_OPTIONS  = [{ label: "Day", value: "Day" }, { label: "Night", value: "Night" }, { label: "Rotational", value: "Rotational" }];
 const WORK_MODE_OPTIONS   = [{ label: "Office", value: "Office" }, { label: "Remote", value: "Remote" }, { label: "Hybrid", value: "Hybrid" }];
 const RELATION_OPTIONS    = [{ label: "Spouse", value: "Spouse" }, { label: "Parent", value: "Parent" }, { label: "Friend", value: "Friend" }];
 const GEO_FENCE_OPTIONS = [{ label: "No", value: "No" }, { label: "Yes", value: "Yes" }];
 
 const withPlaceholder = (label, options) => [{ label, value: "" }, ...options];
+
+/* ── Role hierarchy — highest to lowest ── */
+const ROLE_HIERARCHY = ["Admin", "Manager", "TeamLead", "Employee"];
+
+/* ── Only show roles at or below the current user's own level ── */
+const getAllowedAccessRoles = (role) => {
+  const idx = ROLE_HIERARCHY.indexOf(role);
+  if (idx === -1) return ACCESS_ROLE_OPTIONS; // unknown role → no restriction
+  return ACCESS_ROLE_OPTIONS.filter(
+    (opt) => ROLE_HIERARCHY.indexOf(opt.value) >= idx
+  );
+};
 
 /* ──────────────────────────────────────────────
    Component
@@ -71,9 +83,9 @@ export default function AddEmployee() {
 
   const userRole         = getCookie("role");
   const isEditMode       = !!email;
-  const isAdminOrManager = userRole === "Admin" || userRole === "Manager";
+  const canManageEmployeeFields  = userRole === "Admin" || userRole === "Manager" || userRole === "TeamLead";
 
-  const breadCrumb = !isAdminOrManager
+  const breadCrumb = !canManageEmployeeFields 
     ? [{ label: "View Profile", link: "/view-employee" }, { label: "Edit-Employee" }]
     : !isEditMode
       ? [{ label: "Employee", link: "/employees" }, { label: "Add-Employee" }]
@@ -328,7 +340,7 @@ export default function AddEmployee() {
         .then((res) => {
           if (res.status === 200) {
             ToastSuccess(isEditMode ? "User Updated Successfully" : "User Added Successfully");
-            !isAdminOrManager ? navigate("/view-employee") : navigate("/employees");
+            !canManageEmployeeFields  ? navigate("/view-employee") : navigate("/employees");
           }
         })
         .catch((err) => {
@@ -341,7 +353,7 @@ export default function AddEmployee() {
     }
   };
 
-  const handleCancel = () => (!isAdminOrManager ? navigate("/view-employee") : navigate("/employees"));
+  const handleCancel = () => (!canManageEmployeeFields  ? navigate("/view-employee") : navigate("/employees"));
   const handleBack   = () => setActiveStep((prev) => prev - 1);
 
   /* ── step content ── */
@@ -378,13 +390,13 @@ export default function AddEmployee() {
         return (
           <FormSection title="Employment Info">
             <FormRow cols={3}>
-              <FormInput  label="Employee ID *"  value={formvalues.employeeId}   onChange={set("employeeId")}   disabled={!isAdminOrManager} placeholder="e.g. EMP-001" />
-              <FormSelect label="Employee Type"  options={withPlaceholder("Select Type", EMP_TYPE_OPTIONS)} value={formvalues.employeeType} onChange={set("employeeType")} disabled={!isAdminOrManager} />
-              <FormInput  label="Designation"    value={formvalues.designation}  onChange={set("designation")}  disabled={!isAdminOrManager} placeholder="e.g. Software Engineer" />
+              <FormInput  label="Employee ID *"  value={formvalues.employeeId}   onChange={set("employeeId")}   disabled={!canManageEmployeeFields } placeholder="e.g. EMP-001" />
+              <FormSelect label="Employee Type"  options={withPlaceholder("Select Type", EMP_TYPE_OPTIONS)} value={formvalues.employeeType} onChange={set("employeeType")} disabled={!canManageEmployeeFields } />
+              <FormInput  label="Designation"    value={formvalues.designation}  onChange={set("designation")}  disabled={!canManageEmployeeFields } placeholder="e.g. Software Engineer" />
             </FormRow>
             <FormRow cols={3}>
-              <FormDate   label="Date of Joining" value={formvalues.doj} onChange={set("doj")} disabled={!isAdminOrManager} />
-              <FormSelect label="Department *"     options={withPlaceholder("Select Department", departmentNames)} value={formvalues.department} onChange={handleDepartmentChange} disabled={!isAdminOrManager} />
+              <FormDate   label="Date of Joining" value={formvalues.doj} onChange={set("doj")} disabled={!canManageEmployeeFields } />
+              <FormSelect label="Department *"     options={withPlaceholder("Select Department", departmentNames)} value={formvalues.department} onChange={handleDepartmentChange} disabled={!canManageEmployeeFields } />
 
               {/* ── Projects inline multi-select (DocumentUploadForm pattern) ── */}
               <div style={{ marginBottom: 0 }}>
@@ -395,7 +407,7 @@ export default function AddEmployee() {
                   {formvalues.projects.map((val) => (
                     <span key={val} style={{ display:"flex", alignItems:"center", gap:4, background:"var(--primary-ghost)", color:"var(--primary)", fontSize:12, fontWeight:600, padding:"3px 10px", borderRadius:20 }}>
                       {val}
-                      {isAdminOrManager && (
+                      {canManageEmployeeFields  && (
                         <span onClick={() => removeProject(val)} style={{ cursor:"pointer", fontSize:14, lineHeight:1 }}>×</span>
                       )}
                     </span>
@@ -406,9 +418,9 @@ export default function AddEmployee() {
                 <div style={{ position:"relative" }} ref={projectDropdownRef}>
                   <FocusInput
                     value={projectSearch}
-                    disabled={!isAdminOrManager}
+                    disabled={!canManageEmployeeFields }
                     onChange={(e) => { setProjectSearch(e.target.value); setShowProjectDrop(true); }}
-                    onFocus={() => isAdminOrManager && setShowProjectDrop(true)}
+                    onFocus={() => canManageEmployeeFields  && setShowProjectDrop(true)}
                     placeholder={
                       !formvalues.department
                         ? "Select a department first..."
@@ -417,7 +429,7 @@ export default function AddEmployee() {
                           : "Search and select projects..."
                     }
                   />
-                  {showProjectDrop && isAdminOrManager && (
+                  {showProjectDrop && canManageEmployeeFields  && (
                     <div style={{ position:"absolute", top:"100%", left:0, right:0, background:"white", border:"1.5px solid var(--border)", borderRadius:10, boxShadow:"var(--shadow-lg)", zIndex:200, maxHeight:200, overflowY:"auto", marginTop:4 }}>
                       {filteredProjects.length === 0 ? (
                         <div style={{ padding:"10px 14px", fontSize:13, color:"var(--text-muted)" }}>
@@ -446,13 +458,19 @@ export default function AddEmployee() {
             </FormRow>
 
             <FormRow cols={3}>
-              <FormInput  label="Work Location (City) *" value={formvalues.workLocation}    onChange={set("workLocation")}    disabled={!isAdminOrManager} placeholder="e.g. Chennai" />
-              <FormSelect label="Geo-Fence Enabled"       options={GEO_FENCE_OPTIONS}              value={formvalues.restrictToWorkLocation} onChange={set("restrictToWorkLocation")} disabled={!isAdminOrManager} />
-              <FormSelect label="Employment Status"       options={withPlaceholder("Select Status",  EMP_STATUS_OPTIONS)}  value={formvalues.employmentStatus} onChange={set("employmentStatus")} disabled={!isAdminOrManager} />
+              <FormInput  label="Work Location (City) *" value={formvalues.workLocation}    onChange={set("workLocation")}    disabled={!canManageEmployeeFields } placeholder="e.g. Chennai" />
+              <FormSelect label="Geo-Fence Enabled"       options={GEO_FENCE_OPTIONS}              value={formvalues.restrictToWorkLocation} onChange={set("restrictToWorkLocation")} disabled={!canManageEmployeeFields } />
+              <FormSelect label="Employment Status"       options={withPlaceholder("Select Status",  EMP_STATUS_OPTIONS)}  value={formvalues.employmentStatus} onChange={set("employmentStatus")} disabled={!canManageEmployeeFields } />
             </FormRow>
             <FormRow cols={3}>
-              <FormSelect label="Reporting Manager *"     options={withPlaceholder("Select Manager", managerList)}         value={formvalues.reportingManager} onChange={set("reportingManager")} disabled={!isAdminOrManager} />
-              <FormSelect label="Access Role *" options={withPlaceholder("Select Role", ACCESS_ROLE_OPTIONS)} value={formvalues.accessRole} onChange={set("accessRole")} disabled={!isAdminOrManager} />
+              <FormSelect label="Reporting Manager *"     options={withPlaceholder("Select Manager", managerList)}         value={formvalues.reportingManager} onChange={set("reportingManager")} disabled={!canManageEmployeeFields } />
+              <FormSelect
+                label="Access Role *"
+                options={withPlaceholder("Select Role", getAllowedAccessRoles(userRole))}
+                value={formvalues.accessRole}
+                onChange={set("accessRole")}
+                disabled={!canManageEmployeeFields}
+              />
             </FormRow>
           </FormSection>
         );
@@ -462,28 +480,28 @@ export default function AddEmployee() {
         return (
           <FormSection title="Salary Info">
             <FormRow cols={3}>
-              <FormInput label="CTC"          type="number" value={formvalues.ctc}         onChange={set("ctc")}         disabled={!isAdminOrManager} placeholder="e.g. 600000" />
-              <FormInput label="Basic Salary" type="number" value={formvalues.basicSalary} onChange={set("basicSalary")} disabled={!isAdminOrManager} placeholder="e.g. 300000" />
-              <FormInput label="HRA"          type="number" value={formvalues.hra}         onChange={set("hra")}         disabled={!isAdminOrManager} placeholder="e.g. 120000" />
+              <FormInput label="CTC"          type="number" value={formvalues.ctc}         onChange={set("ctc")}         disabled={!canManageEmployeeFields } placeholder="e.g. 600000" />
+              <FormInput label="Basic Salary" type="number" value={formvalues.basicSalary} onChange={set("basicSalary")} disabled={!canManageEmployeeFields } placeholder="e.g. 300000" />
+              <FormInput label="HRA"          type="number" value={formvalues.hra}         onChange={set("hra")}         disabled={!canManageEmployeeFields } placeholder="e.g. 120000" />
             </FormRow>
             <FormRow cols={3}>
-              <FormInput label="Conveyance Allowance" type="number" value={formvalues.conveyanceAllowance} onChange={set("conveyanceAllowance")} disabled={!isAdminOrManager} />
-              <FormInput label="Medical Allowance"    type="number" value={formvalues.medicalAllowance}    onChange={set("medicalAllowance")}    disabled={!isAdminOrManager} />
-              <FormInput label="Special Allowance"    type="number" value={formvalues.specialAllowance}    onChange={set("specialAllowance")}    disabled={!isAdminOrManager} />
+              <FormInput label="Conveyance Allowance" type="number" value={formvalues.conveyanceAllowance} onChange={set("conveyanceAllowance")} disabled={!canManageEmployeeFields } />
+              <FormInput label="Medical Allowance"    type="number" value={formvalues.medicalAllowance}    onChange={set("medicalAllowance")}    disabled={!canManageEmployeeFields } />
+              <FormInput label="Special Allowance"    type="number" value={formvalues.specialAllowance}    onChange={set("specialAllowance")}    disabled={!canManageEmployeeFields } />
             </FormRow>
             <FormRow cols={3}>
-              <FormInput label="Employee PF"    type="number" value={formvalues.employeePF}    onChange={set("employeePF")}    disabled={!isAdminOrManager} />
-              <FormInput label="Bank Name"                    value={formvalues.bankName}       onChange={set("bankName")}       disabled={!isAdminOrManager} placeholder="e.g. HDFC Bank" />
-              <FormInput label="Account Number" type="number" value={formvalues.accountNumber} onChange={set("accountNumber")} disabled={!isAdminOrManager} />
+              <FormInput label="Employee PF"    type="number" value={formvalues.employeePF}    onChange={set("employeePF")}    disabled={!canManageEmployeeFields } />
+              <FormInput label="Bank Name"                    value={formvalues.bankName}       onChange={set("bankName")}       disabled={!canManageEmployeeFields } placeholder="e.g. HDFC Bank" />
+              <FormInput label="Account Number" type="number" value={formvalues.accountNumber} onChange={set("accountNumber")} disabled={!canManageEmployeeFields } />
             </FormRow>
             <FormRow cols={3}>
-              <FormInput label="IFSC Code"  value={formvalues.ifscCode}  onChange={set("ifscCode")}  disabled={!isAdminOrManager} placeholder="e.g. HDFC0001234" />
-              <FormInput label="PAN Number" value={formvalues.panNumber} onChange={set("panNumber")} disabled={!isAdminOrManager} placeholder="e.g. ABCDE1234F" />
-              <FormInput label="UAN Number" type="number" value={formvalues.uanNumber} onChange={set("uanNumber")} disabled={!isAdminOrManager} />
+              <FormInput label="IFSC Code"  value={formvalues.ifscCode}  onChange={set("ifscCode")}  disabled={!canManageEmployeeFields } placeholder="e.g. HDFC0001234" />
+              <FormInput label="PAN Number" value={formvalues.panNumber} onChange={set("panNumber")} disabled={!canManageEmployeeFields } placeholder="e.g. ABCDE1234F" />
+              <FormInput label="UAN Number" type="number" value={formvalues.uanNumber} onChange={set("uanNumber")} disabled={!canManageEmployeeFields } />
             </FormRow>
             <FormRow cols={2}>
-              <FormInput label="PF Account Number" value={formvalues.pfAccountNumber} onChange={set("pfAccountNumber")} disabled={!isAdminOrManager} />
-              <FormInput label="ESI Number"         value={formvalues.esiNumber}       onChange={set("esiNumber")}       disabled={!isAdminOrManager} />
+              <FormInput label="PF Account Number" value={formvalues.pfAccountNumber} onChange={set("pfAccountNumber")} disabled={!canManageEmployeeFields } />
+              <FormInput label="ESI Number"         value={formvalues.esiNumber}       onChange={set("esiNumber")}       disabled={!canManageEmployeeFields } />
             </FormRow>
           </FormSection>
         );
@@ -499,8 +517,8 @@ export default function AddEmployee() {
             </FormRow>
             <FormRow cols={3}>
               <FormInput label="Year of Passing"        type="number" value={formvalues.yearOfPassing}  onChange={set("yearOfPassing")}  placeholder="e.g. 2020" />
-              <FormInput label="Previous Company"                     value={formvalues.previousCompany} onChange={set("previousCompany")} disabled={!isAdminOrManager} placeholder="e.g. Infosys" />
-              <FormInput label="Total Experience (Yrs)" type="number" value={formvalues.totalExperience} onChange={set("totalExperience")} disabled={!isAdminOrManager} placeholder="e.g. 3" />
+              <FormInput label="Previous Company"                     value={formvalues.previousCompany} onChange={set("previousCompany")} disabled={!canManageEmployeeFields } placeholder="e.g. Infosys" />
+              <FormInput label="Total Experience (Yrs)" type="number" value={formvalues.totalExperience} onChange={set("totalExperience")} disabled={!canManageEmployeeFields } placeholder="e.g. 3" />
             </FormRow>
           </FormSection>
         );

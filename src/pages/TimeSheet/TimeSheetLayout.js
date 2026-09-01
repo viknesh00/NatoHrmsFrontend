@@ -6,11 +6,11 @@ import TimeSheetOverview from "./TimeSheetOverview";
 
 export default function TimeSheetLayout() {
   const userRole = getCookie("role");
-  const isAdminOrManager = userRole === "Admin" || userRole === "Manager";
+  const canViewTimesheetOverview = userRole === "Admin" || userRole === "Manager" || userRole === "TeamLead";
 
   const [activeTab, setActiveTab] = useState("overview"); // "overview" | "mytimesheet"
 
-  if (!isAdminOrManager) return <TimesheetCalendar />;
+  if (!canViewTimesheetOverview) return <TimesheetCalendar />;
 
   const tabs = [
     { key: "overview",    label: "Overview",     icon: ClipboardList },
