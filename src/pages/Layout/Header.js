@@ -1,5 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { User, Key, LogOut, ChevronDown, AlertTriangle } from "lucide-react";
+import {
+  User,
+  Key,
+  LogOut,
+  ChevronDown,
+  AlertTriangle,
+} from "lucide-react";
 import { cookieKeys, getCookie, setCookie } from "../../services/Cookies";
 import { cookieObj } from "../../models/cookieObj";
 import PasswordChange from "../../services/PasswordChange";
@@ -19,174 +25,341 @@ const fetchIp = async (retries = 2) => {
     "https://api64.ipify.org?format=json",
     "https://api.ipify.org?format=json",
   ];
+
   for (const url of endpoints) {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 5000);
-        const r = await fetch(url, { signal: controller.signal });
+
+        const r = await fetch(url, {
+          signal: controller.signal,
+        });
+
         clearTimeout(timeout);
+
         if (r.ok) {
           const data = await r.json();
-          if (data?.ip) return data.ip;
+
+          if (data?.ip) {
+            return data.ip;
+          }
         }
       } catch {
-        // try next attempt / endpoint
+        // Try next endpoint / retry
       }
     }
   }
+
   return "Unknown";
 };
 
-/** Reverse-geocode from coordinates (BigDataCloud). Returns city string or "Unknown". */
-const fetchCityFromCoords = async (lat, lon) => {
+/**
+ * Reverse-geocode coordinates to the most specific available
+ * locality / area name.
+ *
+ * Example:
+ * Perungudi instead of Chennai
+ * Velachery instead of Chennai
+ */
+const fetchLocalityFromCoords = async (lat, lon) => {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 6000);
+
     const r = await fetch(
       `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`,
-      { signal: controller.signal }
+      {
+        signal: controller.signal,
+      }
     );
+
     clearTimeout(timeout);
+
     if (r.ok) {
       const d = await r.json();
-      // Small towns often only populate locality / localityInfo, not "city"
+
       const resolved =
-        d.city ||
         d.locality ||
-        d.localityInfo?.administrative?.find((a) => a.order >= 6)?.name ||
+        d.city ||
+        d.localityInfo?.administrative
+          ?.sort((a, b) => (b.order || 0) - (a.order || 0))
+          ?.find((a) => a.name)?.name ||
         d.principalSubdivision ||
         "Unknown";
-      if (resolved === "Unknown") {
-        console.warn("BigDataCloud reverse geocode returned no usable field:", d);
-      }
+
       return resolved;
-    } else {
-      console.warn("BigDataCloud reverse geocode HTTP error:", r.status);
     }
+
+    console.warn(
+      "BigDataCloud reverse geocode HTTP error:",
+      r.status
+    );
   } catch (err) {
-    console.warn("BigDataCloud reverse geocode failed:", err);
+    console.warn(
+      "BigDataCloud reverse geocode failed:",
+      err
+    );
   }
+
   return "Unknown";
 };
 
-/** Fallback reverse-geocode using OpenStreetMap Nominatim (no API key needed). */
-const fetchCityFromCoordsNominatim = async (lat, lon) => {
+/**
+ * Fallback reverse-geocode using OpenStreetMap Nominatim.
+ * Priority is given to smaller locality names.
+ */
+const fetchLocalityFromCoordsNominatim = async (lat, lon) => {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 6000);
+
     const r = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=10`,
-      { signal: controller.signal, headers: { "Accept-Language": "en" } }
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=18`,
+      {
+        signal: controller.signal,
+        headers: {
+          "Accept-Language": "en",
+        },
+      }
     );
+
     clearTimeout(timeout);
+
     if (r.ok) {
       const d = await r.json();
+      const address = d.address || {};
+
       return (
-        d.address?.town ||
-        d.address?.village ||
-        d.address?.city ||
-        d.address?.county ||
+        address.suburb ||
+        address.neighbourhood ||
+        address.quarter ||
+        address.city_district ||
+        address.town ||
+        address.village ||
+        address.city ||
         "Unknown"
       );
-    } else {
-      console.warn("Nominatim reverse geocode HTTP error:", r.status);
     }
+
+    console.warn(
+      "Nominatim reverse geocode HTTP error:",
+      r.status
+    );
   } catch (err) {
-    console.warn("Nominatim reverse geocode failed:", err);
+    console.warn(
+      "Nominatim reverse geocode failed:",
+      err
+    );
   }
+
   return "Unknown";
 };
 
-/** Resolve coordinates to a city name, trying BigDataCloud first, then Nominatim. */
-const resolveCityFromCoords = async (lat, lon) => {
-  const city = await fetchCityFromCoords(lat, lon);
-  if (city !== "Unknown") return city;
-  return fetchCityFromCoordsNominatim(lat, lon);
+/**
+ * Resolve coordinates to locality name.
+ *
+ * First:
+ * BigDataCloud
+ *
+ * Fallback:
+ * OpenStreetMap Nominatim
+ */
+const resolveLocalityFromCoords = async (lat, lon) => {
+  const locality = await fetchLocalityFromCoords(lat, lon);
+
+  if (locality !== "Unknown") {
+    return locality;
+  }
+
+  return fetchLocalityFromCoordsNominatim(lat, lon);
 };
 
-/** Get high-accuracy GPS coordinates. Returns {lat, lon} or null. */
+/**
+ * Get high-accuracy GPS coordinates.
+ *
+ * Returns:
+ * {
+ *   lat,
+ *   lon,
+ *   accuracy
+ * }
+ */
 const getAccurateCoords = () =>
   new Promise((resolve) => {
-    if (!navigator.geolocation) return resolve(null);
+    if (!navigator.geolocation) {
+      return resolve(null);
+    }
 
-    const geoTimeout = setTimeout(() => resolve(null), 10000);
+    const geoTimeout = setTimeout(() => {
+      resolve(null);
+    }, 10000);
 
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
         clearTimeout(geoTimeout);
-        resolve({ lat: coords.latitude, lon: coords.longitude });
+
+        resolve({
+          lat: coords.latitude,
+          lon: coords.longitude,
+          accuracy: coords.accuracy,
+        });
       },
+
       () => {
         clearTimeout(geoTimeout);
         resolve(null);
       },
+
       {
-        enableHighAccuracy: true, // GPS chip, not WiFi/cell-tower — accurate to ~10-50m
+        enableHighAccuracy: true,
         timeout: 9000,
-        maximumAge: 0, // force a fresh fix, don't reuse stale cached position
+        maximumAge: 0,
       }
     );
   });
 
-/** Fetch city via IP-geolocation (used only as a last-resort fallback). */
+/**
+ * Fetch city/location via IP.
+ *
+ * This is only used as a fallback when GPS is unavailable.
+ */
 const fetchCityFromIp = async () => {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
+
     const r = await fetch("https://ipapi.co/json/", {
       signal: controller.signal,
     });
+
     clearTimeout(timeout);
+
     if (r.ok) {
       const d = await r.json();
+
       return d.city || "Unknown";
     }
-  } catch {}
+  } catch {
+    // Ignore fallback error
+  }
+
   return "Unknown";
 };
 
 /**
- * Best-effort location for the clock-in/out action itself: tries accurate
- * GPS first, falls back to IP geolocation if GPS is denied/unavailable.
+ * Fetch the best available location.
+ *
+ * GPS is always preferred.
+ *
+ * Returns:
+ * {
+ *   location,
+ *   lat,
+ *   lon,
+ *   accuracy,
+ *   source
+ * }
  */
 const fetchLocation = async () => {
   const coords = await getAccurateCoords();
+
   if (coords) {
-    const city = await resolveCityFromCoords(coords.lat, coords.lon);
-    if (city !== "Unknown") return city;
+    const locality = await resolveLocalityFromCoords(
+      coords.lat,
+      coords.lon
+    );
+
+    return {
+      location: locality,
+      lat: coords.lat,
+      lon: coords.lon,
+      accuracy: coords.accuracy,
+      source: "GPS",
+    };
   }
-  return fetchCityFromIp();
+
+  // GPS unavailable → IP fallback
+  const ipLocation = await fetchCityFromIp();
+
+  return {
+    location: ipLocation,
+    lat: null,
+    lon: null,
+    accuracy: null,
+    source: "IP",
+  };
 };
 
 /**
- * Refresh cached GPS-based location, but only if the last cache is stale
- * (older than 15 min) — avoids re-prompting for permission on every tab focus.
+ * Refresh cached GPS-based location.
+ *
+ * Cache duration: 15 minutes
  */
 const refreshGpsLocationCookie = async () => {
   try {
     const lastFetched = getCookie("locationFetchedAt");
-    const cacheAgeMs = lastFetched ? Date.now() - Number(lastFetched) : Infinity;
-    if (cacheAgeMs < 15 * 60 * 1000) return; // still fresh, skip
 
-    const coords = await getAccurateCoords();
-    if (!coords) return; // permission denied / unavailable — keep old cached value
+    const cacheAgeMs = lastFetched
+      ? Date.now() - Number(lastFetched)
+      : Infinity;
 
-    let city = await resolveCityFromCoords(coords.lat, coords.lon);
-    if (city === "Unknown") {
-      // GPS reverse-geocode failed (rural/small-town coords, CORS block, etc.)
-      // — fall back to IP-based city instead of caching "Unknown" for a day.
-      city = await fetchCityFromIp();
+    if (cacheAgeMs < 15 * 60 * 1000) {
+      return;
     }
 
-    const expiry = new Date(new Date().setDate(new Date().getDate() + 1));
+    const coords = await getAccurateCoords();
 
-    setCookie("networkLocation", city, expiry);
-    setCookie("locationLat", coords.lat, expiry);
-    setCookie("locationLon", coords.lon, expiry);
-    setCookie("locationFetchedAt", Date.now(), expiry);
+    if (!coords) {
+      return;
+    }
+
+    let locality = await resolveLocalityFromCoords(
+      coords.lat,
+      coords.lon
+    );
+
+    if (locality === "Unknown") {
+      locality = await fetchCityFromIp();
+    }
+
+    const expiry = new Date(
+      new Date().setDate(
+        new Date().getDate() + 1
+      )
+    );
+
+    setCookie(
+      "networkLocation",
+      locality,
+      expiry
+    );
+
+    setCookie(
+      "locationLat",
+      coords.lat,
+      expiry
+    );
+
+    setCookie(
+      "locationLon",
+      coords.lon,
+      expiry
+    );
+
+    setCookie(
+      "locationAccuracy",
+      coords.accuracy,
+      expiry
+    );
+
+    setCookie(
+      "locationFetchedAt",
+      Date.now(),
+      expiry
+    );
   } catch {
-    // best-effort — leave whatever was cached before
+    // Keep existing cached values
   }
 };
 
@@ -195,12 +368,18 @@ const formatTime = (s) => {
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+
+  return `${String(h).padStart(2, "0")}:${String(
+    m
+  ).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 };
 
 /** Format date → "12 Apr" */
 const formatDate = (d) =>
-  d?.toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) || "";
+  d?.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+  }) || "";
 
 // ---------------------------------------------------------------------------
 // Component
@@ -210,57 +389,106 @@ const Header = () => {
   const navigate = useNavigate();
 
   // Clock state
-  const [clockedIn, setClockedIn]     = useState(false);
-  const [timer, setTimer]             = useState(0);
+  const [clockedIn, setClockedIn] = useState(false);
+  const [timer, setTimer] = useState(0);
   const [clockInTime, setClockInTime] = useState(null);
-  const intervalRef                   = useRef(null);
+
+  const intervalRef = useRef(null);
 
   // UI state
-  const menuRef                                       = useRef(null);
-  const [menuOpen, setMenuOpen]                       = useState(false);
-  const [loading, setLoading]                         = useState(false);
-  const [showPassword, setShowPassword]               = useState(
+  const menuRef = useRef(null);
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const [showPassword, setShowPassword] = useState(
     getCookie("isDefaultPasswordChanged") === "false"
   );
-  const [isManualChange, setIsManualChange]           = useState(false);
-  const [showLogoutConfirm, setShowLogoutConfirm]     = useState(false);
+
+  const [isManualChange, setIsManualChange] =
+    useState(false);
+
+  const [
+    showLogoutConfirm,
+    setShowLogoutConfirm,
+  ] = useState(false);
 
   // User info from cookies
-  const firstName    = getCookie("firstName")  || "";
-  const lastName     = getCookie("lastName")   || "";
-  const employeeId   = getCookie("employeeId") || "";
-  const employeeRole = getCookie("role")       || "";
-  const isDeizeisau  = (getCookie("department") || "").trim().toLowerCase() === "deizeisau";
-  const initials     = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  const firstName =
+    getCookie("firstName") || "";
 
-  const geoFenceEnabled = getCookie("geoFenceEnabled") === "true";
-  const workLocationCity = (getCookie("workLocationCity") || "").trim();
+  const lastName =
+    getCookie("lastName") || "";
 
-  // ── Timer helpers ────────────────────────────────────────────────────────
+  const employeeId =
+    getCookie("employeeId") || "";
+
+  const employeeRole =
+    getCookie("role") || "";
+
+  const isDeizeisau =
+    (getCookie("department") || "")
+      .trim()
+      .toLowerCase() === "deizeisau";
+
+  const initials =
+    `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+
+  const geoFenceEnabled =
+    getCookie("geoFenceEnabled") === "true";
+
+  const workLocationCity =
+    (getCookie("workLocationCity") || "").trim();
+
+  // -------------------------------------------------------------------------
+  // Timer helpers
+  // -------------------------------------------------------------------------
+
   const startTimer = useCallback((clockTime) => {
     clearInterval(intervalRef.current);
-    intervalRef.current = setInterval(
-      () => setTimer(Math.floor((Date.now() - clockTime.getTime()) / 1000)),
-      1000
+
+    intervalRef.current = setInterval(() => {
+      setTimer(
+        Math.floor(
+          (Date.now() - clockTime.getTime()) / 1000
+        )
+      );
+    }, 1000);
+
+    setTimer(
+      Math.floor(
+        (Date.now() - clockTime.getTime()) / 1000
+      )
     );
-    // Set immediately without waiting 1 s
-    setTimer(Math.floor((Date.now() - clockTime.getTime()) / 1000));
   }, []);
 
   const stopTimer = useCallback(() => {
     clearInterval(intervalRef.current);
+
     setClockedIn(false);
     setClockInTime(null);
     setTimer(0);
   }, []);
 
-  // ── Fetch current clock-in status on mount / tab-focus ──────────────────
+  // -------------------------------------------------------------------------
+  // Fetch current clock-in status
+  // -------------------------------------------------------------------------
+
   useEffect(() => {
     const checkStatus = async () => {
       try {
-        const res = await getRequest("Attendance/CheckClock-In");
-        if (res.status === 200 && res.data?.clockIn) {
-          const t = new Date(res.data.clockIn);
+        const res = await getRequest(
+          "Attendance/CheckClock-In"
+        );
+
+        if (
+          res.status === 200 &&
+          res.data?.clockIn
+        ) {
+          const t = new Date(
+            res.data.clockIn
+          );
+
           setClockedIn(true);
           setClockInTime(t);
           startTimer(t);
@@ -268,122 +496,280 @@ const Header = () => {
           stopTimer();
         }
       } catch {
-        // Network error — keep current UI state, don't crash
+        // Keep current UI state
       }
     };
 
     checkStatus();
-    refreshGpsLocationCookie(); // fetch accurate GPS location on mount (cached)
+
+    refreshGpsLocationCookie();
 
     const onVisibility = () => {
       if (!document.hidden) {
         checkStatus();
-        refreshGpsLocationCookie(); // only re-fetches if cache is stale (>15 min)
-        refreshUserCookies(); // re-sync cookies whenever tab is focused
+
+        refreshGpsLocationCookie();
+
+        refreshUserCookies();
       }
     };
-    document.addEventListener("visibilitychange", onVisibility);
+
+    document.addEventListener(
+      "visibilitychange",
+      onVisibility
+    );
+
     return () => {
-      document.removeEventListener("visibilitychange", onVisibility);
+      document.removeEventListener(
+        "visibilitychange",
+        onVisibility
+      );
+
       clearInterval(intervalRef.current);
     };
   }, [startTimer, stopTimer]);
 
-  // Sync timer when tab becomes visible and already clocked in
+  // -------------------------------------------------------------------------
+  // Sync timer
+  // -------------------------------------------------------------------------
+
   useEffect(() => {
     const onVisibility = () => {
-      if (!document.hidden && clockInTime) {
-        setTimer(Math.floor((Date.now() - clockInTime.getTime()) / 1000));
+      if (
+        !document.hidden &&
+        clockInTime
+      ) {
+        setTimer(
+          Math.floor(
+            (Date.now() -
+              clockInTime.getTime()) /
+              1000
+          )
+        );
       }
     };
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
+
+    document.addEventListener(
+      "visibilitychange",
+      onVisibility
+    );
+
+    return () =>
+      document.removeEventListener(
+        "visibilitychange",
+        onVisibility
+      );
   }, [clockInTime]);
 
-  // ── Close dropdown on outside click ─────────────────────────────────────
+  // -------------------------------------------------------------------------
+  // Close dropdown outside click
+  // -------------------------------------------------------------------------
+
   useEffect(() => {
     const handler = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target))
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(e.target)
+      ) {
         setMenuOpen(false);
+      }
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+
+    document.addEventListener(
+      "mousedown",
+      handler
+    );
+
+    return () =>
+      document.removeEventListener(
+        "mousedown",
+        handler
+      );
   }, []);
 
-  // ── Clock in / out ───────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
+  // Clock In / Clock Out
+  // -------------------------------------------------------------------------
+
   const handleClock = async () => {
-  setLoading(true);
-  try {
-    // Fetch IP and location IN PARALLEL for speed
-    const [ip, city] = await Promise.all([fetchIp(), fetchLocation()]);
+    setLoading(true);
 
-    // ── Geo-fence check: only enforced when clocking IN ─────────────────
-    if (!clockedIn && geoFenceEnabled && workLocationCity) {
-      const currentCity = (city || "").trim().toLowerCase();
-      const assignedCity = workLocationCity.toLowerCase();
+    try {
+      // Fetch public IP and GPS location in parallel
+      const [ip, locationData] =
+        await Promise.all([
+          fetchIp(),
+          fetchLocation(),
+        ]);
 
-      if (currentCity !== "unknown" && currentCity !== assignedCity) {
-        ToastError(
-          `Clock-In blocked: you're in ${city}, but your work location is ${workLocationCity}.`
-        );
-        setLoading(false);
-        return;
+      const location =
+        locationData.location;
+
+      // ---------------------------------------------------------------------
+      // Geo-fence validation
+      //
+      // Example:
+      // Current GPS locality = Perungudi
+      // Assigned location     = Perungudi
+      //
+      // Allowed
+      //
+      // Current GPS locality = Velachery
+      // Assigned location     = Perungudi
+      //
+      // Blocked
+      // ---------------------------------------------------------------------
+
+      if (
+        !clockedIn &&
+        geoFenceEnabled &&
+        workLocationCity
+      ) {
+        const currentLocation =
+          (location || "")
+            .trim()
+            .toLowerCase();
+
+        const assignedLocation =
+          workLocationCity
+            .trim()
+            .toLowerCase();
+
+        if (
+          currentLocation !== "unknown" &&
+          currentLocation !== assignedLocation
+        ) {
+          ToastError(
+            `Clock-In blocked: you're in ${location}, but your assigned location is ${workLocationCity}.`
+          );
+
+          setLoading(false);
+
+          return;
+        }
       }
-    }
 
-    const now      = new Date();
-    // Local ISO without UTC offset suffix (backend expects local time)
-    const localISO = new Date(now - now.getTimezoneOffset() * 60000)
-      .toISOString()
-      .slice(0, -1);
+      const now = new Date();
 
-    const endpoint = clockedIn ? "Attendance/clock-out" : "Attendance/clock-in";
-    const res = await postRequest(endpoint, {
-      location:  city,
-      ipAddress: ip,
-      timestamp: localISO,
-    });
+      // Local ISO without UTC suffix
+      const localISO = new Date(
+        now -
+          now.getTimezoneOffset() * 60000
+      )
+        .toISOString()
+        .slice(0, -1);
 
-    if (res.status === 200) {
-      if (!clockedIn) {
-        // Clock IN
-        setClockedIn(true);
-        setClockInTime(now);
-        startTimer(now);
-        setCookie(
-          "clockInTime",
-          now,
-          new Date(new Date().setDate(new Date().getDate() + 1))
+      const endpoint = clockedIn
+        ? "Attendance/clock-out"
+        : "Attendance/clock-in";
+
+      // ---------------------------------------------------------------------
+      // Send exact GPS details to backend
+      // ---------------------------------------------------------------------
+
+      const res = await postRequest(
+        endpoint,
+        {
+          location,
+
+          latitude:
+            locationData.lat,
+
+          longitude:
+            locationData.lon,
+
+          accuracy:
+            locationData.accuracy,
+
+          locationSource:
+            locationData.source,
+
+          ipAddress: ip,
+
+          timestamp: localISO,
+        }
+      );
+
+      if (res.status === 200) {
+        if (!clockedIn) {
+          // Clock IN
+          setClockedIn(true);
+
+          setClockInTime(now);
+
+          startTimer(now);
+
+          setCookie(
+            "clockInTime",
+            now,
+            new Date(
+              new Date().setDate(
+                new Date().getDate() + 1
+              )
+            )
+          );
+
+          ToastSuccess(
+            `Clock-In successful from ${location}!`
+          );
+        } else {
+          // Clock OUT
+          stopTimer();
+
+          setCookie(
+            "clockInTime",
+            null,
+            new Date(0)
+          );
+
+          ToastSuccess(
+            `Clock-Out successful from ${location}!`
+          );
+        }
+
+        // Notify Dashboard
+        window.dispatchEvent(
+          new CustomEvent(
+            "attendance:updated"
+          )
         );
-        ToastSuccess("Clock-In successful!");
       } else {
-        // Clock OUT
-        stopTimer();
-        setCookie("clockInTime", null, new Date(0));
-        ToastSuccess("Clock-Out successful!");
+        ToastError(
+          "Attendance action failed. Please try again."
+        );
       }
-      // Notify Dashboard (and any other listener) to re-fetch attendance
-      window.dispatchEvent(new CustomEvent("attendance:updated"));
-    } else {
-      ToastError("Attendance action failed. Please try again.");
-    }
-  } catch (err) {
-    console.error("Clock action error:", err);
-    ToastError("Attendance action failed. Check your connection.");
-  } finally {
-    setLoading(false);
-  }
-};
+    } catch (err) {
+      console.error(
+        "Clock action error:",
+        err
+      );
 
-  // ── Logout ───────────────────────────────────────────────────────────────
+      ToastError(
+        "Attendance action failed. Check your connection."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // -------------------------------------------------------------------------
+  // Logout
+  // -------------------------------------------------------------------------
+
   const handleLogout = () => {
     cookieKeys(cookieObj, 0);
+
     navigate("/login");
+
     setMenuOpen(false);
+
     setShowLogoutConfirm(false);
   };
 
-  // ── Render ───────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
+  // Render
+  // -------------------------------------------------------------------------
+
   return (
     <header className="header">
       <LoadingMask loading={loading} />
@@ -392,8 +778,14 @@ const Header = () => {
       {showPassword && (
         <PasswordChange
           isManualChange={isManualChange}
-          onSuccess={() => { setShowPassword(false); setIsManualChange(false); }}
-          onClose={()   => { setShowPassword(false); setIsManualChange(false); }}
+          onSuccess={() => {
+            setShowPassword(false);
+            setIsManualChange(false);
+          }}
+          onClose={() => {
+            setShowPassword(false);
+            setIsManualChange(false);
+          }}
         />
       )}
 
@@ -401,80 +793,176 @@ const Header = () => {
       {showLogoutConfirm && (
         <div
           style={{
-            position: "fixed", inset: 0,
-            background: "rgba(20,0,50,0.5)",
-            backdropFilter: "blur(4px)",
+            position: "fixed",
+            inset: 0,
+            background:
+              "rgba(20,0,50,0.5)",
+            backdropFilter:
+              "blur(4px)",
             zIndex: 3000,
-            display: "flex", alignItems: "center", justifyContent: "center",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             padding: 20,
           }}
         >
           <div
             style={{
-              background: "var(--bg-card)", borderRadius: 20,
-              boxShadow: "var(--shadow-xl)",
-              width: "100%", maxWidth: 380,
-              overflow: "hidden", animation: "slideUp 0.25s ease",
+              background:
+                "var(--bg-card)",
+              borderRadius: 20,
+              boxShadow:
+                "var(--shadow-xl)",
+              width: "100%",
+              maxWidth: 380,
+              overflow: "hidden",
+              animation:
+                "slideUp 0.25s ease",
             }}
           >
-            <div style={{ height: 4, background: "linear-gradient(90deg, var(--coral), #f97316)" }} />
-            <div style={{ padding: "24px 24px 0" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 12 }}>
+            <div
+              style={{
+                height: 4,
+                background:
+                  "linear-gradient(90deg, var(--coral), #f97316)",
+              }}
+            />
+
+            <div
+              style={{
+                padding:
+                  "24px 24px 0",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems:
+                    "center",
+                  gap: 14,
+                  marginBottom: 12,
+                }}
+              >
                 <div
                   style={{
-                    width: 44, height: 44, borderRadius: 12,
-                    background: "#fff1f2",
-                    display: "flex", alignItems: "center", justifyContent: "center",
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    background:
+                      "#fff1f2",
+                    display: "flex",
+                    alignItems:
+                      "center",
+                    justifyContent:
+                      "center",
                     flexShrink: 0,
                   }}
                 >
-                  <AlertTriangle size={22} color="var(--coral)" />
+                  <AlertTriangle
+                    size={22}
+                    color="var(--coral)"
+                  />
                 </div>
+
                 <div>
                   <div
                     style={{
-                      fontFamily: "'Plus Jakarta Sans',sans-serif",
-                      fontSize: 17, fontWeight: 800,
-                      color: "var(--text-primary)",
+                      fontFamily:
+                        "'Plus Jakarta Sans',sans-serif",
+                      fontSize: 17,
+                      fontWeight: 800,
+                      color:
+                        "var(--text-primary)",
                     }}
                   >
                     Confirm Logout
                   </div>
-                  <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>
+
+                  <div
+                    style={{
+                      fontSize: 13,
+                      color:
+                        "var(--text-muted)",
+                      marginTop: 2,
+                    }}
+                  >
                     Are you sure you want to log out?
                   </div>
                 </div>
               </div>
-              <p style={{ fontSize: 13.5, color: "var(--text-secondary)", lineHeight: 1.7, marginBottom: 20 }}>
-                You will be signed out of your Natobotics HRMS account. Any unsaved changes will be lost.
+
+              <p
+                style={{
+                  fontSize: 13.5,
+                  color:
+                    "var(--text-secondary)",
+                  lineHeight: 1.7,
+                  marginBottom: 20,
+                }}
+              >
+                You will be signed out of your
+                Natobotics HRMS account. Any
+                unsaved changes will be lost.
               </p>
             </div>
-            <div style={{ padding: "0 24px 20px", display: "flex", gap: 10, justifyContent: "flex-end" }}>
+
+            <div
+              style={{
+                padding:
+                  "0 24px 20px",
+                display: "flex",
+                gap: 10,
+                justifyContent:
+                  "flex-end",
+              }}
+            >
               <button
-                onClick={() => setShowLogoutConfirm(false)}
+                onClick={() =>
+                  setShowLogoutConfirm(false)
+                }
                 style={{
-                  padding: "9px 20px", borderRadius: 9,
-                  border: "1.5px solid var(--border)",
-                  background: "var(--bg-card)", color: "var(--text-secondary)",
-                  fontSize: 13, fontWeight: 600, cursor: "pointer",
+                  padding:
+                    "9px 20px",
+                  borderRadius: 9,
+                  border:
+                    "1.5px solid var(--border)",
+                  background:
+                    "var(--bg-card)",
+                  color:
+                    "var(--text-secondary)",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
                 }}
               >
                 Stay Logged In
               </button>
+
               <button
                 onClick={handleLogout}
                 style={{
-                  padding: "9px 20px", borderRadius: 9,
+                  padding:
+                    "9px 20px",
+                  borderRadius: 9,
                   border: "none",
-                  background: "linear-gradient(135deg, var(--coral), #f97316)",
-                  color: "white", fontSize: 13, fontWeight: 700,
+                  background:
+                    "linear-gradient(135deg, var(--coral), #f97316)",
+                  color: "white",
+                  fontSize: 13,
+                  fontWeight: 700,
                   cursor: "pointer",
-                  display: "flex", alignItems: "center", gap: 7,
-                  boxShadow: "0 3px 10px rgba(244,63,94,0.3)",
-                  fontFamily: "'Plus Jakarta Sans',sans-serif",
+                  display: "flex",
+                  alignItems:
+                    "center",
+                  gap: 7,
+                  boxShadow:
+                    "0 3px 10px rgba(244,63,94,0.3)",
+                  fontFamily:
+                    "'Plus Jakarta Sans',sans-serif",
                 }}
               >
-                <LogOut size={15} /> Yes, Logout
+                <LogOut size={15} />
+                Yes, Logout
               </button>
             </div>
           </div>
@@ -483,25 +971,52 @@ const Header = () => {
 
       {/* Brand */}
       <div className="header-brand">
-        <img src="/assets/images/natobotics-logo.png" alt="Logo" className="header-logo" />
+        <img
+          src="/assets/images/natobotics-logo.png"
+          alt="Logo"
+          className="header-logo"
+        />
+
         <span className="header-brand-name">
           Nato<span>botics</span>
         </span>
       </div>
 
       <div className="header-right">
+
         {/* Clock button */}
-        {/* Clock button — hidden for Deizeisau department */}
         {!isDeizeisau && (
           <button
-            className={`clock-btn ${clockedIn ? "clock-btn-active" : "clock-btn-idle"}`}
+            className={`clock-btn ${
+              clockedIn
+                ? "clock-btn-active"
+                : "clock-btn-idle"
+            }`}
             onClick={handleClock}
             disabled={loading}
           >
             {clockedIn ? (
               <>
-                <span style={{ fontSize: 10, opacity: 0.85 }}>{formatDate(clockInTime)}</span>
-                <span style={{ fontSize: 13, letterSpacing: "0.05em" }}>{formatTime(timer)}</span>
+                <span
+                  style={{
+                    fontSize: 10,
+                    opacity: 0.85,
+                  }}
+                >
+                  {formatDate(
+                    clockInTime
+                  )}
+                </span>
+
+                <span
+                  style={{
+                    fontSize: 13,
+                    letterSpacing:
+                      "0.05em",
+                  }}
+                >
+                  {formatTime(timer)}
+                </span>
               </>
             ) : (
               "Clock In"
@@ -511,23 +1026,46 @@ const Header = () => {
 
         {/* User info */}
         <div className="header-user-info">
-          <div className="header-user-name">{firstName} {lastName}</div>
-          <div className="header-user-role">{employeeRole}</div>
+          <div className="header-user-name">
+            {firstName} {lastName}
+          </div>
+
+          <div className="header-user-role">
+            {employeeRole}
+          </div>
         </div>
 
         {/* Avatar + dropdown */}
-        <div style={{ position: "relative" }} ref={menuRef}>
+        <div
+          style={{
+            position: "relative",
+          }}
+          ref={menuRef}
+        >
           <div
-            style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer" }}
-            onClick={() => setMenuOpen((o) => !o)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              cursor: "pointer",
+            }}
+            onClick={() =>
+              setMenuOpen((o) => !o)
+            }
           >
-            <div className="header-avatar">{initials}</div>
+            <div className="header-avatar">
+              {initials}
+            </div>
+
             <ChevronDown
               size={13}
               color="var(--text-muted)"
               style={{
-                transition: "transform 0.2s",
-                transform: menuOpen ? "rotate(180deg)" : "",
+                transition:
+                  "transform 0.2s",
+                transform: menuOpen
+                  ? "rotate(180deg)"
+                  : "",
               }}
             />
           </div>
@@ -535,46 +1073,87 @@ const Header = () => {
           {menuOpen && (
             <div
               style={{
-                position: "absolute", top: "calc(100% + 10px)", right: 0,
-                background: "white", borderRadius: 16,
-                border: "1px solid var(--border)",
-                boxShadow: "var(--shadow-lg)",
-                minWidth: 210, overflow: "hidden",
-                animation: "slideUp 0.2s ease",
+                position: "absolute",
+                top:
+                  "calc(100% + 10px)",
+                right: 0,
+                background: "white",
+                borderRadius: 16,
+                border:
+                  "1px solid var(--border)",
+                boxShadow:
+                  "var(--shadow-lg)",
+                minWidth: 210,
+                overflow: "hidden",
+                animation:
+                  "slideUp 0.2s ease",
                 zIndex: 300,
               }}
             >
               {/* User header */}
               <div
                 style={{
-                  padding: "14px 16px",
-                  borderBottom: "1px solid var(--border)",
-                  background: "linear-gradient(135deg, var(--primary-ghost), #f0fdf4)",
+                  padding:
+                    "14px 16px",
+                  borderBottom:
+                    "1px solid var(--border)",
+                  background:
+                    "linear-gradient(135deg, var(--primary-ghost), #f0fdf4)",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems:
+                      "center",
+                    gap: 10,
+                  }}
+                >
                   <div
                     style={{
-                      width: 36, height: 36, borderRadius: "50%",
-                      background: "linear-gradient(135deg, var(--primary), var(--teal))",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontFamily: "'Plus Jakarta Sans',sans-serif",
-                      fontSize: 13, fontWeight: 800, color: "white",
+                      width: 36,
+                      height: 36,
+                      borderRadius: "50%",
+                      background:
+                        "linear-gradient(135deg, var(--primary), var(--teal))",
+                      display: "flex",
+                      alignItems:
+                        "center",
+                      justifyContent:
+                        "center",
+                      fontFamily:
+                        "'Plus Jakarta Sans',sans-serif",
+                      fontSize: 13,
+                      fontWeight: 800,
+                      color: "white",
                       flexShrink: 0,
                     }}
                   >
                     {initials}
                   </div>
+
                   <div>
                     <div
                       style={{
-                        fontFamily: "'Plus Jakarta Sans',sans-serif",
-                        fontWeight: 800, fontSize: 13.5, color: "var(--text-primary)",
+                        fontFamily:
+                          "'Plus Jakarta Sans',sans-serif",
+                        fontWeight: 800,
+                        fontSize: 13.5,
+                        color:
+                          "var(--text-primary)",
                       }}
                     >
                       {firstName} {lastName}
                     </div>
-                    <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 1 }}>
+
+                    <div
+                      style={{
+                        fontSize: 11.5,
+                        color:
+                          "var(--text-muted)",
+                        marginTop: 1,
+                      }}
+                    >
                       {employeeId} · {employeeRole}
                     </div>
                   </div>
@@ -586,48 +1165,108 @@ const Header = () => {
                 {
                   icon: <User size={15} />,
                   label: "View Profile",
-                  action: () => { navigate("/view-employee"); setMenuOpen(false); },
+                  action: () => {
+                    navigate("/view-employee");
+                    setMenuOpen(false);
+                  },
                 },
                 {
                   icon: <Key size={15} />,
                   label: "Change Password",
-                  action: () => { setIsManualChange(true); setShowPassword(true); setMenuOpen(false); },
+                  action: () => {
+                    setIsManualChange(true);
+                    setShowPassword(true);
+                    setMenuOpen(false);
+                  },
                 },
               ].map((item, i) => (
                 <button
                   key={i}
                   onClick={item.action}
                   style={{
-                    width: "100%", display: "flex", alignItems: "center", gap: 10,
-                    padding: "11px 16px",
-                    background: "none", border: "none", cursor: "pointer",
-                    fontSize: 13.5, fontFamily: "'DM Sans',sans-serif", fontWeight: 500,
-                    color: "var(--text-primary)", textAlign: "left",
-                    transition: "background 0.15s",
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding:
+                      "11px 16px",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: 13.5,
+                    fontFamily:
+                      "'DM Sans',sans-serif",
+                    fontWeight: 500,
+                    color:
+                      "var(--text-primary)",
+                    textAlign: "left",
+                    transition:
+                      "background 0.15s",
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.background =
+                      "var(--bg)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.background =
+                      "none")
+                  }
                 >
-                  <span style={{ color: "var(--text-muted)" }}>{item.icon}</span>
+                  <span
+                    style={{
+                      color:
+                        "var(--text-muted)",
+                    }}
+                  >
+                    {item.icon}
+                  </span>
+
                   {item.label}
                 </button>
               ))}
 
-              <div style={{ borderTop: "1px solid var(--border)" }}>
+              <div
+                style={{
+                  borderTop:
+                    "1px solid var(--border)",
+                }}
+              >
                 <button
-                  onClick={() => { setMenuOpen(false); setShowLogoutConfirm(true); }}
-                  style={{
-                    width: "100%", display: "flex", alignItems: "center", gap: 10,
-                    padding: "11px 16px",
-                    background: "none", border: "none", cursor: "pointer",
-                    fontSize: 13.5, fontFamily: "'DM Sans',sans-serif", fontWeight: 600,
-                    color: "var(--coral)", textAlign: "left",
-                    transition: "background 0.15s",
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setShowLogoutConfirm(true);
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "#fff1f2")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding:
+                      "11px 16px",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: 13.5,
+                    fontFamily:
+                      "'DM Sans',sans-serif",
+                    fontWeight: 600,
+                    color:
+                      "var(--coral)",
+                    textAlign: "left",
+                    transition:
+                      "background 0.15s",
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.background =
+                      "#fff1f2")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.background =
+                      "none")
+                  }
                 >
-                  <LogOut size={15} /> Logout
+                  <LogOut size={15} />
+                  Logout
                 </button>
               </div>
             </div>
