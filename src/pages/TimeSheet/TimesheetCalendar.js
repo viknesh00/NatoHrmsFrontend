@@ -223,7 +223,7 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
   const locationMismatch = geoFenceEnabled && networkLocation && workLocationCity && networkLocation.toLowerCase() !== workLocationCity.toLowerCase();
 
   // ── Grace period config ─────────────────────────────────────────────────
-  const GRACE_DAYS = 5; // previous month stays editable for this many days into the new month
+  const GRACE_DAYS = 15; // previous month stays editable for this many days into the new month
   const today          = dayjs();
   const isCurrentMonth = currentMonth.isSame(today, "month");
   const isPrevMonth = currentMonth.isSame(today.subtract(1, "month"), "month");
