@@ -29,12 +29,15 @@ import AddProfile from "./pages/JobManagement/AddProfile";
 import CreateJob from "./pages/JobManagement/CreateJob";
 import Projects from "./pages/Projects/Projects";
 import CreateProject from "./pages/Projects/CreateProject";
+import EmployeeDetailsForm from "./pages/PublicForms/EmployeeDetailsForm";
 
 const routes = [
   { path: "/", element: <Login /> },
   { path: "/login", element: <Login /> },
   { path: "/sign-in", element: <Login /> },
   { path: "/forgot-password", element: <ForgotPassword /> },
+  // Public (no login) - shareable link for employees to submit their details
+  { path: "/employee-details", element: <EmployeeDetailsForm /> },
   {
     path: "/*",
     element: (<ProtectedRoute><Layout /></ProtectedRoute>),

@@ -95,3 +95,9 @@ export const deleteRequest = async (endpoint) => {
     throw error;
   }
 };
+
+// Public (unauthenticated) POST - never sends a token and never redirects to sign-in
+export const postPublicRequest = async (endpoint, data) => {
+  const url = `${BASE_URL}${endpoint}`;
+  return await axios.post(url, data);
+};
