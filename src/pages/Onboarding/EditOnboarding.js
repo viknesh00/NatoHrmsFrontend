@@ -103,14 +103,11 @@ export default function EditOnboarding() {
     else if (total.length < 8 || total.length > 15) e.mobileNumber = "Enter a valid mobile number";
     if (!v("passportNo")) e.passportNo = "Passport No. is required";
     else if (!/^[A-Za-z0-9]{6,20}$/.test(v("passportNo"))) e.passportNo = "Passport No. must be 6-20 letters or digits";
-    if (!v("salCode")) e.salCode = "SAL Code is required";
-    else if (!/^[A-Za-z0-9\-_/ ]{1,50}$/.test(v("salCode"))) e.salCode = "SAL Code contains invalid characters";
+    if (v("salCode") && !/^[A-Za-z0-9\-_/ ]{1,50}$/.test(v("salCode"))) e.salCode = "SAL Code contains invalid characters";
     if (!v("city")) e.city = "City is required";
     if (!v("country")) e.country = "Country is required";
     if (!v("currentAddress")) e.currentAddress = "Current Address is required";
-    if (!v("nConsEmail")) e.nConsEmail = "N-Cons Email ID is required";
-    else if (!EMAIL_REGEX.test(v("nConsEmail"))) e.nConsEmail = "Enter a valid email address";
-    if (!form.nConsEmailStatus) e.nConsEmailStatus = "Select the N-Cons Email Status";
+    if (v("nConsEmail") && !EMAIL_REGEX.test(v("nConsEmail"))) e.nConsEmail = "Enter a valid email address";
     if (!v("personalEmail")) e.personalEmail = "Personal Email ID is required";
     else if (!EMAIL_REGEX.test(v("personalEmail"))) e.personalEmail = "Enter a valid email address";
     return e;
@@ -180,7 +177,7 @@ export default function EditOnboarding() {
         <Group title="Passport and site">
           <div className="fc-row fc-row-2">
             <FormInput label="Passport number" required value={form.passportNo} onChange={set("passportNo")} error={errors.passportNo} maxLength={20} />
-            <FormInput label="SAL code" required value={form.salCode} onChange={set("salCode")} error={errors.salCode} maxLength={50} />
+            <FormInput label="SAL code" value={form.salCode} onChange={set("salCode")} error={errors.salCode} maxLength={50} />
           </div>
         </Group>
 
@@ -188,8 +185,8 @@ export default function EditOnboarding() {
           <div className="fc-row fc-row-2">
             <PhoneField label="Mobile number" required countryIso={phone.countryIso} number={phone.number}
               onChange={(v) => { setPhone(v); clearError("mobileNumber"); }} error={errors.mobileNumber} placeholder="98765 43210" />
-            <FormInput label="N-Cons email ID" required type="email" value={form.nConsEmail} onChange={set("nConsEmail")} error={errors.nConsEmail} maxLength={150} />
-            <FormSelect label="N-Cons email status" required options={[{ label: "Select status", value: "" }, ...EMAIL_STATUS_OPTIONS]} value={form.nConsEmailStatus} onChange={set("nConsEmailStatus")} error={errors.nConsEmailStatus} />
+            <FormInput label="N-Cons email ID" type="email" value={form.nConsEmail} onChange={set("nConsEmail")} error={errors.nConsEmail} maxLength={150} />
+            <FormSelect label="N-Cons email status" options={[{ label: "Select status", value: "" }, ...EMAIL_STATUS_OPTIONS]} value={form.nConsEmailStatus} onChange={set("nConsEmailStatus")} error={errors.nConsEmailStatus} />
             <FormInput label="Personal email ID" required type="email" value={form.personalEmail} onChange={set("personalEmail")} error={errors.personalEmail} maxLength={150} />
           </div>
         </Group>

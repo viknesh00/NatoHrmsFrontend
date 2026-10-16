@@ -133,16 +133,13 @@ export default function EmployeeDetailsForm() {
 
     if (!v("passportNo")) e.passportNo = "Passport No. is required";
     else if (!/^[A-Za-z0-9]{6,20}$/.test(v("passportNo"))) e.passportNo = "Passport No. must be 6-20 letters or digits";
-    if (!v("salCode")) e.salCode = "SAL Code is required";
-    else if (!/^[A-Za-z0-9\-_/ ]{1,50}$/.test(v("salCode"))) e.salCode = "SAL Code contains invalid characters";
+    if (v("salCode") && !/^[A-Za-z0-9\-_/ ]{1,50}$/.test(v("salCode"))) e.salCode = "SAL Code contains invalid characters";
 
     if (!v("city")) e.city = "City is required";
     if (!v("country")) e.country = "Country is required";
     if (!v("currentAddress")) e.currentAddress = "Current Address is required";
 
-    if (!v("nConsEmail")) e.nConsEmail = "N-Cons Email ID is required";
-    else if (!EMAIL_REGEX.test(v("nConsEmail"))) e.nConsEmail = "Enter a valid email address";
-    if (!formvalues.nConsEmailStatus) e.nConsEmailStatus = "Select the N-Cons Email Status";
+    if (v("nConsEmail") && !EMAIL_REGEX.test(v("nConsEmail"))) e.nConsEmail = "Enter a valid email address";
 
     if (!v("personalEmail")) e.personalEmail = "Personal Email ID is required";
     else if (!EMAIL_REGEX.test(v("personalEmail"))) e.personalEmail = "Enter a valid email address";
@@ -265,15 +262,15 @@ export default function EmployeeDetailsForm() {
             <Group title="Passport and site">
               <div className="fc-row fc-row-2">
                 <Q name="passportNo"><FormInput label="Passport number" required value={formvalues.passportNo} onChange={set("passportNo")} error={errors.passportNo} hint="Letters and digits only" maxLength={20} /></Q>
-                <Q name="salCode"><FormInput label="SAL code" required value={formvalues.salCode} onChange={set("salCode")} error={errors.salCode} hint="Exactly as given to you" maxLength={50} /></Q>
+                <Q name="salCode"><FormInput label="SAL code" value={formvalues.salCode} onChange={set("salCode")} error={errors.salCode} hint="Exactly as given to you" maxLength={50} /></Q>
               </div>
             </Group>
 
             <Group title="Contact">
               <div className="fc-row fc-row-2">
                 <Q name="mobileNumber"><PhoneField label="Mobile number" required countryIso={phone.countryIso} number={phone.number} onChange={(v) => { setPhone(v); clearError("mobileNumber"); }} error={errors.mobileNumber} hint="Select the country code, then enter digits only" placeholder="98765 43210" /></Q>
-                <Q name="nConsEmail"><FormInput label="N-Cons email ID" required type="email" value={formvalues.nConsEmail} onChange={set("nConsEmail")} error={errors.nConsEmail} hint="Your work email" maxLength={150} /></Q>
-                <Q name="nConsEmailStatus"><FormSelect label="N-Cons email status" required options={withPlaceholder("Select status", EMAIL_STATUS_OPTIONS)} value={formvalues.nConsEmailStatus} onChange={set("nConsEmailStatus")} error={errors.nConsEmailStatus} /></Q>
+                <Q name="nConsEmail"><FormInput label="N-Cons email ID" type="email" value={formvalues.nConsEmail} onChange={set("nConsEmail")} error={errors.nConsEmail} hint="Your work email" maxLength={150} /></Q>
+                <Q name="nConsEmailStatus"><FormSelect label="N-Cons email status" options={withPlaceholder("Select status", EMAIL_STATUS_OPTIONS)} value={formvalues.nConsEmailStatus} onChange={set("nConsEmailStatus")} error={errors.nConsEmailStatus} /></Q>
                 <Q name="personalEmail"><FormInput label="Personal email ID" required type="email" value={formvalues.personalEmail} onChange={set("personalEmail")} error={errors.personalEmail} hint="An address you check regularly" maxLength={150} /></Q>
               </div>
             </Group>

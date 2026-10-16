@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Pencil, Download, Link2, UserCheck, FileText, Image as ImageIcon, X } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Pencil, Download, Link2, UserCheck, FileText, Image as ImageIcon, X, Trash2, AlertTriangle } from "lucide-react";
 import dayjs from "dayjs";
 import { getRequest, postRequest } from "../../services/Apiservice";
 import { ToastError, ToastSuccess } from "../../services/ToastMsg";
@@ -27,6 +28,7 @@ export default function Onboarding() {
   const [loading, setLoading] = useState(false);
   const [list, setList] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [deleteTarget, setDeleteTarget] = useState(null); // array of rows to delete
 
   useEffect(() => {
     fetchList();
@@ -82,6 +84,20 @@ export default function Onboarding() {
     }
   };
 
+  /* ── delete (single row or selected rows) ── */
+  const executeDelete = () => {
+    if (!deleteTarget || deleteTarget.length === 0) return;
+    setLoading(true);
+    postRequest("EmployeeOnboarding/Delete", deleteTarget.map((r) => r.submissionId))
+      .then(() => {
+        ToastSuccess("Deleted successfully");
+        setDeleteTarget(null);
+        fetchList();
+      })
+      .catch((err) => ToastError(err.response?.data?.message || "Delete failed"))
+      .finally(() => setLoading(false));
+  };
+
   const copyFormLink = async () => {
     const link = `${window.location.origin}/employee-details`;
     try {
@@ -134,6 +150,7 @@ export default function Onboarding() {
         <div style={{ display: "flex", gap: 4 }}>
           <button className="icon-btn" title="View / Edit" onClick={() => navigate(`/onboarding/edit/${row.submissionId}`)}><Pencil size={15} /></button>
           <button className="icon-btn" title="Download details + files" onClick={() => downloadOne(row)}><Download size={15} /></button>
+          <button className="icon-btn" title="Delete" onClick={() => setDeleteTarget([row])}><Trash2 size={15} /></button>
         </div>
       ),
     },
@@ -158,11 +175,53 @@ export default function Onboarding() {
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", marginBottom: 12, borderRadius: 12, background: "var(--primary-ghost)", border: "1px solid var(--border-strong)" }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: "var(--primary)" }}>{selectedIds.length} selected</span>
           <button className="btn btn-primary" style={{ padding: "6px 14px" }} onClick={downloadSelected}><Download size={14} /> Download selected</button>
+          <button className="btn btn-ghost" style={{ padding: "6px 14px", color: "#e11d48" }} onClick={() => setDeleteTarget(list.filter((r) => selectedIds.includes(r.submissionId)))}><Trash2 size={14} /> Delete selected</button>
           <button className="btn btn-ghost" style={{ padding: "6px 12px" }} onClick={() => setSelectedIds([])}><X size={14} /> Clear</button>
         </div>
       )}
 
       <ProTable title="Employee Details" columns={columns} data={list} multiSelect={false} />
+
+      {/* ── Delete confirmation ── */}
+      {deleteTarget && createPortal(
+        <div style={{ position: "fixed", inset: 0, background: "rgba(20,0,50,0.55)", backdropFilter: "blur(5px)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "white", borderRadius: 20, boxShadow: "0 20px 60px rgba(0,0,0,0.25)", width: "100%", maxWidth: 420, overflow: "hidden", animation: "slideUp 0.25s ease" }}>
+            <div style={{ height: 4, background: "linear-gradient(90deg,#f43f5e,#f97316)" }} />
+            <div style={{ padding: "24px 24px 0" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <div style={{ width: 48, height: 48, borderRadius: 14, background: "#fff1f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <AlertTriangle size={24} color="#f43f5e" />
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 18, fontWeight: 900, color: "#1e1143" }}>Confirm Delete</div>
+                    <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 2 }}>
+                      {deleteTarget.length === 1
+                        ? `${deleteTarget[0].firstName} ${deleteTarget[0].lastName} will be removed`
+                        : `${deleteTarget.length} submissions will be removed`}
+                    </div>
+                  </div>
+                </div>
+                <button onClick={() => setDeleteTarget(null)} style={{ width: 30, height: 30, borderRadius: 8, background: "#f1f5f9", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b" }}>
+                  <X size={16} />
+                </button>
+              </div>
+              <p style={{ fontSize: 13.5, color: "#475569", lineHeight: 1.7, marginBottom: 22, paddingLeft: 62 }}>
+                The submission will be removed from this list. It is not erased from the database.
+              </p>
+            </div>
+            <div style={{ padding: "0 24px 22px", display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button onClick={() => setDeleteTarget(null)} style={{ padding: "9px 20px", borderRadius: 10, border: "1.5px solid #e2e8f0", background: "white", color: "#475569", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}>
+                Cancel
+              </button>
+              <button onClick={executeDelete} style={{ padding: "9px 20px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#f43f5e,#f97316)", color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 7, fontFamily: "'Plus Jakarta Sans',sans-serif", boxShadow: "0 3px 12px rgba(244,63,94,0.3)" }}>
+                <Trash2 size={15} /> Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
