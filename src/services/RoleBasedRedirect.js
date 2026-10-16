@@ -1,9 +1,9 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
-import { getCookie } from "./Cookies";
+import { getHomePath } from "./HomePath";
 
 export default function RoleBasedRedirect() {
   const navigate = useNavigate();
-  useEffect(() => { navigate("/dashboard"); }, [navigate]);
+  useEffect(() => { navigate(getHomePath()); }, [navigate]);
   return null;
 }

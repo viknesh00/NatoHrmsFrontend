@@ -4,22 +4,23 @@ import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, Users, LogOut, ChevronLeft, ChevronRight,
   Megaphone, File, CalendarCheck2, UserMinus, ClipboardList, Calendar, Receipt,
-  AlertTriangle, X, Briefcase,
+  AlertTriangle, X, Briefcase, UserCheck,
 } from "lucide-react";
 import { cookieKeys, getCookie } from "../../services/Cookies";
 import { cookieObj } from "../../models/cookieObj";
 import { useNavigate } from "react-router-dom";
 
 const menuItems = [
-  { to:"/dashboard",         label:"Dashboard",      icon:<LayoutDashboard size={18}/>, roles:["Admin","Manager","TeamLead","Employee"] },
-  { to:"/employees",         label:"Employees",      icon:<Users size={18}/>,           roles:["Admin","Manager","TeamLead"] },
-  { to:"/timesheet",         label:"Timesheet",      icon:<ClipboardList size={18}/>,   roles:["Admin","Manager","TeamLead","Employee"] },
+  { to:"/dashboard",         label:"Dashboard",      icon:<LayoutDashboard size={18}/>, roles:["Admin","Manager","TeamLead","Employee"], hiddenDepartments:["onboarding"] },
+  { to:"/employees",         label:"Employees",      icon:<Users size={18}/>,           roles:["Admin","Manager","TeamLead"], hiddenDepartments:["onboarding"] },
+  { to:"/onboarding",       label:"Onboarding",     icon:<UserCheck size={18}/>,       roles:["Admin","Manager","TeamLead","Employee"], departments:["onboarding"] },
+  { to:"/timesheet",         label:"Timesheet",      icon:<ClipboardList size={18}/>,   roles:["Admin","Manager","TeamLead","Employee"], hiddenDepartments:["onboarding"] },
   //{ to:"/job-management",    label:"Job Management", icon:<Briefcase size={18}/>,       roles:["Admin","Manager","Employee"], departments:["hr-offshore"] },
-  { to:"/attendance", label:"Attendance", icon:<CalendarCheck2 size={18}/>, roles:["Admin","Manager","TeamLead","Employee"], hiddenDepartments:["deizeisau"] },
+  { to:"/attendance", label:"Attendance", icon:<CalendarCheck2 size={18}/>, roles:["Admin","Manager","TeamLead","Employee"], hiddenDepartments:["deizeisau", "onboarding"] },
   //{ to:"/payslip",           label:"Payslip",        icon:<Receipt size={18}/>,         roles:["Admin"] },
-  { to:"/company-documents", label:"Documents",      icon:<File size={18}/>,            roles:["Admin","Manager","TeamLead","Employee"] },
-  { to:"/announcement",      label:"Announcements",  icon:<Megaphone size={18}/>,       roles:["Admin","Manager","TeamLead","Employee"] },
-  { to:"/leave",             label:"Leave",          icon:<UserMinus size={18}/>,       roles:["Admin","Manager","TeamLead","Employee"], hiddenDepartments:["deizeisau"] },
+  { to:"/company-documents", label:"Documents",      icon:<File size={18}/>,            roles:["Admin","Manager","TeamLead","Employee"], hiddenDepartments:["onboarding"] },
+  { to:"/announcement",      label:"Announcements",  icon:<Megaphone size={18}/>,       roles:["Admin","Manager","TeamLead","Employee"], hiddenDepartments:["onboarding"] },
+  { to:"/leave",             label:"Leave",          icon:<UserMinus size={18}/>,       roles:["Admin","Manager","TeamLead","Employee"], hiddenDepartments:["deizeisau", "onboarding"] },
   { to:"/Calendar",          label:"Calendar",       icon:<Calendar size={18}/>,        roles:["Admin","Manager","TeamLead","Employee"] },
 ];
 

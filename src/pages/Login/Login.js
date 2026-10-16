@@ -6,6 +6,7 @@ import { postRequest } from "../../services/Apiservice";
 import { cookieObj } from "../../models/cookieObj";
 import PasswordField from "../../Fields/PasswordField";
 import { Eye, EyeOff, LogIn } from "lucide-react";
+import { getHomePath } from "../../services/HomePath";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -44,7 +45,7 @@ const Login = () => {
             workLocationCity: res.data.workLocationCity || "",
             geoFenceEnabled: res.data.geoFenceEnabled,
           }, new Date(res.data.expiration));
-          setTimeout(() => navigate("/dashboard"), 800);
+          setTimeout(() => navigate(getHomePath()), 800);
         } else ToastError("Invalid credentials!");
       })
       .catch(err => ToastError(err?.response?.data?.message || "Unable to connect. Please try again."))

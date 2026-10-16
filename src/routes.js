@@ -19,6 +19,7 @@ import WorkingHoursForm from "./pages/Attendance/WorkingHoursForm";
 import TimeSheetLayout from "./pages/TimeSheet/TimeSheetLayout";
 import TimesheetCalendar from "./pages/TimeSheet/TimesheetCalendar";
 import RoleBasedRedirect from "./services/RoleBasedRedirect";
+import { DashboardGuard } from "./services/HomePath";
 import Holiday from "./pages/Holiday/Holiday";
 import CreateHoliday from "./pages/Holiday/CreateHoliday";
 import CompanyDocument from "./pages/CompanyDocument.js/CompanyDocument";
@@ -29,6 +30,8 @@ import AddProfile from "./pages/JobManagement/AddProfile";
 import CreateJob from "./pages/JobManagement/CreateJob";
 import Projects from "./pages/Projects/Projects";
 import CreateProject from "./pages/Projects/CreateProject";
+import Onboarding from "./pages/Onboarding/Onboarding";
+import EditOnboarding from "./pages/Onboarding/EditOnboarding";
 import EmployeeDetailsForm from "./pages/PublicForms/EmployeeDetailsForm";
 
 const routes = [
@@ -42,7 +45,7 @@ const routes = [
     path: "/*",
     element: (<ProtectedRoute><Layout /></ProtectedRoute>),
     children: [
-      { path: "dashboard", element: <Dashboard /> },
+      { path: "dashboard", element: <DashboardGuard><Dashboard /></DashboardGuard> },
       { path: "employees", element: <Employees /> },
       { path: "job-management", element: <JobManagement /> },
       { path: "job-management/add-profile", element: <AddProfile /> },
@@ -68,6 +71,8 @@ const routes = [
       { path: "calendar", element: <Holiday /> },
       { path: "calendar/create-event", element: <CreateHoliday /> },
       { path: "calendar/edit-event", element: <CreateHoliday /> },
+      { path: "onboarding", element: <Onboarding /> },
+      { path: "onboarding/edit/:id", element: <EditOnboarding /> },
       { path: "company-documents", element: <CompanyDocument /> },
       { path: "company-documents/upload", element: <DocumentUploadForm /> },
       { path: "company-documents/edit", element: <DocumentUploadForm /> },

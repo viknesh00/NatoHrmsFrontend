@@ -1,0 +1,222 @@
+import React, { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { UserCheck, FileText, Image as ImageIcon, Download, Eye, Save, X } from "lucide-react";
+import dayjs from "dayjs";
+import { getRequest, postRequest } from "../../services/Apiservice";
+import { ToastError, ToastSuccess } from "../../services/ToastMsg";
+import LoadingMask from "../../services/LoadingMask";
+import Breadcrumb from "../../services/Breadcrumb";
+import { FormInput, FormSelect, FormTextarea, FormDate } from "../../components/FormComponents";
+import PhoneField, { buildPhone, findCountry, parsePhone } from "../../components/PhoneField";
+import FileUploadBox from "../../components/FileUploadBox";
+import Group from "../../components/GroupCard";
+
+const EMAIL_STATUS_OPTIONS = [{ label: "Enabled", value: "Enabled" }, { label: "Disabled", value: "Disabled" }];
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const NAME_REGEX = /^[\p{L}\p{M}][\p{L}\p{M} '.\-]*$/u;
+const MAX_FILE_MB = 5;
+const FILE_EXT = ["jpg", "jpeg", "png", "pdf"];
+
+const todayIso = () => dayjs().format("YYYY-MM-DD");
+const isoToDmy = (iso) => (iso ? iso.split("-").reverse().join("/") : "");
+const extOf = (file) => (file?.name?.split(".").pop() || "").toLowerCase();
+
+export default function EditOnboarding() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+
+  const [loading, setLoading] = useState(false);
+  const [record, setRecord] = useState(null);     // original row (for file names / audit info)
+  const [form, setForm] = useState(null);
+  const [phone, setPhone] = useState({ countryIso: "IN", number: "" });
+  const [newCopy, setNewCopy] = useState(null);
+  const [newPhoto, setNewPhoto] = useState(null);
+  const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    setLoading(true);
+    getRequest(`EmployeeOnboarding/Get/${id}`)
+      .then((res) => {
+        const d = res.data;
+        setRecord(d);
+        setForm({
+          firstName: d.firstName || "", lastName: d.lastName || "",
+          dateOfBirth: d.dateOfBirth ? d.dateOfBirth.split("T")[0] : "",
+          placeOfBirth: d.placeOfBirth || "", passportNo: d.passportNo || "", salCode: d.salCode || "",
+          personalEmail: d.personalEmail || "", city: d.city || "", country: d.country || "",
+          currentAddress: d.currentAddress || "", nConsEmail: d.nConsEmail || "", nConsEmailStatus: d.nConsEmailStatus || "",
+        });
+        setPhone(parsePhone(d.mobileNumber));
+      })
+      .catch((err) => { ToastError(err.response?.data?.message || "Failed to load details"); navigate("/onboarding"); })
+      .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  const clearError = (f) => setErrors((p) => (p[f] ? { ...p, [f]: undefined } : p));
+  const set = (f) => (e) => { setForm((p) => ({ ...p, [f]: e.target.value })); clearError(f); };
+
+  const pickFile = (field, label, setter) => (file) => {
+    if (!FILE_EXT.includes(extOf(file))) { setErrors((p) => ({ ...p, [field]: `${label} must be a JPG, PNG or PDF file.` })); return; }
+    if (file.size > MAX_FILE_MB * 1024 * 1024) { setErrors((p) => ({ ...p, [field]: `${label} must not exceed ${MAX_FILE_MB} MB.` })); return; }
+    setter(file);
+    clearError(field);
+  };
+
+  /* ── view / download the stored attachments ── */
+  const fetchFile = (type) => getRequest(`EmployeeOnboarding/File/${id}/${type}`, null, true);
+
+  const viewFile = async (type) => {
+    try {
+      setLoading(true);
+      const res = await fetchFile(type);
+      const blob = new Blob([res.data], { type: res.headers["content-type"] || "application/octet-stream" });
+      window.open(window.URL.createObjectURL(blob), "_blank");
+    } catch { ToastError("Could not open the file"); } finally { setLoading(false); }
+  };
+
+  const downloadFile = async (type, name) => {
+    try {
+      setLoading(true);
+      const res = await fetchFile(type);
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: res.headers["content-type"] }));
+      const a = document.createElement("a");
+      a.href = url; a.download = name || type;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch { ToastError("Download failed"); } finally { setLoading(false); }
+  };
+
+  /* ── validation ── */
+  const validate = () => {
+    const e = {};
+    const v = (k) => (form[k] || "").trim();
+    if (!v("firstName")) e.firstName = "First Name is required";
+    else if (!NAME_REGEX.test(v("firstName"))) e.firstName = "Enter a valid First Name";
+    if (!v("lastName")) e.lastName = "Last Name is required";
+    else if (!NAME_REGEX.test(v("lastName"))) e.lastName = "Enter a valid Last Name";
+    if (!v("dateOfBirth")) e.dateOfBirth = "Date of Birth is required";
+    else if (v("dateOfBirth") > todayIso()) e.dateOfBirth = "Date of Birth cannot be in the future";
+    if (!v("placeOfBirth")) e.placeOfBirth = "Place of Birth is required";
+    const total = findCountry(phone.countryIso).dial + phone.number;
+    if (!phone.number) e.mobileNumber = "Mobile Number is required";
+    else if (total.length < 8 || total.length > 15) e.mobileNumber = "Enter a valid mobile number";
+    if (!v("passportNo")) e.passportNo = "Passport No. is required";
+    else if (!/^[A-Za-z0-9]{6,20}$/.test(v("passportNo"))) e.passportNo = "Passport No. must be 6-20 letters or digits";
+    if (!v("salCode")) e.salCode = "SAL Code is required";
+    else if (!/^[A-Za-z0-9\-_/ ]{1,50}$/.test(v("salCode"))) e.salCode = "SAL Code contains invalid characters";
+    if (!v("city")) e.city = "City is required";
+    if (!v("country")) e.country = "Country is required";
+    if (!v("currentAddress")) e.currentAddress = "Current Address is required";
+    if (!v("nConsEmail")) e.nConsEmail = "N-Cons Email ID is required";
+    else if (!EMAIL_REGEX.test(v("nConsEmail"))) e.nConsEmail = "Enter a valid email address";
+    if (!form.nConsEmailStatus) e.nConsEmailStatus = "Select the N-Cons Email Status";
+    if (!v("personalEmail")) e.personalEmail = "Personal Email ID is required";
+    else if (!EMAIL_REGEX.test(v("personalEmail"))) e.personalEmail = "Enter a valid email address";
+    return e;
+  };
+
+  const handleSave = () => {
+    const e = validate();
+    if (Object.keys(e).length) { setErrors(e); ToastError("Please fix the highlighted fields"); return; }
+
+    const fd = new FormData();
+    fd.append("submissionId", id);
+    Object.keys(form).forEach((k) => fd.append(k, k === "dateOfBirth" ? isoToDmy(form.dateOfBirth) : form[k].trim()));
+    fd.append("mobileNumber", buildPhone(phone.countryIso, phone.number));
+    if (newCopy) fd.append("passportCopy", newCopy);
+    if (newPhoto) fd.append("passportPhoto", newPhoto);
+
+    setLoading(true);
+    postRequest("EmployeeOnboarding/Update", fd)
+      .then(() => { ToastSuccess("Details updated successfully"); navigate("/onboarding"); })
+      .catch((err) => {
+        const data = err.response?.data;
+        if (data?.errors && typeof data.errors === "object") setErrors(data.errors);
+        ToastError(data?.message || "Failed to update details");
+      })
+      .finally(() => setLoading(false));
+  };
+
+  if (!form) return <LoadingMask loading={loading} />;
+
+  const fileRow = (label, icon, name, type) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", border: "1px solid var(--border)", borderRadius: 10, background: "var(--bg)", marginBottom: 10, flexWrap: "wrap" }}>
+      {icon}
+      <div style={{ flex: 1, minWidth: 160 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)" }}>{label}</div>
+        <div style={{ fontSize: 12, color: "var(--text-muted)", wordBreak: "break-all" }}>{name || "—"}</div>
+      </div>
+      <button type="button" className="btn btn-outline" style={{ padding: "6px 12px" }} onClick={() => viewFile(type)}><Eye size={14} /> View</button>
+      <button type="button" className="btn btn-outline" style={{ padding: "6px 12px" }} onClick={() => downloadFile(type, name)}><Download size={14} /> Download</button>
+    </div>
+  );
+
+  return (
+    <div>
+      <LoadingMask loading={loading} />
+      <div className="page-header">
+        <div>
+          <Breadcrumb icon={<UserCheck size={13} />} items={[{ label: "Onboarding", link: "/onboarding" }, { label: "View / Edit" }]} />
+          <h1 className="page-title">{record.firstName} {record.lastName}</h1>
+          <p className="page-subtitle">
+            Submitted {dayjs(record.submittedAt).format("DD-MM-YYYY HH:mm")}
+            {record.updatedAt ? ` · Last updated ${dayjs(record.updatedAt).format("DD-MM-YYYY HH:mm")} by ${record.updatedBy}` : ""}
+          </p>
+        </div>
+        <button className="icon-btn" onClick={() => navigate("/onboarding")} style={{ color: "var(--coral)" }}><X size={20} /></button>
+      </div>
+
+      <div style={{ maxWidth: 900, margin: "0 auto" }}>
+        <Group title="About you">
+          <div className="fc-row fc-row-2">
+            <FormInput label="First name" required value={form.firstName} onChange={set("firstName")} error={errors.firstName} maxLength={100} />
+            <FormInput label="Last name" required value={form.lastName} onChange={set("lastName")} error={errors.lastName} maxLength={100} />
+            <FormDate label="Date of birth" required value={form.dateOfBirth} onChange={set("dateOfBirth")} error={errors.dateOfBirth} max={todayIso()} />
+            <FormInput label="Place of birth" required value={form.placeOfBirth} onChange={set("placeOfBirth")} error={errors.placeOfBirth} maxLength={150} />
+          </div>
+        </Group>
+
+        <Group title="Passport and site">
+          <div className="fc-row fc-row-2">
+            <FormInput label="Passport number" required value={form.passportNo} onChange={set("passportNo")} error={errors.passportNo} maxLength={20} />
+            <FormInput label="SAL code" required value={form.salCode} onChange={set("salCode")} error={errors.salCode} maxLength={50} />
+          </div>
+        </Group>
+
+        <Group title="Contact">
+          <div className="fc-row fc-row-2">
+            <PhoneField label="Mobile number" required countryIso={phone.countryIso} number={phone.number}
+              onChange={(v) => { setPhone(v); clearError("mobileNumber"); }} error={errors.mobileNumber} placeholder="98765 43210" />
+            <FormInput label="N-Cons email ID" required type="email" value={form.nConsEmail} onChange={set("nConsEmail")} error={errors.nConsEmail} maxLength={150} />
+            <FormSelect label="N-Cons email status" required options={[{ label: "Select status", value: "" }, ...EMAIL_STATUS_OPTIONS]} value={form.nConsEmailStatus} onChange={set("nConsEmailStatus")} error={errors.nConsEmailStatus} />
+            <FormInput label="Personal email ID" required type="email" value={form.personalEmail} onChange={set("personalEmail")} error={errors.personalEmail} maxLength={150} />
+          </div>
+        </Group>
+
+        <Group title="Where you are now">
+          <div className="fc-row fc-row-2">
+            <FormInput label="City" required value={form.city} onChange={set("city")} error={errors.city} maxLength={100} />
+            <FormInput label="Country" required value={form.country} onChange={set("country")} error={errors.country} maxLength={100} />
+          </div>
+          <FormTextarea label="Current address" required value={form.currentAddress} onChange={set("currentAddress")} error={errors.currentAddress} rows={3} maxLength={500} />
+        </Group>
+
+        <Group title="Documents">
+          {fileRow("Passport copy", <FileText size={20} color="var(--primary)" />, record.passportCopyFileName, "PassportCopy")}
+          {fileRow("Passport-size photo", <ImageIcon size={20} color="var(--primary)" />, record.passportPhotoFileName, "PassportPhoto")}
+          <div style={{ fontSize: 12.5, color: "var(--text-muted)", margin: "14px 0" }}>To replace a document, upload a new file below. Leave empty to keep the current one.</div>
+          <FileUploadBox id="edit-copy" label="Replace passport copy" hint="JPG, PNG or PDF · max 5 MB" accept=".jpg,.jpeg,.png,.pdf" file={newCopy}
+            error={errors.passportCopy} icon={<FileText />} onSelect={pickFile("passportCopy", "Passport Copy", setNewCopy)} onRemove={() => setNewCopy(null)} optional />
+          <FileUploadBox id="edit-photo" label="Replace passport-size photo" hint="JPG, PNG or PDF · max 5 MB" accept=".jpg,.jpeg,.png,.pdf" file={newPhoto}
+            error={errors.passportPhoto} icon={<ImageIcon />} onSelect={pickFile("passportPhoto", "Passport-size Photo", setNewPhoto)} onRemove={() => setNewPhoto(null)} optional />
+        </Group>
+
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginBottom: 32 }}>
+          <button className="btn btn-outline" style={{ minWidth: 120, height: 42, justifyContent: "center" }} onClick={() => navigate("/onboarding")}>Cancel</button>
+          <button className="btn btn-primary" style={{ minWidth: 150, height: 42, justifyContent: "center" }} onClick={handleSave} disabled={loading}><Save size={15} /> Save changes</button>
+        </div>
+      </div>
+    </div>
+  );
+}

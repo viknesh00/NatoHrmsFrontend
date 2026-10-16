@@ -40,6 +40,14 @@ export const findCountry = (iso) => COUNTRIES.find((c) => c.iso === iso) || COUN
 // Combine selected country + typed digits into "+91 9876543210"
 export const buildPhone = (iso, number) => (number ? `+${findCountry(iso).dial} ${number}` : "");
 
+// "+91 9876543210" -> { countryIso: "IN", number: "9876543210" }
+export const parsePhone = (value) => {
+  const m = /^\+(\d{1,4})[\s-]*(.*)$/.exec((value || "").trim());
+  if (!m) return { countryIso: "IN", number: (value || "").replace(/\D/g, "") };
+  const country = COUNTRIES.find((c) => c.dial === m[1]) || COUNTRIES[0];
+  return { countryIso: country.iso, number: m[2].replace(/\D/g, "") };
+};
+
 const flagUrl = (iso) => `https://flagcdn.com/w40/${iso.toLowerCase()}.png`;
 
 const Flag = ({ iso }) => (
