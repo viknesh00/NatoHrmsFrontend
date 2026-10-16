@@ -12,6 +12,7 @@ import FileUploadBox from "../../components/FileUploadBox";
 import Group from "../../components/GroupCard";
 
 const EMAIL_STATUS_OPTIONS = [{ label: "Enabled", value: "Enabled" }, { label: "Disabled", value: "Disabled" }];
+const SIEMENS_OPTIONS = [{ label: "Yes", value: "Yes" }, { label: "No", value: "No" }];
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const NAME_REGEX = /^[\p{L}\p{M}][\p{L}\p{M} '.\-]*$/u;
 const MAX_FILE_MB = 5;
@@ -29,6 +30,7 @@ export default function EditOnboarding() {
   const [record, setRecord] = useState(null);     // original row (for file names / audit info)
   const [form, setForm] = useState(null);
   const [phone, setPhone] = useState({ countryIso: "IN", number: "" });
+  const [whatsapp, setWhatsapp] = useState({ countryIso: "IN", number: "" });
   const [newCopy, setNewCopy] = useState(null);
   const [newPhoto, setNewPhoto] = useState(null);
   const [errors, setErrors] = useState({});
@@ -45,8 +47,11 @@ export default function EditOnboarding() {
           placeOfBirth: d.placeOfBirth || "", passportNo: d.passportNo || "", salCode: d.salCode || "",
           personalEmail: d.personalEmail || "", city: d.city || "", country: d.country || "",
           currentAddress: d.currentAddress || "", nConsEmail: d.nConsEmail || "", nConsEmailStatus: d.nConsEmailStatus || "",
+          visaType: d.visaType || "", workVisaExpiryDate: d.workVisaExpiryDate ? d.workVisaExpiryDate.split("T")[0] : "",
+          hasSiemensIdCard: d.hasSiemensIdCard || "",
         });
         setPhone(parsePhone(d.mobileNumber));
+        if (d.whatsAppNumber) setWhatsapp(parsePhone(d.whatsAppNumber));
       })
       .catch((err) => { ToastError(err.response?.data?.message || "Failed to load details"); navigate("/onboarding"); })
       .finally(() => setLoading(false));
@@ -101,6 +106,10 @@ export default function EditOnboarding() {
     const total = findCountry(phone.countryIso).dial + phone.number;
     if (!phone.number) e.mobileNumber = "Mobile Number is required";
     else if (total.length < 8 || total.length > 15) e.mobileNumber = "Enter a valid mobile number";
+    if (whatsapp.number) {
+      const wTotal = (findCountry(whatsapp.countryIso).dial + whatsapp.number).length;
+      if (wTotal < 8 || wTotal > 15) e.whatsAppNumber = "Enter a valid WhatsApp number";
+    }
     if (!v("passportNo")) e.passportNo = "Passport No. is required";
     else if (!/^[A-Za-z0-9]{6,20}$/.test(v("passportNo"))) e.passportNo = "Passport No. must be 6-20 letters or digits";
     if (v("salCode") && !/^[A-Za-z0-9\-_/ ]{1,50}$/.test(v("salCode"))) e.salCode = "SAL Code contains invalid characters";
@@ -119,8 +128,9 @@ export default function EditOnboarding() {
 
     const fd = new FormData();
     fd.append("submissionId", id);
-    Object.keys(form).forEach((k) => fd.append(k, k === "dateOfBirth" ? isoToDmy(form.dateOfBirth) : form[k].trim()));
+    Object.keys(form).forEach((k) => fd.append(k, (k === "dateOfBirth" || k === "workVisaExpiryDate") ? isoToDmy(form[k]) : form[k].trim()));
     fd.append("mobileNumber", buildPhone(phone.countryIso, phone.number));
+    fd.append("whatsAppNumber", buildPhone(whatsapp.countryIso, whatsapp.number));
     if (newCopy) fd.append("passportCopy", newCopy);
     if (newPhoto) fd.append("passportPhoto", newPhoto);
 
@@ -181,12 +191,22 @@ export default function EditOnboarding() {
           </div>
         </Group>
 
+        <Group title="Right to work">
+          <div className="fc-row fc-row-2">
+            <FormInput label="Visa / work permit type" value={form.visaType} onChange={set("visaType")} error={errors.visaType} maxLength={100} />
+            <FormDate label="Work visa expiry date" value={form.workVisaExpiryDate} onChange={set("workVisaExpiryDate")} error={errors.workVisaExpiryDate} />
+            <FormSelect label="Valid Siemens ID card?" options={[{ label: "Select", value: "" }, ...SIEMENS_OPTIONS]} value={form.hasSiemensIdCard} onChange={set("hasSiemensIdCard")} error={errors.hasSiemensIdCard} />
+          </div>
+        </Group>
+
         <Group title="Contact">
           <div className="fc-row fc-row-2">
             <PhoneField label="Mobile number" required countryIso={phone.countryIso} number={phone.number}
               onChange={(v) => { setPhone(v); clearError("mobileNumber"); }} error={errors.mobileNumber} placeholder="98765 43210" />
             <FormInput label="N-Cons email ID" type="email" value={form.nConsEmail} onChange={set("nConsEmail")} error={errors.nConsEmail} maxLength={150} />
             <FormSelect label="N-Cons email status" options={[{ label: "Select status", value: "" }, ...EMAIL_STATUS_OPTIONS]} value={form.nConsEmailStatus} onChange={set("nConsEmailStatus")} error={errors.nConsEmailStatus} />
+            <PhoneField label="WhatsApp number" countryIso={whatsapp.countryIso} number={whatsapp.number}
+              onChange={(v) => { setWhatsapp(v); clearError("whatsAppNumber"); }} error={errors.whatsAppNumber} placeholder="98765 43210" />
             <FormInput label="Personal email ID" required type="email" value={form.personalEmail} onChange={set("personalEmail")} error={errors.personalEmail} maxLength={150} />
           </div>
         </Group>

@@ -43,6 +43,7 @@ export default function Onboarding() {
           ...d,
           fullName: `${d.firstName} ${d.lastName}`,
           dobText: fmtDate(d.dateOfBirth),
+          visaExpiryText: fmtDate(d.workVisaExpiryDate),
           submittedText: fmtDateTime(d.submittedAt),
         })));
         setSelectedIds([]);
@@ -134,6 +135,10 @@ export default function Onboarding() {
     { field: "nConsEmail", label: "N-Cons Email" },
     { field: "nConsEmailStatus", label: "N-Cons Status", filterable: true },
     { field: "personalEmail", label: "Personal Email" },
+    { field: "visaType", label: "Visa / Permit" },
+    { field: "visaExpiryText", label: "Visa Expiry" },
+    { field: "hasSiemensIdCard", label: "Siemens ID", filterable: true },
+    { field: "whatsAppNumber", label: "WhatsApp" },
     { field: "submittedText", label: "Submitted" },
     {
       field: "documents", label: "Documents",

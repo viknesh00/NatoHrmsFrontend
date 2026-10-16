@@ -11,6 +11,7 @@ import PhoneField, { buildPhone, findCountry } from "../../components/PhoneField
    Constants
    ────────────────────────────────────────────── */
 const EMAIL_STATUS_OPTIONS = [{ label: "Enabled", value: "Enabled" }, { label: "Disabled", value: "Disabled" }];
+const SIEMENS_OPTIONS = [{ label: "Yes", value: "Yes" }, { label: "No", value: "No" }];
 const withPlaceholder = (label, options) => [{ label, value: "" }, ...options];
 
 const MAX_FILE_MB = 5;
@@ -22,7 +23,8 @@ const LOGO_URL = "https://natoboticshrms.vercel.app/assets/images/natobotics-log
 /* field order on the page (used to scroll to the first error) */
 const FIELD_ORDER = [
   "firstName", "lastName", "dateOfBirth", "placeOfBirth", "mobileNumber", "passportNo", "salCode",
-  "city", "country", "currentAddress", "nConsEmail", "nConsEmailStatus", "personalEmail",
+  "visaType", "workVisaExpiryDate", "hasSiemensIdCard",
+  "city", "country", "currentAddress", "nConsEmail", "nConsEmailStatus", "personalEmail", "whatsAppNumber",
   "passportCopy", "passportPhoto",
 ];
 
@@ -31,6 +33,7 @@ const EMPTY_FORM = {
   passportNo: "", salCode: "",
   mobileNumber: "", personalEmail: "", city: "", country: "", currentAddress: "",
   nConsEmail: "", nConsEmailStatus: "",
+  visaType: "", workVisaExpiryDate: "", hasSiemensIdCard: "", whatsAppNumber: "",
 };
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -88,6 +91,7 @@ export default function EmployeeDetailsForm() {
 
   const [formvalues, setFormvalues] = useState(EMPTY_FORM);
   const [phone, setPhone] = useState({ countryIso: "IN", number: "" });
+  const [whatsapp, setWhatsapp] = useState({ countryIso: "IN", number: "" });
   const [passportCopy, setPassportCopy] = useState(null);
   const [passportPhoto, setPassportPhoto] = useState(null);
 
@@ -139,6 +143,11 @@ export default function EmployeeDetailsForm() {
     if (!v("country")) e.country = "Country is required";
     if (!v("currentAddress")) e.currentAddress = "Current Address is required";
 
+    if (whatsapp.number) {
+      const wTotal = (findCountry(whatsapp.countryIso).dial + whatsapp.number).length;
+      if (wTotal < 8 || wTotal > 15) e.whatsAppNumber = "Enter a valid WhatsApp number";
+    }
+
     if (v("nConsEmail") && !EMAIL_REGEX.test(v("nConsEmail"))) e.nConsEmail = "Enter a valid email address";
 
     if (!v("personalEmail")) e.personalEmail = "Personal Email ID is required";
@@ -175,7 +184,9 @@ export default function EmployeeDetailsForm() {
     Object.keys(formvalues).forEach((k) =>
       formData.append(k,
         k === "dateOfBirth" ? isoToDmy(formvalues.dateOfBirth)
+        : k === "workVisaExpiryDate" ? isoToDmy(formvalues.workVisaExpiryDate)
         : k === "mobileNumber" ? buildPhone(phone.countryIso, phone.number)
+        : k === "whatsAppNumber" ? buildPhone(whatsapp.countryIso, whatsapp.number)
         : formvalues[k].trim()));
     formData.append("passportCopy", passportCopy);
     formData.append("passportPhoto", passportPhoto);
@@ -202,6 +213,7 @@ export default function EmployeeDetailsForm() {
   const resetForm = () => {
     setFormvalues(EMPTY_FORM);
     setPhone({ countryIso: "IN", number: "" });
+    setWhatsapp({ countryIso: "IN", number: "" });
     setPassportCopy(null);
     setPassportPhoto(null);
     setErrors({});
@@ -266,11 +278,20 @@ export default function EmployeeDetailsForm() {
               </div>
             </Group>
 
+            <Group title="Right to work">
+              <div className="fc-row fc-row-2">
+                <Q name="visaType"><FormInput label="Visa / work permit type" value={formvalues.visaType} onChange={set("visaType")} error={errors.visaType} hint="For Germany or the country you work in, e.g. Work Visa, EU Blue Card" maxLength={100} /></Q>
+                <Q name="workVisaExpiryDate"><FormDate label="Work visa expiry date" value={formvalues.workVisaExpiryDate} onChange={set("workVisaExpiryDate")} error={errors.workVisaExpiryDate} placeholder="Select date" hint="Last date you are legally permitted to work there" /></Q>
+                <Q name="hasSiemensIdCard"><FormSelect label="Do you have a valid Siemens ID card?" options={withPlaceholder("Select", SIEMENS_OPTIONS)} value={formvalues.hasSiemensIdCard} onChange={set("hasSiemensIdCard")} error={errors.hasSiemensIdCard} /></Q>
+              </div>
+            </Group>
+
             <Group title="Contact">
               <div className="fc-row fc-row-2">
                 <Q name="mobileNumber"><PhoneField label="Mobile number" required countryIso={phone.countryIso} number={phone.number} onChange={(v) => { setPhone(v); clearError("mobileNumber"); }} error={errors.mobileNumber} hint="Select the country code, then enter digits only" placeholder="98765 43210" /></Q>
                 <Q name="nConsEmail"><FormInput label="N-Cons email ID" type="email" value={formvalues.nConsEmail} onChange={set("nConsEmail")} error={errors.nConsEmail} hint="Your work email" maxLength={150} /></Q>
                 <Q name="nConsEmailStatus"><FormSelect label="N-Cons email status" options={withPlaceholder("Select status", EMAIL_STATUS_OPTIONS)} value={formvalues.nConsEmailStatus} onChange={set("nConsEmailStatus")} error={errors.nConsEmailStatus} /></Q>
+                <Q name="whatsAppNumber"><PhoneField label="WhatsApp number" countryIso={whatsapp.countryIso} number={whatsapp.number} onChange={(v) => { setWhatsapp(v); clearError("whatsAppNumber"); }} error={errors.whatsAppNumber} hint="If applicable" placeholder="98765 43210" /></Q>
                 <Q name="personalEmail"><FormInput label="Personal email ID" required type="email" value={formvalues.personalEmail} onChange={set("personalEmail")} error={errors.personalEmail} hint="An address you check regularly" maxLength={150} /></Q>
               </div>
             </Group>
