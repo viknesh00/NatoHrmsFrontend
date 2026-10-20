@@ -29,8 +29,11 @@ export default function EditOnboarding() {
   const [loading, setLoading] = useState(false);
   const [record, setRecord] = useState(null);     // original row (for file names / audit info)
   const [form, setForm] = useState(null);
-  const [phone, setPhone] = useState({ countryIso: "IN", number: "" });
-  const [whatsapp, setWhatsapp] = useState({ countryIso: "IN", number: "" });
+  const [phone, setPhone] = useState({ countryIso: "DE", number: "" });
+  const [whatsappOwn, setWhatsapp] = useState({ countryIso: "DE", number: "" });
+  const [sameAsMobile, setSameAsMobile] = useState(false);
+  // while "Same as mobile number" is ticked, WhatsApp simply follows the mobile number
+  const whatsapp = sameAsMobile ? phone : whatsappOwn;
   const [newCopy, setNewCopy] = useState(null);
   const [newPhoto, setNewPhoto] = useState(null);
   const [errors, setErrors] = useState({});
@@ -52,6 +55,7 @@ export default function EditOnboarding() {
         });
         setPhone(parsePhone(d.mobileNumber));
         if (d.whatsAppNumber) setWhatsapp(parsePhone(d.whatsAppNumber));
+        setSameAsMobile(!!d.whatsAppNumber && d.whatsAppNumber === d.mobileNumber);
       })
       .catch((err) => { ToastError(err.response?.data?.message || "Failed to load details"); navigate("/onboarding"); })
       .finally(() => setLoading(false));
@@ -202,11 +206,17 @@ export default function EditOnboarding() {
         <Group title="Contact">
           <div className="fc-row fc-row-2">
             <PhoneField label="Mobile number" required countryIso={phone.countryIso} number={phone.number}
-              onChange={(v) => { setPhone(v); clearError("mobileNumber"); }} error={errors.mobileNumber} placeholder="98765 43210" />
+              onChange={(v) => { setPhone(v); clearError("mobileNumber"); }} error={errors.mobileNumber} placeholder="1512 3456789" />
             <FormInput label="N-Cons email ID" type="email" value={form.nConsEmail} onChange={set("nConsEmail")} error={errors.nConsEmail} maxLength={150} />
             <FormSelect label="N-Cons email status" options={[{ label: "Select status", value: "" }, ...EMAIL_STATUS_OPTIONS]} value={form.nConsEmailStatus} onChange={set("nConsEmailStatus")} error={errors.nConsEmailStatus} />
+            <div>
             <PhoneField label="WhatsApp number" countryIso={whatsapp.countryIso} number={whatsapp.number}
-              onChange={(v) => { setWhatsapp(v); clearError("whatsAppNumber"); }} error={errors.whatsAppNumber} placeholder="98765 43210" />
+              onChange={(v) => { setSameAsMobile(false); setWhatsapp(v); clearError("whatsAppNumber"); }} error={errors.whatsAppNumber} placeholder="1512 3456789" />
+            <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, fontSize: 13, color: "var(--text-secondary)", cursor: "pointer" }}>
+              <input type="checkbox" checked={sameAsMobile} onChange={(e) => setSameAsMobile(e.target.checked)} style={{ cursor: "pointer" }} />
+              Same as mobile number
+            </label>
+            </div>
             <FormInput label="Personal email ID" required type="email" value={form.personalEmail} onChange={set("personalEmail")} error={errors.personalEmail} maxLength={150} />
           </div>
         </Group>

@@ -90,8 +90,11 @@ export default function EmployeeDetailsForm() {
   const [errors, setErrors] = useState({});
 
   const [formvalues, setFormvalues] = useState(EMPTY_FORM);
-  const [phone, setPhone] = useState({ countryIso: "IN", number: "" });
-  const [whatsapp, setWhatsapp] = useState({ countryIso: "IN", number: "" });
+  const [phone, setPhone] = useState({ countryIso: "DE", number: "" });
+  const [whatsappOwn, setWhatsapp] = useState({ countryIso: "DE", number: "" });
+  const [sameAsMobile, setSameAsMobile] = useState(false);
+  // while "Same as mobile number" is ticked, WhatsApp simply follows the mobile number
+  const whatsapp = sameAsMobile ? phone : whatsappOwn;
   const [passportCopy, setPassportCopy] = useState(null);
   const [passportPhoto, setPassportPhoto] = useState(null);
 
@@ -212,8 +215,9 @@ export default function EmployeeDetailsForm() {
 
   const resetForm = () => {
     setFormvalues(EMPTY_FORM);
-    setPhone({ countryIso: "IN", number: "" });
-    setWhatsapp({ countryIso: "IN", number: "" });
+    setPhone({ countryIso: "DE", number: "" });
+    setWhatsapp({ countryIso: "DE", number: "" });
+    setSameAsMobile(false);
     setPassportCopy(null);
     setPassportPhoto(null);
     setErrors({});
@@ -288,10 +292,14 @@ export default function EmployeeDetailsForm() {
 
             <Group title="Contact">
               <div className="fc-row fc-row-2">
-                <Q name="mobileNumber"><PhoneField label="Mobile number" required countryIso={phone.countryIso} number={phone.number} onChange={(v) => { setPhone(v); clearError("mobileNumber"); }} error={errors.mobileNumber} hint="Select the country code, then enter digits only" placeholder="98765 43210" /></Q>
+                <Q name="mobileNumber"><PhoneField label="Mobile number" required countryIso={phone.countryIso} number={phone.number} onChange={(v) => { setPhone(v); clearError("mobileNumber"); }} error={errors.mobileNumber} hint="Select the country code, then enter digits only" placeholder="1512 3456789" /></Q>
                 <Q name="nConsEmail"><FormInput label="N-Cons email ID" type="email" value={formvalues.nConsEmail} onChange={set("nConsEmail")} error={errors.nConsEmail} hint="Your work email" maxLength={150} /></Q>
                 <Q name="nConsEmailStatus"><FormSelect label="N-Cons email status" options={withPlaceholder("Select status", EMAIL_STATUS_OPTIONS)} value={formvalues.nConsEmailStatus} onChange={set("nConsEmailStatus")} error={errors.nConsEmailStatus} /></Q>
-                <Q name="whatsAppNumber"><PhoneField label="WhatsApp number" countryIso={whatsapp.countryIso} number={whatsapp.number} onChange={(v) => { setWhatsapp(v); clearError("whatsAppNumber"); }} error={errors.whatsAppNumber} hint="If applicable" placeholder="98765 43210" /></Q>
+                <Q name="whatsAppNumber"><PhoneField label="WhatsApp number" countryIso={whatsapp.countryIso} number={whatsapp.number} onChange={(v) => { setSameAsMobile(false); setWhatsapp(v); clearError("whatsAppNumber"); }} error={errors.whatsAppNumber} hint="If applicable" placeholder="1512 3456789" />
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, fontSize: 13, color: "var(--text-secondary)", cursor: "pointer" }}>
+                  <input type="checkbox" checked={sameAsMobile} onChange={(e) => setSameAsMobile(e.target.checked)} style={{ cursor: "pointer" }} />
+                  Same as mobile number
+                </label></Q>
                 <Q name="personalEmail"><FormInput label="Personal email ID" required type="email" value={formvalues.personalEmail} onChange={set("personalEmail")} error={errors.personalEmail} hint="An address you check regularly" maxLength={150} /></Q>
               </div>
             </Group>

@@ -43,7 +43,7 @@ export const buildPhone = (iso, number) => (number ? `+${findCountry(iso).dial} 
 // "+91 9876543210" -> { countryIso: "IN", number: "9876543210" }
 export const parsePhone = (value) => {
   const m = /^\+(\d{1,4})[\s-]*(.*)$/.exec((value || "").trim());
-  if (!m) return { countryIso: "IN", number: (value || "").replace(/\D/g, "") };
+  if (!m) return { countryIso: "DE", number: (value || "").replace(/\D/g, "") };
   const country = COUNTRIES.find((c) => c.dial === m[1]) || COUNTRIES[0];
   return { countryIso: country.iso, number: m[2].replace(/\D/g, "") };
 };
