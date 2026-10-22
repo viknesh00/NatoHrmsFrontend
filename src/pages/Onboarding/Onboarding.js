@@ -43,6 +43,7 @@ export default function Onboarding() {
           ...d,
           fullName: `${d.firstName} ${d.lastName}`,
           dobText: fmtDate(d.dateOfBirth),
+          siemensMonthText: d.siemensIdReceivedMonth ? dayjs(d.siemensIdReceivedMonth).format("MMM YYYY") : "—",
           visaExpiryText: fmtDate(d.workVisaExpiryDate),
           submittedText: fmtDateTime(d.submittedAt),
         })));
@@ -138,6 +139,7 @@ export default function Onboarding() {
     { field: "visaType", label: "Visa / Permit" },
     { field: "visaExpiryText", label: "Visa Expiry" },
     { field: "hasSiemensIdCard", label: "Siemens ID", filterable: true },
+    { field: "siemensMonthText", label: "Siemens ID Received" },
     { field: "whatsAppNumber", label: "WhatsApp" },
     { field: "submittedText", label: "Submitted" },
     {

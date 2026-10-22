@@ -6,7 +6,7 @@ import { getRequest, postRequest } from "../../services/Apiservice";
 import { ToastError, ToastSuccess } from "../../services/ToastMsg";
 import LoadingMask from "../../services/LoadingMask";
 import Breadcrumb from "../../services/Breadcrumb";
-import { FormInput, FormSelect, FormTextarea, FormDate } from "../../components/FormComponents";
+import { FormInput, FormSelect, FormTextarea, FormDate, FormMonth } from "../../components/FormComponents";
 import PhoneField, { buildPhone, findCountry, parsePhone } from "../../components/PhoneField";
 import FileUploadBox from "../../components/FileUploadBox";
 import Group from "../../components/GroupCard";
@@ -20,6 +20,9 @@ const FILE_EXT = ["jpg", "jpeg", "png", "pdf"];
 
 const todayIso = () => dayjs().format("YYYY-MM-DD");
 const isoToDmy = (iso) => (iso ? iso.split("-").reverse().join("/") : "");
+// calendar month (YYYY-MM) -> MM/YYYY expected by the API
+const ymToMy = (ym) => (ym ? ym.split("-").reverse().join("/") : "");
+
 const extOf = (file) => (file?.name?.split(".").pop() || "").toLowerCase();
 
 export default function EditOnboarding() {
@@ -52,6 +55,7 @@ export default function EditOnboarding() {
           currentAddress: d.currentAddress || "", nConsEmail: d.nConsEmail || "", nConsEmailStatus: d.nConsEmailStatus || "",
           visaType: d.visaType || "", workVisaExpiryDate: d.workVisaExpiryDate ? d.workVisaExpiryDate.split("T")[0] : "",
           hasSiemensIdCard: d.hasSiemensIdCard || "",
+          siemensIdReceivedMonth: d.siemensIdReceivedMonth ? d.siemensIdReceivedMonth.slice(0, 7) : "",
         });
         setPhone(parsePhone(d.mobileNumber));
         if (d.whatsAppNumber) setWhatsapp(parsePhone(d.whatsAppNumber));
@@ -110,6 +114,11 @@ export default function EditOnboarding() {
     const total = findCountry(phone.countryIso).dial + phone.number;
     if (!phone.number) e.mobileNumber = "Mobile Number is required";
     else if (total.length < 8 || total.length > 15) e.mobileNumber = "Enter a valid mobile number";
+    if (!v("hasSiemensIdCard")) e.hasSiemensIdCard = "Please select Yes or No";
+    else if (v("hasSiemensIdCard") === "Yes") {
+      if (!v("siemensIdReceivedMonth")) e.siemensIdReceivedMonth = "Please select the month the ID was received";
+      else if (v("siemensIdReceivedMonth") > todayIso().slice(0, 7)) e.siemensIdReceivedMonth = "Month cannot be in the future";
+    }
     if (whatsapp.number) {
       const wTotal = (findCountry(whatsapp.countryIso).dial + whatsapp.number).length;
       if (wTotal < 8 || wTotal > 15) e.whatsAppNumber = "Enter a valid WhatsApp number";
@@ -132,7 +141,7 @@ export default function EditOnboarding() {
 
     const fd = new FormData();
     fd.append("submissionId", id);
-    Object.keys(form).forEach((k) => fd.append(k, (k === "dateOfBirth" || k === "workVisaExpiryDate") ? isoToDmy(form[k]) : form[k].trim()));
+    Object.keys(form).forEach((k) => fd.append(k, (k === "dateOfBirth" || k === "workVisaExpiryDate") ? isoToDmy(form[k]) : k === "siemensIdReceivedMonth" ? (form.hasSiemensIdCard === "Yes" ? ymToMy(form[k]) : "") : form[k].trim()));
     fd.append("mobileNumber", buildPhone(phone.countryIso, phone.number));
     fd.append("whatsAppNumber", buildPhone(whatsapp.countryIso, whatsapp.number));
     if (newCopy) fd.append("passportCopy", newCopy);
@@ -199,7 +208,11 @@ export default function EditOnboarding() {
           <div className="fc-row fc-row-2">
             <FormInput label="Visa / work permit type" value={form.visaType} onChange={set("visaType")} error={errors.visaType} maxLength={100} />
             <FormDate label="Work visa expiry date" value={form.workVisaExpiryDate} onChange={set("workVisaExpiryDate")} error={errors.workVisaExpiryDate} />
-            <FormSelect label="Valid Siemens ID card?" options={[{ label: "Select", value: "" }, ...SIEMENS_OPTIONS]} value={form.hasSiemensIdCard} onChange={set("hasSiemensIdCard")} error={errors.hasSiemensIdCard} />
+            <FormSelect label="Valid Siemens ID card?" required options={[{ label: "Select", value: "" }, ...SIEMENS_OPTIONS]} value={form.hasSiemensIdCard}
+              onChange={(e) => { set("hasSiemensIdCard")(e); if (e.target.value !== "Yes") setForm((p) => ({ ...p, siemensIdReceivedMonth: "" })); }} error={errors.hasSiemensIdCard} />
+            {form.hasSiemensIdCard === "Yes" && (
+              <FormMonth label="Siemens ID received month" required max={todayIso().slice(0, 7)} value={form.siemensIdReceivedMonth} onChange={set("siemensIdReceivedMonth")} error={errors.siemensIdReceivedMonth} />
+            )}
           </div>
         </Group>
 

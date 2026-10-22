@@ -621,7 +621,7 @@ export function FormTime({ label, required, hint, error, ...props }) {
 }
 
 /* ── FormMonth (custom month/year picker — matches FormDate UI) ── */
-export function FormMonth({ label, required, hint, error, value, onChange, disabled, placeholder = "Select month" }) {
+export function FormMonth({ label, required, hint, error, value, onChange, disabled, min, max, placeholder = "Select month" }) {
   injectStyles();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState("month"); // "month" | "year"
@@ -650,7 +650,15 @@ export function FormMonth({ label, required, hint, error, value, onChange, disab
     ? `${MONTHS_FULL[parsed.month]} ${parsed.year}`
     : null;
 
+  // optional limits as "YYYY-MM": months / years outside them are greyed out and cannot be picked
+  const toIdx = (ym) => (ym ? parseInt(ym.split("-")[0], 10) * 12 + parseInt(ym.split("-")[1], 10) - 1 : null);
+  const minIdx = toIdx(min), maxIdx = toIdx(max);
+  const monthBlocked = (year, m) => (minIdx !== null && year * 12 + m < minIdx) || (maxIdx !== null && year * 12 + m > maxIdx);
+  const yearBlocked = (year) => (minIdx !== null && year * 12 + 11 < minIdx) || (maxIdx !== null && year * 12 > maxIdx);
+  const blockedStyle = { opacity: 0.35, cursor: "not-allowed", pointerEvents: "none" };
+
   function selectMonth(monthIdx) {
+    if (monthBlocked(viewYear, monthIdx)) return;
     const mm = String(monthIdx + 1).padStart(2, "0");
     onChange && onChange({ target: { value: `${viewYear}-${mm}` } });
     setOpen(false);
@@ -708,6 +716,7 @@ export function FormMonth({ label, required, hint, error, value, onChange, disab
                 {MONTHS_SHORT.map((m, i) => (
                   <div key={m}
                     className={`fc-cal-overlay-item${parsed && parsed.month === i && parsed.year === viewYear ? " active" : ""}${today.getMonth() === i && today.getFullYear() === viewYear && !(parsed && parsed.month === i && parsed.year === viewYear) ? " fc-cal-day-today" : ""}`}
+                    style={monthBlocked(viewYear, i) ? blockedStyle : undefined}
                     onClick={() => selectMonth(i)}
                   >{m}</div>
                 ))}
@@ -720,7 +729,8 @@ export function FormMonth({ label, required, hint, error, value, onChange, disab
                 {Array.from({ length: 12 }, (_, i) => yearPage + i).map(y => (
                   <div key={y}
                     className={`fc-cal-overlay-item${viewYear === y ? " active" : ""}`}
-                    onClick={() => { setViewYear(y); setMode("month"); }}
+                    style={yearBlocked(y) ? blockedStyle : undefined}
+                    onClick={() => { if (!yearBlocked(y)) { setViewYear(y); setMode("month"); } }}
                   >{y}</div>
                 ))}
               </div>

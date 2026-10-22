@@ -3,7 +3,7 @@ import { postPublicRequest } from "../../services/Apiservice";
 import { ToastError, ToastSuccess } from "../../services/ToastMsg";
 import LoadingMask from "../../services/LoadingMask";
 import { FileText, Image as ImageIcon, CheckCircle2, AlertTriangle } from "lucide-react";
-import { FormInput, FormSelect, FormTextarea, FormDate } from "../../components/FormComponents";
+import { FormInput, FormSelect, FormTextarea, FormDate, FormMonth } from "../../components/FormComponents";
 import FileUploadBox from "../../components/FileUploadBox";
 import PhoneField, { buildPhone, findCountry } from "../../components/PhoneField";
 
@@ -23,7 +23,7 @@ const LOGO_URL = "https://natoboticshrms.vercel.app/assets/images/natobotics-log
 /* field order on the page (used to scroll to the first error) */
 const FIELD_ORDER = [
   "firstName", "lastName", "dateOfBirth", "placeOfBirth", "mobileNumber", "passportNo", "salCode",
-  "visaType", "workVisaExpiryDate", "hasSiemensIdCard",
+  "visaType", "workVisaExpiryDate", "hasSiemensIdCard", "siemensIdReceivedMonth",
   "city", "country", "currentAddress", "nConsEmail", "nConsEmailStatus", "personalEmail", "whatsAppNumber",
   "passportCopy", "passportPhoto",
 ];
@@ -33,7 +33,7 @@ const EMPTY_FORM = {
   passportNo: "", salCode: "",
   mobileNumber: "", personalEmail: "", city: "", country: "", currentAddress: "",
   nConsEmail: "", nConsEmailStatus: "",
-  visaType: "", workVisaExpiryDate: "", hasSiemensIdCard: "", whatsAppNumber: "",
+  visaType: "", workVisaExpiryDate: "", hasSiemensIdCard: "", siemensIdReceivedMonth: "", whatsAppNumber: "",
 };
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -47,6 +47,9 @@ const todayIso = () => {
 
 // calendar value (YYYY-MM-DD) -> DD/MM/YYYY expected by the API
 const isoToDmy = (iso) => (iso ? iso.split("-").reverse().join("/") : "");
+
+// calendar month (YYYY-MM) -> MM/YYYY expected by the API
+const ymToMy = (ym) => (ym ? ym.split("-").reverse().join("/") : "");
 
 const extOf = (file) => (file?.name?.split(".").pop() || "").toLowerCase();
 
@@ -146,6 +149,12 @@ export default function EmployeeDetailsForm() {
     if (!v("country")) e.country = "Country is required";
     if (!v("currentAddress")) e.currentAddress = "Current Address is required";
 
+    if (!v("hasSiemensIdCard")) e.hasSiemensIdCard = "Please select Yes or No";
+    else if (v("hasSiemensIdCard") === "Yes") {
+      if (!v("siemensIdReceivedMonth")) e.siemensIdReceivedMonth = "Please select the month the ID was received";
+      else if (v("siemensIdReceivedMonth") > todayIso().slice(0, 7)) e.siemensIdReceivedMonth = "Month cannot be in the future";
+    }
+
     if (whatsapp.number) {
       const wTotal = (findCountry(whatsapp.countryIso).dial + whatsapp.number).length;
       if (wTotal < 8 || wTotal > 15) e.whatsAppNumber = "Enter a valid WhatsApp number";
@@ -188,6 +197,7 @@ export default function EmployeeDetailsForm() {
       formData.append(k,
         k === "dateOfBirth" ? isoToDmy(formvalues.dateOfBirth)
         : k === "workVisaExpiryDate" ? isoToDmy(formvalues.workVisaExpiryDate)
+        : k === "siemensIdReceivedMonth" ? (formvalues.hasSiemensIdCard === "Yes" ? ymToMy(formvalues.siemensIdReceivedMonth) : "")
         : k === "mobileNumber" ? buildPhone(phone.countryIso, phone.number)
         : k === "whatsAppNumber" ? buildPhone(whatsapp.countryIso, whatsapp.number)
         : formvalues[k].trim()));
@@ -286,7 +296,12 @@ export default function EmployeeDetailsForm() {
               <div className="fc-row fc-row-2">
                 <Q name="visaType"><FormInput label="Visa / work permit type" value={formvalues.visaType} onChange={set("visaType")} error={errors.visaType} hint="For Germany or the country you work in, e.g. Work Visa, EU Blue Card" maxLength={100} /></Q>
                 <Q name="workVisaExpiryDate"><FormDate label="Work visa expiry date" value={formvalues.workVisaExpiryDate} onChange={set("workVisaExpiryDate")} error={errors.workVisaExpiryDate} placeholder="Select date" hint="Last date you are legally permitted to work there" /></Q>
-                <Q name="hasSiemensIdCard"><FormSelect label="Do you have a valid Siemens ID card?" options={withPlaceholder("Select", SIEMENS_OPTIONS)} value={formvalues.hasSiemensIdCard} onChange={set("hasSiemensIdCard")} error={errors.hasSiemensIdCard} /></Q>
+                <Q name="hasSiemensIdCard"><FormSelect label="Do you have a valid Siemens ID card?" required options={withPlaceholder("Select", SIEMENS_OPTIONS)} value={formvalues.hasSiemensIdCard}
+                  onChange={(e) => { set("hasSiemensIdCard")(e); if (e.target.value !== "Yes") { setFormvalues((prev) => ({ ...prev, siemensIdReceivedMonth: "" })); clearError("siemensIdReceivedMonth"); } }}
+                  error={errors.hasSiemensIdCard} /></Q>
+                {formvalues.hasSiemensIdCard === "Yes" && (
+                  <Q name="siemensIdReceivedMonth"><FormMonth label="Siemens ID received month" required max={todayIso().slice(0, 7)} value={formvalues.siemensIdReceivedMonth} onChange={set("siemensIdReceivedMonth")} error={errors.siemensIdReceivedMonth} placeholder="Select month" /></Q>
+                )}
               </div>
             </Group>
 
