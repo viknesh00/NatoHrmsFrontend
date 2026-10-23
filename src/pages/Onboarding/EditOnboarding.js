@@ -39,6 +39,7 @@ export default function EditOnboarding() {
   const whatsapp = sameAsMobile ? phone : whatsappOwn;
   const [newCopy, setNewCopy] = useState(null);
   const [newPhoto, setNewPhoto] = useState(null);
+  const [certificates, setCertificates] = useState([]);
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
@@ -64,6 +65,12 @@ export default function EditOnboarding() {
       .catch((err) => { ToastError(err.response?.data?.message || "Failed to load details"); navigate("/onboarding"); })
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  useEffect(() => {
+    getRequest(`EmployeeOnboarding/Certificates/${id}`)
+      .then((res) => setCertificates(res.data || []))
+      .catch(() => ToastError("Could not load the certificates"));
   }, [id]);
 
   const clearError = (f) => setErrors((p) => (p[f] ? { ...p, [f]: undefined } : p));
@@ -95,6 +102,29 @@ export default function EditOnboarding() {
       const url = window.URL.createObjectURL(new Blob([res.data], { type: res.headers["content-type"] }));
       const a = document.createElement("a");
       a.href = url; a.download = name || type;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch { ToastError("Download failed"); } finally { setLoading(false); }
+  };
+
+  const fetchCertificate = (c) => getRequest(`EmployeeOnboarding/Certificate/${c.certificateId}`, null, true);
+
+  const viewCertificate = async (c) => {
+    try {
+      setLoading(true);
+      const res = await fetchCertificate(c);
+      const blob = new Blob([res.data], { type: res.headers["content-type"] || c.contentType || "application/octet-stream" });
+      window.open(window.URL.createObjectURL(blob), "_blank");
+    } catch { ToastError("Could not open the file"); } finally { setLoading(false); }
+  };
+
+  const downloadCertificate = async (c) => {
+    try {
+      setLoading(true);
+      const res = await fetchCertificate(c);
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: res.headers["content-type"] }));
+      const a = document.createElement("a");
+      a.href = url; a.download = c.fileName;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
     } catch { ToastError("Download failed"); } finally { setLoading(false); }
@@ -250,6 +280,22 @@ export default function EditOnboarding() {
             error={errors.passportCopy} icon={<FileText />} onSelect={pickFile("passportCopy", "Passport Copy", setNewCopy)} onRemove={() => setNewCopy(null)} optional />
           <FileUploadBox id="edit-photo" label="Replace passport-size photo" hint="JPG, PNG or PDF · max 5 MB" accept=".jpg,.jpeg,.png,.pdf" file={newPhoto}
             error={errors.passportPhoto} icon={<ImageIcon />} onSelect={pickFile("passportPhoto", "Passport-size Photo", setNewPhoto)} onRemove={() => setNewPhoto(null)} optional />
+        </Group>
+
+        <Group title={`Certificates (${certificates.length})`}>
+          {certificates.length === 0 ? (
+            <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 14 }}>No certificates were uploaded.</div>
+          ) : certificates.map((c) => (
+            <div key={c.certificateId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", border: "1px solid var(--border)", borderRadius: 10, background: "var(--bg)", marginBottom: 10, flexWrap: "wrap" }}>
+              <FileText size={20} color="var(--primary)" />
+              <div style={{ flex: 1, minWidth: 160 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)", wordBreak: "break-all" }}>{c.fileName}</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{(c.fileSize / 1024 / 1024).toFixed(2)} MB</div>
+              </div>
+              <button type="button" className="btn btn-outline" style={{ padding: "6px 12px" }} onClick={() => viewCertificate(c)}><Eye size={14} /> View</button>
+              <button type="button" className="btn btn-outline" style={{ padding: "6px 12px" }} onClick={() => downloadCertificate(c)}><Download size={14} /> Download</button>
+            </div>
+          ))}
         </Group>
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginBottom: 32 }}>

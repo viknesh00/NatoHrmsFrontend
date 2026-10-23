@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
-import { Pencil, Download, Link2, UserCheck, FileText, Image as ImageIcon, X, Trash2, AlertTriangle } from "lucide-react";
+import { Pencil, Download, Link2, UserCheck, FileText, Image as ImageIcon, X, Trash2, AlertTriangle, Award, Eye } from "lucide-react";
 import dayjs from "dayjs";
 import { getRequest, postRequest } from "../../services/Apiservice";
 import { ToastError, ToastSuccess } from "../../services/ToastMsg";
@@ -29,6 +29,7 @@ export default function Onboarding() {
   const [list, setList] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [deleteTarget, setDeleteTarget] = useState(null); // array of rows to delete
+  const [certView, setCertView] = useState(null);         // { row, items } - certificates popup
 
   useEffect(() => {
     fetchList();
@@ -100,6 +101,38 @@ export default function Onboarding() {
       .finally(() => setLoading(false));
   };
 
+  /* ── certificates popup (list -> view / download each file) ── */
+  const openCertificates = async (row) => {
+    try {
+      setLoading(true);
+      const res = await getRequest(`EmployeeOnboarding/Certificates/${row.submissionId}`);
+      setCertView({ row, items: res.data || [] });
+    } catch {
+      ToastError("Could not load the certificates");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getCertificateBlob = async (c) => {
+    const res = await getRequest(`EmployeeOnboarding/Certificate/${c.certificateId}`, null, true);
+    return new Blob([res.data], { type: res.headers["content-type"] || c.contentType || "application/octet-stream" });
+  };
+
+  const viewCertificate = async (c) => {
+    try {
+      setLoading(true);
+      window.open(window.URL.createObjectURL(await getCertificateBlob(c)), "_blank");
+    } catch { ToastError("Could not open the file"); } finally { setLoading(false); }
+  };
+
+  const downloadCertificate = async (c) => {
+    try {
+      setLoading(true);
+      saveBlob(await getCertificateBlob(c), c.fileName);
+    } catch { ToastError("Download failed"); } finally { setLoading(false); }
+  };
+
   const copyFormLink = async () => {
     const link = `${window.location.origin}/employee-details`;
     try {
@@ -139,6 +172,7 @@ export default function Onboarding() {
     { field: "visaType", label: "Visa / Permit" },
     { field: "visaExpiryText", label: "Visa Expiry" },
     { field: "hasSiemensIdCard", label: "Siemens ID", filterable: true },
+    { field: "certificateCount", label: "Certificates" },
     { field: "siemensMonthText", label: "Siemens ID Received" },
     { field: "whatsAppNumber", label: "WhatsApp" },
     { field: "submittedText", label: "Submitted" },
@@ -148,6 +182,9 @@ export default function Onboarding() {
         <div style={{ display: "flex", gap: 12 }}>
           <button style={linkBtn} onClick={() => openFile(row, "PassportCopy")} title={row.passportCopyFileName || ""}><FileText size={13} /> Passport</button>
           <button style={linkBtn} onClick={() => openFile(row, "PassportPhoto")} title={row.passportPhotoFileName || ""}><ImageIcon size={13} /> Photo</button>
+          {row.certificateCount > 0 && (
+            <button style={linkBtn} onClick={() => openCertificates(row)} title="View the uploaded certificates"><Award size={13} /> Certificates ({row.certificateCount})</button>
+          )}
         </div>
       ),
     },
@@ -188,6 +225,42 @@ export default function Onboarding() {
       )}
 
       <ProTable title="Employee Details" columns={columns} data={list} multiSelect={false} />
+
+      {/* ── Certificates popup ── */}
+      {certView && createPortal(
+        <div style={{ position: "fixed", inset: 0, background: "rgba(20,0,50,0.55)", backdropFilter: "blur(5px)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+          onClick={() => setCertView(null)}>
+          <div style={{ background: "white", borderRadius: 20, boxShadow: "0 20px 60px rgba(0,0,0,0.25)", width: "100%", maxWidth: 520, maxHeight: "85vh", overflow: "hidden", display: "flex", flexDirection: "column", animation: "slideUp 0.25s ease" }}
+            onClick={(e) => e.stopPropagation()}>
+            <div style={{ height: 4, background: "linear-gradient(90deg,#6c3fc5,#0d9488)" }} />
+            <div style={{ padding: "20px 24px 12px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div>
+                <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 18, fontWeight: 900, color: "#1e1143" }}>Certificates</div>
+                <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 2 }}>{certView.row.firstName} {certView.row.lastName} · {certView.items.length} file{certView.items.length === 1 ? "" : "s"}</div>
+              </div>
+              <button onClick={() => setCertView(null)} style={{ width: 30, height: 30, borderRadius: 8, background: "#f1f5f9", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b" }}>
+                <X size={16} />
+              </button>
+            </div>
+            <div style={{ padding: "0 24px 22px", overflowY: "auto" }}>
+              {certView.items.length === 0 ? (
+                <div style={{ fontSize: 13, color: "#64748b", padding: "10px 0" }}>No certificates were uploaded.</div>
+              ) : certView.items.map((c) => (
+                <div key={c.certificateId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 10, background: "var(--bg)", marginBottom: 8, flexWrap: "wrap" }}>
+                  <FileText size={18} color="var(--primary)" />
+                  <div style={{ flex: 1, minWidth: 140 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", wordBreak: "break-all" }}>{c.fileName}</div>
+                    <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{(c.fileSize / 1024 / 1024).toFixed(2)} MB</div>
+                  </div>
+                  <button className="btn btn-outline" style={{ padding: "5px 10px" }} onClick={() => viewCertificate(c)}><Eye size={13} /> View</button>
+                  <button className="btn btn-outline" style={{ padding: "5px 10px" }} onClick={() => downloadCertificate(c)}><Download size={13} /> Download</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* ── Delete confirmation ── */}
       {deleteTarget && createPortal(

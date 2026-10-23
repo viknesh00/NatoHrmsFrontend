@@ -5,6 +5,7 @@ import LoadingMask from "../../services/LoadingMask";
 import { FileText, Image as ImageIcon, CheckCircle2, AlertTriangle } from "lucide-react";
 import { FormInput, FormSelect, FormTextarea, FormDate, FormMonth } from "../../components/FormComponents";
 import FileUploadBox from "../../components/FileUploadBox";
+import MultiFileUploadBox from "../../components/MultiFileUploadBox";
 import PhoneField, { buildPhone, findCountry } from "../../components/PhoneField";
 
 /* ──────────────────────────────────────────────
@@ -15,6 +16,8 @@ const SIEMENS_OPTIONS = [{ label: "Yes", value: "Yes" }, { label: "No", value: "
 const withPlaceholder = (label, options) => [{ label, value: "" }, ...options];
 
 const MAX_FILE_MB = 5;
+const MAX_CERTIFICATES = 10;
+const MAX_CERTIFICATES_TOTAL_MB = 5;   // all certificates together
 const PASSPORT_COPY_EXT = ["jpg", "jpeg", "png", "pdf"];
 const PASSPORT_PHOTO_EXT = ["jpg", "jpeg", "png", "pdf"];
 
@@ -25,7 +28,7 @@ const FIELD_ORDER = [
   "firstName", "lastName", "dateOfBirth", "placeOfBirth", "mobileNumber", "passportNo", "salCode",
   "visaType", "workVisaExpiryDate", "hasSiemensIdCard", "siemensIdReceivedMonth",
   "city", "country", "currentAddress", "nConsEmail", "nConsEmailStatus", "personalEmail", "whatsAppNumber",
-  "passportCopy", "passportPhoto",
+  "passportCopy", "passportPhoto", "certificates",
 ];
 
 const EMPTY_FORM = {
@@ -100,6 +103,7 @@ export default function EmployeeDetailsForm() {
   const whatsapp = sameAsMobile ? phone : whatsappOwn;
   const [passportCopy, setPassportCopy] = useState(null);
   const [passportPhoto, setPassportPhoto] = useState(null);
+  const [certificates, setCertificates] = useState([]);
 
   /* ── field setters (clear that field's error on change) ── */
   const clearError = (field) => setErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
@@ -121,6 +125,28 @@ export default function EmployeeDetailsForm() {
     }
     setter(file);
     clearError(field);
+  };
+
+  /* ── certificates (optional, several files, max 10) ── */
+  const addCertificates = (incoming) => {
+    const accepted = [];
+    let problem = "";
+    incoming.forEach((file) => {
+      if (!PASSPORT_COPY_EXT.includes(extOf(file))) problem = `"${file.name}" is not allowed. Only JPG, PNG or PDF files can be uploaded.`;
+      else accepted.push(file);
+    });
+
+    // keep the files that fit: max 10 files and 5 MB in total
+    let count = certificates.length;
+    let bytes = certificates.reduce((sum, f) => sum + f.size, 0);
+    const fitting = [];
+    accepted.forEach((file) => {
+      if (count >= MAX_CERTIFICATES) { problem = `You can upload a maximum of ${MAX_CERTIFICATES} certificates.`; return; }
+      if (bytes + file.size > MAX_CERTIFICATES_TOTAL_MB * 1024 * 1024) { problem = `The total size of all certificates must not exceed ${MAX_CERTIFICATES_TOTAL_MB} MB. "${file.name}" was not added.`; return; }
+      fitting.push(file); count += 1; bytes += file.size;
+    });
+    if (fitting.length) setCertificates((prev) => [...prev, ...fitting]);
+    setErrors((prev) => ({ ...prev, certificates: problem || undefined }));
   };
 
   /* ── validation ── */
@@ -203,6 +229,7 @@ export default function EmployeeDetailsForm() {
         : formvalues[k].trim()));
     formData.append("passportCopy", passportCopy);
     formData.append("passportPhoto", passportPhoto);
+    certificates.forEach((f) => formData.append("certificates", f));
 
     setLoading(true);
     postPublicRequest("EmployeeDetails/Submit", formData)
@@ -230,6 +257,7 @@ export default function EmployeeDetailsForm() {
     setSameAsMobile(false);
     setPassportCopy(null);
     setPassportPhoto(null);
+    setCertificates([]);
     setErrors({});
     setSubmitted(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -352,6 +380,23 @@ export default function EmployeeDetailsForm() {
                   icon={<ImageIcon />}
                   onSelect={pickFile("passportPhoto", PASSPORT_PHOTO_EXT, "Passport-size Photo", setPassportPhoto)}
                   onRemove={() => setPassportPhoto(null)}
+                />
+              </Q>
+            </Group>
+
+            <Group title="Certificates">
+              <Q name="certificates">
+                <MultiFileUploadBox
+                  id="certificates-input"
+                  label="Upload certificates (optional)"
+                  hint="e.g. CCNA, higher education or training certificates · JPG, PNG or PDF · up to 10 files, 5 MB in total"
+                  accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
+                  files={certificates}
+                  max={MAX_CERTIFICATES}
+                  maxTotalMb={MAX_CERTIFICATES_TOTAL_MB}
+                  error={errors.certificates}
+                  onAdd={addCertificates}
+                  onRemove={(idx) => { setCertificates((prev) => prev.filter((_, k) => k !== idx)); clearError("certificates"); }}
                 />
               </Q>
             </Group>
