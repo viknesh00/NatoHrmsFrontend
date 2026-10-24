@@ -28,7 +28,7 @@ const FIELD_ORDER = [
   "firstName", "lastName", "dateOfBirth", "placeOfBirth", "mobileNumber", "passportNo", "salCode",
   "visaType", "workVisaExpiryDate", "hasSiemensIdCard", "siemensIdReceivedMonth",
   "city", "country", "currentAddress", "nConsEmail", "nConsEmailStatus", "personalEmail", "whatsAppNumber",
-  "passportCopy", "passportPhoto", "certificates",
+  "passportCopy", "passportPhoto", "certificates", "consentGiven",
 ];
 
 const EMPTY_FORM = {
@@ -104,6 +104,7 @@ export default function EmployeeDetailsForm() {
   const [passportCopy, setPassportCopy] = useState(null);
   const [passportPhoto, setPassportPhoto] = useState(null);
   const [certificates, setCertificates] = useState([]);
+  const [consent, setConsent] = useState(false);
 
   /* ── field setters (clear that field's error on change) ── */
   const clearError = (field) => setErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
@@ -191,6 +192,7 @@ export default function EmployeeDetailsForm() {
     if (!v("personalEmail")) e.personalEmail = "Personal Email ID is required";
     else if (!EMAIL_REGEX.test(v("personalEmail"))) e.personalEmail = "Enter a valid email address";
 
+    if (!consent) e.consentGiven = "Please confirm that the information is shared with your consent";
     if (!passportCopy) e.passportCopy = errors.passportCopy || "Passport Copy is required";
     if (!passportPhoto) e.passportPhoto = errors.passportPhoto || "Passport-size Photo is required";
     return e;
@@ -230,6 +232,7 @@ export default function EmployeeDetailsForm() {
     formData.append("passportCopy", passportCopy);
     formData.append("passportPhoto", passportPhoto);
     certificates.forEach((f) => formData.append("certificates", f));
+    formData.append("consentGiven", consent ? "true" : "false");
 
     setLoading(true);
     postPublicRequest("EmployeeDetails/Submit", formData)
@@ -258,6 +261,7 @@ export default function EmployeeDetailsForm() {
     setPassportCopy(null);
     setPassportPhoto(null);
     setCertificates([]);
+    setConsent(false);
     setErrors({});
     setSubmitted(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -400,6 +404,17 @@ export default function EmployeeDetailsForm() {
                 />
               </Q>
             </Group>
+
+            <Q name="consentGiven">
+              <div className="gf-card" style={{ borderColor: errors.consentGiven ? "var(--coral)" : undefined }}>
+                <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", fontSize: 14, lineHeight: 1.5, color: "var(--text-primary)" }}>
+                  <input type="checkbox" checked={consent} style={{ marginTop: 3, cursor: "pointer", width: 16, height: 16 }}
+                    onChange={(e) => { setConsent(e.target.checked); if (e.target.checked) clearError("consentGiven"); }} />
+                  <span>I confirm that the information and documents provided in this form are shared with my consent.<span className="req" style={{ color: "var(--coral)", marginLeft: 3 }}>*</span></span>
+                </label>
+                {errors.consentGiven && <div className="fc-error" style={{ marginTop: 6 }}>{errors.consentGiven}</div>}
+              </div>
+            </Q>
 
             <div className="gf-actions">
               <span className="gf-actions-note">Please check your details before submitting. After submission, to make any correction, please contact an authorized person.</span>

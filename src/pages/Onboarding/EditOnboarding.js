@@ -211,6 +211,7 @@ export default function EditOnboarding() {
           <h1 className="page-title">{record.firstName} {record.lastName}</h1>
           <p className="page-subtitle">
             Submitted {dayjs(record.submittedAt).format("DD-MM-YYYY HH:mm")}
+            {record.consentGiven ? ` · Consent confirmed${record.consentAt ? " on " + dayjs(record.consentAt).format("DD-MM-YYYY HH:mm") : ""}` : " · Consent not recorded"}
             {record.updatedAt ? ` · Last updated ${dayjs(record.updatedAt).format("DD-MM-YYYY HH:mm")} by ${record.updatedBy}` : ""}
           </p>
         </div>

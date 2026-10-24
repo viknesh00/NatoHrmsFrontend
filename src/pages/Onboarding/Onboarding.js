@@ -45,6 +45,7 @@ export default function Onboarding() {
           fullName: `${d.firstName} ${d.lastName}`,
           dobText: fmtDate(d.dateOfBirth),
           siemensMonthText: d.siemensIdReceivedMonth ? dayjs(d.siemensIdReceivedMonth).format("MMM YYYY") : "—",
+          consentText: d.consentGiven ? "Yes" : "—",
           visaExpiryText: fmtDate(d.workVisaExpiryDate),
           submittedText: fmtDateTime(d.submittedAt),
         })));
@@ -175,6 +176,7 @@ export default function Onboarding() {
     { field: "certificateCount", label: "Certificates" },
     { field: "siemensMonthText", label: "Siemens ID Received" },
     { field: "whatsAppNumber", label: "WhatsApp" },
+    { field: "consentText", label: "Consent" },
     { field: "submittedText", label: "Submitted" },
     {
       field: "documents", label: "Documents",
