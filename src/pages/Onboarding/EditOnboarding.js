@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { UserCheck, FileText, Image as ImageIcon, Download, Eye, Save, X } from "lucide-react";
+import { UserCheck, FileText, Image as ImageIcon, Download, Eye, Save, X, Trash2, RotateCcw } from "lucide-react";
 import dayjs from "dayjs";
 import { getRequest, postRequest } from "../../services/Apiservice";
 import { ToastError, ToastSuccess } from "../../services/ToastMsg";
@@ -9,6 +9,7 @@ import Breadcrumb from "../../services/Breadcrumb";
 import { FormInput, FormSelect, FormTextarea, FormDate, FormMonth } from "../../components/FormComponents";
 import PhoneField, { buildPhone, findCountry, parsePhone } from "../../components/PhoneField";
 import FileUploadBox from "../../components/FileUploadBox";
+import MultiFileUploadBox from "../../components/MultiFileUploadBox";
 import Group from "../../components/GroupCard";
 
 const EMAIL_STATUS_OPTIONS = [{ label: "Enabled", value: "Enabled" }, { label: "Disabled", value: "Disabled" }];
@@ -17,6 +18,8 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const NAME_REGEX = /^[\p{L}\p{M}][\p{L}\p{M} '.\-]*$/u;
 const MAX_FILE_MB = 5;
 const FILE_EXT = ["jpg", "jpeg", "png", "pdf"];
+const MAX_CERTIFICATES = 10;            // same limits as the public form
+const MAX_CERTIFICATES_TOTAL_MB = 5;    // all certificates together
 
 const todayIso = () => dayjs().format("YYYY-MM-DD");
 const isoToDmy = (iso) => (iso ? iso.split("-").reverse().join("/") : "");
@@ -39,7 +42,9 @@ export default function EditOnboarding() {
   const whatsapp = sameAsMobile ? phone : whatsappOwn;
   const [newCopy, setNewCopy] = useState(null);
   const [newPhoto, setNewPhoto] = useState(null);
-  const [certificates, setCertificates] = useState([]);
+  const [certificates, setCertificates] = useState([]);          // already stored
+  const [removedCertIds, setRemovedCertIds] = useState([]);        // stored ones marked for deletion (applied on save)
+  const [newCertificates, setNewCertificates] = useState([]);      // files added in this session (uploaded on save)
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
@@ -81,6 +86,32 @@ export default function EditOnboarding() {
     if (file.size > MAX_FILE_MB * 1024 * 1024) { setErrors((p) => ({ ...p, [field]: `${label} must not exceed ${MAX_FILE_MB} MB.` })); return; }
     setter(file);
     clearError(field);
+  };
+
+  /* ── certificates: add new files / remove stored ones (both applied when "Save changes" is clicked) ── */
+  const keptCertificates = certificates.filter((c) => !removedCertIds.includes(c.certificateId));
+  const keptBytes = keptCertificates.reduce((sum, c) => sum + (c.fileSize || 0), 0);
+  const slotsLeft = Math.max(0, MAX_CERTIFICATES - keptCertificates.length);
+  const mbLeft = Math.max(0, MAX_CERTIFICATES_TOTAL_MB - keptBytes / 1024 / 1024);
+
+  const addCertificates = (incoming) => {
+    let problem = "";
+    let count = newCertificates.length;
+    let bytes = newCertificates.reduce((sum, f) => sum + f.size, 0);
+    const fitting = [];
+    incoming.forEach((file) => {
+      if (!FILE_EXT.includes(extOf(file))) { problem = `"${file.name}" is not allowed. Only JPG, PNG or PDF files can be uploaded.`; return; }
+      if (count >= slotsLeft) { problem = `A maximum of ${MAX_CERTIFICATES} certificates is allowed (${keptCertificates.length} already stored).`; return; }
+      if (keptBytes + bytes + file.size > MAX_CERTIFICATES_TOTAL_MB * 1024 * 1024) { problem = `The total size of all certificates must not exceed ${MAX_CERTIFICATES_TOTAL_MB} MB. "${file.name}" was not added.`; return; }
+      fitting.push(file); count += 1; bytes += file.size;
+    });
+    if (fitting.length) setNewCertificates((prev) => [...prev, ...fitting]);
+    setErrors((prev) => ({ ...prev, certificates: problem || undefined }));
+  };
+
+  const toggleRemoveCertificate = (certId) => {
+    setRemovedCertIds((prev) => (prev.includes(certId) ? prev.filter((x) => x !== certId) : [...prev, certId]));
+    clearError("certificates");
   };
 
   /* ── view / download the stored attachments ── */
@@ -176,6 +207,8 @@ export default function EditOnboarding() {
     fd.append("whatsAppNumber", buildPhone(whatsapp.countryIso, whatsapp.number));
     if (newCopy) fd.append("passportCopy", newCopy);
     if (newPhoto) fd.append("passportPhoto", newPhoto);
+    newCertificates.forEach((f) => fd.append("certificates", f));
+    removedCertIds.forEach((cid) => fd.append("removeCertificateIds", cid));
 
     setLoading(true);
     postRequest("EmployeeOnboarding/Update", fd)
@@ -283,20 +316,41 @@ export default function EditOnboarding() {
             error={errors.passportPhoto} icon={<ImageIcon />} onSelect={pickFile("passportPhoto", "Passport-size Photo", setNewPhoto)} onRemove={() => setNewPhoto(null)} optional />
         </Group>
 
-        <Group title={`Certificates (${certificates.length})`}>
+        <Group title={`Certificates (${keptCertificates.length}${newCertificates.length ? ` + ${newCertificates.length} new` : ""})`}>
           {certificates.length === 0 ? (
-            <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 14 }}>No certificates were uploaded.</div>
-          ) : certificates.map((c) => (
-            <div key={c.certificateId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", border: "1px solid var(--border)", borderRadius: 10, background: "var(--bg)", marginBottom: 10, flexWrap: "wrap" }}>
-              <FileText size={20} color="var(--primary)" />
-              <div style={{ flex: 1, minWidth: 160 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)", wordBreak: "break-all" }}>{c.fileName}</div>
-                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{(c.fileSize / 1024 / 1024).toFixed(2)} MB</div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 14 }}>No certificates have been uploaded yet.</div>
+          ) : certificates.map((c) => {
+            const removed = removedCertIds.includes(c.certificateId);
+            return (
+              <div key={c.certificateId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", border: `1px solid ${removed ? "var(--coral)" : "var(--border)"}`, borderRadius: 10, background: "var(--bg)", marginBottom: 10, flexWrap: "wrap", opacity: removed ? 0.6 : 1 }}>
+                <FileText size={20} color="var(--primary)" />
+                <div style={{ flex: 1, minWidth: 160 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)", wordBreak: "break-all", textDecoration: removed ? "line-through" : "none" }}>{c.fileName}</div>
+                  <div style={{ fontSize: 12, color: removed ? "var(--coral)" : "var(--text-muted)" }}>
+                    {removed ? "Will be deleted when you save" : `${(c.fileSize / 1024 / 1024).toFixed(2)} MB`}
+                  </div>
+                </div>
+                {!removed && <button type="button" className="btn btn-outline" style={{ padding: "6px 12px" }} onClick={() => viewCertificate(c)}><Eye size={14} /> View</button>}
+                {!removed && <button type="button" className="btn btn-outline" style={{ padding: "6px 12px" }} onClick={() => downloadCertificate(c)}><Download size={14} /> Download</button>}
+                <button type="button" className="btn btn-outline" style={{ padding: "6px 12px", color: "var(--coral)" }} onClick={() => toggleRemoveCertificate(c.certificateId)}>
+                  {removed ? <><RotateCcw size={14} /> Undo</> : <><Trash2 size={14} /> Remove</>}
+                </button>
               </div>
-              <button type="button" className="btn btn-outline" style={{ padding: "6px 12px" }} onClick={() => viewCertificate(c)}><Eye size={14} /> View</button>
-              <button type="button" className="btn btn-outline" style={{ padding: "6px 12px" }} onClick={() => downloadCertificate(c)}><Download size={14} /> Download</button>
-            </div>
-          ))}
+            );
+          })}
+
+          <MultiFileUploadBox
+            id="edit-certificates"
+            label="Add certificates"
+            hint={`JPG, PNG or PDF · ${slotsLeft} more file${slotsLeft === 1 ? "" : "s"} and ${mbLeft.toFixed(2)} MB left (max ${MAX_CERTIFICATES} files, ${MAX_CERTIFICATES_TOTAL_MB} MB in total)`}
+            accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
+            files={newCertificates}
+            max={slotsLeft}
+            maxTotalMb={Number(mbLeft.toFixed(2))}
+            error={errors.certificates}
+            onAdd={addCertificates}
+            onRemove={(idx) => { setNewCertificates((prev) => prev.filter((_, k) => k !== idx)); clearError("certificates"); }}
+          />
         </Group>
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginBottom: 32 }}>
