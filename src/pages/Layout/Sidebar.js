@@ -4,7 +4,7 @@ import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, Users, LogOut, ChevronLeft, ChevronRight,
   Megaphone, File, CalendarCheck2, UserMinus, ClipboardList, Calendar, Receipt,
-  AlertTriangle, X, Briefcase, UserCheck,
+  AlertTriangle, X, Briefcase, UserCheck, FileBarChart2, ShieldCheck,
 } from "lucide-react";
 import { cookieKeys, getCookie } from "../../services/Cookies";
 import { cookieObj } from "../../models/cookieObj";
@@ -12,8 +12,11 @@ import { useNavigate } from "react-router-dom";
 
 const menuItems = [
   { to:"/dashboard",         label:"Dashboard",      icon:<LayoutDashboard size={18}/>, roles:["Admin","Manager","TeamLead","Employee"], hiddenDepartments:["onboarding"] },
-  { to:"/employees",         label:"Employees",      icon:<Users size={18}/>,           roles:["Admin","Manager","TeamLead"], hiddenDepartments:["onboarding"] },
+  { to:"/employees",         label:"Employees",      icon:<Users size={18}/>,           roles:["Admin","Manager","TeamLead"] },
   { to:"/onboarding",       label:"Onboarding",     icon:<UserCheck size={18}/>,       roles:["Admin","Manager","TeamLead","Employee"], departments:["onboarding"] },
+  { to:"/work-status",        label:"Work Status",    icon:<Briefcase size={18}/>,       roles:["Manager","TeamLead","Employee"], departments:["onboarding"] },
+  { to:"/work-status-report", label:"Work Status Report", icon:<FileBarChart2 size={18}/>, roles:["Manager","TeamLead"], departments:["onboarding"] },
+  { to:"/access-control",    label:"Access Control", icon:<ShieldCheck size={18}/>,     roles:["Manager"], departments:["onboarding"] },
   { to:"/timesheet",         label:"Timesheet",      icon:<ClipboardList size={18}/>,   roles:["Admin","Manager","TeamLead","Employee"], hiddenDepartments:["onboarding"] },
   //{ to:"/job-management",    label:"Job Management", icon:<Briefcase size={18}/>,       roles:["Admin","Manager","Employee"], departments:["hr-offshore"] },
   { to:"/attendance", label:"Attendance", icon:<CalendarCheck2 size={18}/>, roles:["Admin","Manager","TeamLead","Employee"], hiddenDepartments:["deizeisau", "onboarding"] },

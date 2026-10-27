@@ -32,6 +32,9 @@ import Projects from "./pages/Projects/Projects";
 import CreateProject from "./pages/Projects/CreateProject";
 import Onboarding from "./pages/Onboarding/Onboarding";
 import EditOnboarding from "./pages/Onboarding/EditOnboarding";
+import WorkStatus from "./pages/WorkStatus/WorkStatus";
+import WorkStatusReport from "./pages/WorkStatus/WorkStatusReport";
+import AccessControl from "./pages/AccessControl/AccessControl";
 import EmployeeDetailsForm from "./pages/PublicForms/EmployeeDetailsForm";
 
 const routes = [
@@ -73,6 +76,9 @@ const routes = [
       { path: "calendar/edit-event", element: <CreateHoliday /> },
       { path: "onboarding", element: <Onboarding /> },
       { path: "onboarding/edit/:id", element: <EditOnboarding /> },
+      { path: "work-status", element: <WorkStatus /> },
+      { path: "work-status-report", element: <WorkStatusReport /> },
+      { path: "access-control", element: <AccessControl /> },
       { path: "company-documents", element: <CompanyDocument /> },
       { path: "company-documents/upload", element: <DocumentUploadForm /> },
       { path: "company-documents/edit", element: <DocumentUploadForm /> },

@@ -11,6 +11,9 @@ import PhoneField, { buildPhone, findCountry, parsePhone } from "../../component
 import FileUploadBox from "../../components/FileUploadBox";
 import MultiFileUploadBox from "../../components/MultiFileUploadBox";
 import Group from "../../components/GroupCard";
+import { usePermissions } from "../../services/Permissions";
+
+const STATUS_OPTIONS = [{ label: "Active", value: "Active" }, { label: "Inactive", value: "Inactive" }];
 
 const EMAIL_STATUS_OPTIONS = [{ label: "Enabled", value: "Enabled" }, { label: "Disabled", value: "Disabled" }];
 const SIEMENS_OPTIONS = [{ label: "Yes", value: "Yes" }, { label: "No", value: "No" }];
@@ -31,6 +34,8 @@ const extOf = (file) => (file?.name?.split(".").pop() || "").toLowerCase();
 export default function EditOnboarding() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const perms = usePermissions();
+  const canEdit = !!perms?.onboarding?.edit;   // Read-only users see the details but cannot change them
 
   const [loading, setLoading] = useState(false);
   const [record, setRecord] = useState(null);     // original row (for file names / audit info)
@@ -61,6 +66,7 @@ export default function EditOnboarding() {
           currentAddress: d.currentAddress || "", nConsEmail: d.nConsEmail || "", nConsEmailStatus: d.nConsEmailStatus || "",
           visaType: d.visaType || "", workVisaExpiryDate: d.workVisaExpiryDate ? d.workVisaExpiryDate.split("T")[0] : "",
           hasSiemensIdCard: d.hasSiemensIdCard || "",
+          employeeStatus: d.employeeStatus || "Active",
           siemensIdReceivedMonth: d.siemensIdReceivedMonth ? d.siemensIdReceivedMonth.slice(0, 7) : "",
         });
         setPhone(parsePhone(d.mobileNumber));
@@ -175,6 +181,7 @@ export default function EditOnboarding() {
     const total = findCountry(phone.countryIso).dial + phone.number;
     if (!phone.number) e.mobileNumber = "Mobile Number is required";
     else if (total.length < 8 || total.length > 15) e.mobileNumber = "Enter a valid mobile number";
+    if (!["Active", "Inactive"].includes(v("employeeStatus"))) e.employeeStatus = "Select Active or Inactive";
     if (!v("hasSiemensIdCard")) e.hasSiemensIdCard = "Please select Yes or No";
     else if (v("hasSiemensIdCard") === "Yes") {
       if (!v("siemensIdReceivedMonth")) e.siemensIdReceivedMonth = "Please select the month the ID was received";
@@ -197,6 +204,7 @@ export default function EditOnboarding() {
   };
 
   const handleSave = () => {
+    if (!canEdit) { ToastError("You do not have permission to edit"); return; }
     const e = validate();
     if (Object.keys(e).length) { setErrors(e); ToastError("Please fix the highlighted fields"); return; }
 
@@ -252,6 +260,12 @@ export default function EditOnboarding() {
       </div>
 
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
+        {perms && !canEdit && (
+          <div style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 10, background: "#fef3c7", color: "#92400e", fontSize: 13, fontWeight: 600 }}>
+            You have view-only access. Contact an Admin or Manager to change these details.
+          </div>
+        )}
+        <fieldset disabled={!canEdit} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
         <Group title="About you">
           <div className="fc-row fc-row-2">
             <FormInput label="First name" required value={form.firstName} onChange={set("firstName")} error={errors.firstName} maxLength={100} />
@@ -265,6 +279,7 @@ export default function EditOnboarding() {
           <div className="fc-row fc-row-2">
             <FormInput label="Passport number" required value={form.passportNo} onChange={set("passportNo")} error={errors.passportNo} maxLength={20} />
             <FormInput label="SAL code" value={form.salCode} onChange={set("salCode")} error={errors.salCode} maxLength={50} />
+            <FormSelect label="Status" required options={STATUS_OPTIONS} value={form.employeeStatus} onChange={set("employeeStatus")} error={errors.employeeStatus} />
           </div>
         </Group>
 
@@ -306,14 +321,18 @@ export default function EditOnboarding() {
           <FormTextarea label="Current address" required value={form.currentAddress} onChange={set("currentAddress")} error={errors.currentAddress} rows={3} maxLength={500} />
         </Group>
 
+        </fieldset>
+
         <Group title="Documents">
           {fileRow("Passport copy", <FileText size={20} color="var(--primary)" />, record.passportCopyFileName, "PassportCopy")}
           {fileRow("Passport-size photo", <ImageIcon size={20} color="var(--primary)" />, record.passportPhotoFileName, "PassportPhoto")}
+          {canEdit && <>
           <div style={{ fontSize: 12.5, color: "var(--text-muted)", margin: "14px 0" }}>To replace a document, upload a new file below. Leave empty to keep the current one.</div>
           <FileUploadBox id="edit-copy" label="Replace passport copy" hint="JPG, PNG or PDF · max 5 MB" accept=".jpg,.jpeg,.png,.pdf" file={newCopy}
             error={errors.passportCopy} icon={<FileText />} onSelect={pickFile("passportCopy", "Passport Copy", setNewCopy)} onRemove={() => setNewCopy(null)} optional />
           <FileUploadBox id="edit-photo" label="Replace passport-size photo" hint="JPG, PNG or PDF · max 5 MB" accept=".jpg,.jpeg,.png,.pdf" file={newPhoto}
             error={errors.passportPhoto} icon={<ImageIcon />} onSelect={pickFile("passportPhoto", "Passport-size Photo", setNewPhoto)} onRemove={() => setNewPhoto(null)} optional />
+          </>}
         </Group>
 
         <Group title={`Certificates (${keptCertificates.length}${newCertificates.length ? ` + ${newCertificates.length} new` : ""})`}>
@@ -332,14 +351,14 @@ export default function EditOnboarding() {
                 </div>
                 {!removed && <button type="button" className="btn btn-outline" style={{ padding: "6px 12px" }} onClick={() => viewCertificate(c)}><Eye size={14} /> View</button>}
                 {!removed && <button type="button" className="btn btn-outline" style={{ padding: "6px 12px" }} onClick={() => downloadCertificate(c)}><Download size={14} /> Download</button>}
-                <button type="button" className="btn btn-outline" style={{ padding: "6px 12px", color: "var(--coral)" }} onClick={() => toggleRemoveCertificate(c.certificateId)}>
+                {canEdit && <button type="button" className="btn btn-outline" style={{ padding: "6px 12px", color: "var(--coral)" }} onClick={() => toggleRemoveCertificate(c.certificateId)}>
                   {removed ? <><RotateCcw size={14} /> Undo</> : <><Trash2 size={14} /> Remove</>}
-                </button>
+                </button>}
               </div>
             );
           })}
 
-          <MultiFileUploadBox
+          {canEdit && <MultiFileUploadBox
             id="edit-certificates"
             label="Add certificates"
             hint={`JPG, PNG or PDF · ${slotsLeft} more file${slotsLeft === 1 ? "" : "s"} and ${mbLeft.toFixed(2)} MB left (max ${MAX_CERTIFICATES} files, ${MAX_CERTIFICATES_TOTAL_MB} MB in total)`}
@@ -350,12 +369,12 @@ export default function EditOnboarding() {
             error={errors.certificates}
             onAdd={addCertificates}
             onRemove={(idx) => { setNewCertificates((prev) => prev.filter((_, k) => k !== idx)); clearError("certificates"); }}
-          />
+          />}
         </Group>
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginBottom: 32 }}>
-          <button className="btn btn-outline" style={{ minWidth: 120, height: 42, justifyContent: "center" }} onClick={() => navigate("/onboarding")}>Cancel</button>
-          <button className="btn btn-primary" style={{ minWidth: 150, height: 42, justifyContent: "center" }} onClick={handleSave} disabled={loading}><Save size={15} /> Save changes</button>
+          <button className="btn btn-outline" style={{ minWidth: 120, height: 42, justifyContent: "center" }} onClick={() => navigate("/onboarding")}>{canEdit ? "Cancel" : "Back"}</button>
+          {canEdit && <button className="btn btn-primary" style={{ minWidth: 150, height: 42, justifyContent: "center" }} onClick={handleSave} disabled={loading}><Save size={15} /> Save changes</button>}
         </div>
       </div>
     </div>

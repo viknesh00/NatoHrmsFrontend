@@ -1,13 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
-import { Pencil, Download, Link2, UserCheck, FileText, Image as ImageIcon, X, Trash2, AlertTriangle, Award, Eye } from "lucide-react";
+import { Pencil, Download, Link2, UserCheck, FileText, Image as ImageIcon, X, Trash2, AlertTriangle, Award, Eye, SlidersHorizontal, Briefcase } from "lucide-react";
 import dayjs from "dayjs";
 import { getRequest, postRequest } from "../../services/Apiservice";
 import { ToastError, ToastSuccess } from "../../services/ToastMsg";
 import LoadingMask from "../../services/LoadingMask";
 import Breadcrumb from "../../services/Breadcrumb";
 import ProTable from "../../components/ProTable";
+import { usePermissions } from "../../services/Permissions";
+
+// Name, the selection box and Actions can never be hidden
+const ALWAYS_VISIBLE = ["select", "fullName", "actions"];
 
 const fmtDate = (d) => (d ? dayjs(d).format("DD-MM-YYYY") : "—");
 const fmtDateTime = (d) => (d ? dayjs(d).format("DD-MM-YYYY HH:mm") : "—");
@@ -30,8 +34,15 @@ export default function Onboarding() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [deleteTarget, setDeleteTarget] = useState(null); // array of rows to delete
   const [certView, setCertView] = useState(null);         // { row, items } - certificates popup
+  const perms = usePermissions();                          // Read / Write / Edit rights of this user
+  const canEdit = !!perms?.onboarding?.edit;
+  const [hiddenCols, setHiddenCols] = useState([]);        // column keys hidden for everybody (set by Admin / Manager)
+  const [colDraft, setColDraft] = useState(null);          // hidden list being edited in the Columns popup
 
   useEffect(() => {
+    getRequest("EmployeeOnboarding/ColumnSettings")
+      .then((res) => setHiddenCols(res.data?.hiddenColumns || []))
+      .catch(() => {});
     fetchList();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -42,9 +53,12 @@ export default function Onboarding() {
       .then((res) => {
         setList((res.data || []).map((d) => ({
           ...d,
+          employeeStatus: d.employeeStatus || "Active",
           fullName: `${d.firstName} ${d.lastName}`,
           dobText: fmtDate(d.dateOfBirth),
           siemensMonthText: d.siemensIdReceivedMonth ? dayjs(d.siemensIdReceivedMonth).format("MMM YYYY") : "—",
+          workStatus: d.workStatus || "Not assigned",
+          workPmName: d.workPmName || "—",
           consentText: d.consentGiven ? "Yes" : "—",
           visaExpiryText: fmtDate(d.workVisaExpiryDate),
           submittedText: fmtDateTime(d.submittedAt),
@@ -86,6 +100,15 @@ export default function Onboarding() {
     } finally {
       setLoading(false);
     }
+  };
+
+  /* ── Columns control (Admin / Manager) - one setting for all users, data is never changed ── */
+  const saveColumns = () => {
+    setLoading(true);
+    postRequest("EmployeeOnboarding/ColumnSettings", { hiddenColumns: colDraft })
+      .then(() => { setHiddenCols(colDraft); setColDraft(null); ToastSuccess("Column settings saved for all users"); })
+      .catch((err) => ToastError(err.response?.data?.message || "Could not save the column settings"))
+      .finally(() => setLoading(false));
   };
 
   /* ── delete (single row or selected rows) ── */
@@ -152,7 +175,7 @@ export default function Onboarding() {
 
   const linkBtn = { background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--primary)", fontSize: 12.5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 };
 
-  const columns = [
+  const allColumns = [
     {
       field: "select", width: 44,
       label: <input type="checkbox" checked={allSelected} onChange={toggleAll} style={{ cursor: "pointer" }} title="Select all" />,
@@ -164,15 +187,18 @@ export default function Onboarding() {
     { field: "dobText", label: "Date of Birth" },
     { field: "mobileNumber", label: "Mobile" },
     { field: "passportNo", label: "Passport No." },
-    { field: "salCode", label: "SAL Code" },
-    { field: "city", label: "City" },
+    { field: "salCode", label: "SAL Code", filterable: true },
+    { field: "employeeStatus", label: "Status", filterable: true },
+    { field: "workStatus", label: "Work Status", filterable: true },
+    { field: "workPmName", label: "PM Name" },
+    { field: "city", label: "City", filterable: true },
     { field: "country", label: "Country", filterable: true },
     { field: "nConsEmail", label: "N-Cons Email" },
     { field: "nConsEmailStatus", label: "N-Cons Status", filterable: true },
     { field: "personalEmail", label: "Personal Email" },
     { field: "visaType", label: "Visa / Permit" },
     { field: "visaExpiryText", label: "Visa Expiry" },
-    { field: "hasSiemensIdCard", label: "Siemens ID", filterable: true },
+    { field: "hasSiemensIdCard", label: "ID Card Status", filterable: true },
     { field: "certificateCount", label: "Certificates" },
     { field: "siemensMonthText", label: "Siemens ID Received" },
     { field: "whatsAppNumber", label: "WhatsApp" },
@@ -196,11 +222,17 @@ export default function Onboarding() {
         <div style={{ display: "flex", gap: 4 }}>
           <button className="icon-btn" title="View / Edit" onClick={() => navigate(`/onboarding/edit/${row.submissionId}`)}><Pencil size={15} /></button>
           <button className="icon-btn" title="Download details + files" onClick={() => downloadOne(row)}><Download size={15} /></button>
-          <button className="icon-btn" title="Delete" onClick={() => setDeleteTarget([row])}><Trash2 size={15} /></button>
+          {perms?.workStatus?.read && (
+            <button className="icon-btn" title="Work status" onClick={() => navigate(`/work-status?employee=${row.submissionId}`)}><Briefcase size={15} /></button>
+          )}
+          {canEdit && <button className="icon-btn" title="Delete" onClick={() => setDeleteTarget([row])}><Trash2 size={15} /></button>}
         </div>
       ),
     },
   ];
+
+  const columns = allColumns.filter((c) => ALWAYS_VISIBLE.includes(c.field) || !hiddenCols.includes(c.field));
+  const toggleableColumns = allColumns.filter((c) => !ALWAYS_VISIBLE.includes(c.field));
 
   return (
     <div>
@@ -212,6 +244,9 @@ export default function Onboarding() {
           <p className="page-subtitle">Details and documents submitted through the employee details form</p>
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {perms?.isAdminOrManager && (
+            <button className="btn btn-outline" onClick={() => setColDraft([...hiddenCols])}><SlidersHorizontal size={15} /> Columns</button>
+          )}
           <button className="btn btn-outline" onClick={copyFormLink}><Link2 size={15} /> Copy form link</button>
           <button className="btn btn-primary" onClick={downloadAll} disabled={list.length === 0}><Download size={15} /> Download all</button>
         </div>
@@ -221,12 +256,52 @@ export default function Onboarding() {
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", marginBottom: 12, borderRadius: 12, background: "var(--primary-ghost)", border: "1px solid var(--border-strong)" }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: "var(--primary)" }}>{selectedIds.length} selected</span>
           <button className="btn btn-primary" style={{ padding: "6px 14px" }} onClick={downloadSelected}><Download size={14} /> Download selected</button>
-          <button className="btn btn-ghost" style={{ padding: "6px 14px", color: "#e11d48" }} onClick={() => setDeleteTarget(list.filter((r) => selectedIds.includes(r.submissionId)))}><Trash2 size={14} /> Delete selected</button>
+          {canEdit && <button className="btn btn-ghost" style={{ padding: "6px 14px", color: "#e11d48" }} onClick={() => setDeleteTarget(list.filter((r) => selectedIds.includes(r.submissionId)))}><Trash2 size={14} /> Delete selected</button>}
           <button className="btn btn-ghost" style={{ padding: "6px 12px" }} onClick={() => setSelectedIds([])}><X size={14} /> Clear</button>
         </div>
       )}
 
       <ProTable title="Employee Details" columns={columns} data={list} multiSelect={false} />
+
+      {/* ── Columns popup (Admin / Manager) ── */}
+      {colDraft && createPortal(
+        <div style={{ position: "fixed", inset: 0, background: "rgba(20,0,50,0.55)", backdropFilter: "blur(5px)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+          onClick={() => setColDraft(null)}>
+          <div style={{ background: "white", borderRadius: 20, boxShadow: "0 20px 60px rgba(0,0,0,0.25)", width: "100%", maxWidth: 460, maxHeight: "85vh", overflow: "hidden", display: "flex", flexDirection: "column" }}
+            onClick={(e) => e.stopPropagation()}>
+            <div style={{ height: 4, background: "linear-gradient(90deg,#6c3fc5,#0d9488)" }} />
+            <div style={{ padding: "20px 24px 8px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div>
+                <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 18, fontWeight: 900, color: "#1e1143" }}>Columns</div>
+                <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 2 }}>Choose the columns shown to everyone. Name and Actions are always visible. The employee data is not changed.</div>
+              </div>
+              <button onClick={() => setColDraft(null)} style={{ width: 30, height: 30, borderRadius: 8, background: "#f1f5f9", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", flexShrink: 0 }}><X size={16} /></button>
+            </div>
+            <div style={{ padding: "4px 24px 8px", display: "flex", gap: 8 }}>
+              <button className="btn btn-ghost" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => setColDraft([])}>Show all</button>
+              <button className="btn btn-ghost" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => setColDraft(toggleableColumns.map((c) => c.field))}>Hide all</button>
+            </div>
+            <div style={{ padding: "4px 24px 8px", overflowY: "auto" }}>
+              {[{ field: "fullName", label: "Name" }, ...toggleableColumns, { field: "actions", label: "Actions" }].map((c) => {
+                const locked = ALWAYS_VISIBLE.includes(c.field);
+                const visible = locked || !colDraft.includes(c.field);
+                return (
+                  <label key={c.field} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 4px", fontSize: 13.5, color: locked ? "#94a3b8" : "var(--text-primary)", cursor: locked ? "not-allowed" : "pointer" }}>
+                    <input type="checkbox" checked={visible} disabled={locked} style={{ cursor: "inherit" }}
+                      onChange={() => setColDraft((d) => (d.includes(c.field) ? d.filter((x) => x !== c.field) : [...d, c.field]))} />
+                    {c.label}{locked ? " (always visible)" : ""}
+                  </label>
+                );
+              })}
+            </div>
+            <div style={{ padding: "12px 24px 20px", display: "flex", gap: 10, justifyContent: "flex-end", borderTop: "1px solid var(--border)" }}>
+              <button className="btn btn-outline" onClick={() => setColDraft(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={saveColumns}>Save for all users</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* ── Certificates popup ── */}
       {certView && createPortal(
