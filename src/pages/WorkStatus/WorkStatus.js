@@ -8,12 +8,11 @@ import { ToastError, ToastSuccess } from "../../services/ToastMsg";
 import LoadingMask from "../../services/LoadingMask";
 import Breadcrumb from "../../services/Breadcrumb";
 import ProTable from "../../components/ProTable";
-import { FormInput, FormSelect, FormDate } from "../../components/FormComponents";
+import { FormInput, FormSelect, FormDate, FormCombo } from "../../components/FormComponents";
 import { getCookie } from "../../services/Cookies";
 
 const STATUS_OPTIONS = [{ label: "Active", value: "Active" }, { label: "Deactive", value: "Deactive" }];
 const fmtDate = (d) => (d ? dayjs(d).format("DD-MM-YYYY") : "—");
-const NEW_PM = "__new__";   // "Add new PM" choice in the dropdown
 const EMPTY = { workStatusId: null, submissionId: "", salCode: "", pmName: "", startDate: "", endDate: "", workStatus: "Active" };
 
 export default function WorkStatus() {
@@ -30,7 +29,6 @@ export default function WorkStatus() {
   const [pms, setPms] = useState([]);
   const [form, setForm] = useState(null);                // record being added / edited
   const [errors, setErrors] = useState({});
-  const [typePm, setTypePm] = useState(false);          // PM not in the list: type the name
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   const load = () => {
@@ -58,20 +56,13 @@ export default function WorkStatus() {
     ...employees.map((e) => ({ label: `${e.firstName} ${e.lastName}${e.passportNo ? ` (${e.passportNo})` : ""}`, value: String(e.submissionId) })),
   ], [employees]);
 
-  const pmOptions = useMemo(() => {
-    const list = pms.map((p) => ({ label: p.name, value: p.name }));
-    // keep a stored PM visible even if that user is no longer in the list
-    if (form?.pmName && !list.some((o) => o.value === form.pmName)) list.unshift({ label: form.pmName, value: form.pmName });
-    return [{ label: "Select PM", value: "" }, ...list, { label: "+ Add new PM…", value: NEW_PM }];
-  }, [pms, form?.pmName]);
-
   const openAdd = () => {
     const emp = employees.find((e) => String(e.submissionId) === employeeFilter);
-    setErrors({}); setTypePm(false);
+    setErrors({});
     setForm({ ...EMPTY, submissionId: employeeFilter || "", salCode: emp?.salCode || "" });
   };
   const openEdit = (r) => {
-    setErrors({}); setTypePm(false);
+    setErrors({});
     setForm({
       workStatusId: r.workStatusId, submissionId: String(r.submissionId), salCode: r.salCode, pmName: r.pmName,
       startDate: r.startDate ? r.startDate.split("T")[0] : "", endDate: r.endDate ? r.endDate.split("T")[0] : "", workStatus: r.workStatus,
@@ -173,16 +164,9 @@ export default function WorkStatus() {
               <FormSelect label="Employee" required options={employeeOptions} value={form.submissionId} onChange={pickEmployee} error={errors.submissionId} disabled={!!form.workStatusId} />
               <div className="fc-row fc-row-2">
                 <FormInput label="SAL Code" required value={form.salCode} onChange={set("salCode")} error={errors.salCode} maxLength={50} />
-                {typePm ? (
-                  <div>
-                    <FormInput label="PM Name" required placeholder="Type the PM name" value={form.pmName} onChange={set("pmName")} error={errors.pmName} maxLength={150} autoFocus />
-                    <button type="button" className="btn btn-ghost" style={{ padding: "2px 8px", fontSize: 12, marginTop: -6 }}
-                      onClick={() => { setTypePm(false); setForm((p) => ({ ...p, pmName: "" })); }}>Choose from list</button>
-                  </div>
-                ) : (
-                  <FormSelect label="PM Name" required options={pmOptions} value={form.pmName} error={errors.pmName}
-                    onChange={(e) => { if (e.target.value === NEW_PM) { setTypePm(true); setForm((p) => ({ ...p, pmName: "" })); } else set("pmName")(e); }} />
-                )}
+                <FormCombo label="PM Name" required options={pms.map((p) => p.name)} value={form.pmName} error={errors.pmName} maxLength={150}
+                  placeholder="Select or type the PM name"
+                  onChange={(v) => { setForm((p) => ({ ...p, pmName: v })); setErrors((p) => ({ ...p, pmName: undefined })); }} />
                 <FormDate label="Start Date" required value={form.startDate} onChange={set("startDate")} error={errors.startDate} />
                 <FormDate label="End Date" value={form.endDate} onChange={set("endDate")} error={errors.endDate} min={form.startDate || undefined} />
               </div>

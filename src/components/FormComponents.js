@@ -399,6 +399,58 @@ export function FormDropdown({ label, required, hint, error, options = [], value
   );
 }
 
+/* ── FormCombo: dropdown list (same look as FormDropdown) that also lets the user type a value not in the list ── */
+export function FormCombo({ label, required, hint, error, options = [], value = "", onChange, placeholder = "Select or type", disabled, maxLength }) {
+  injectStyles();
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const labelOf = o => String(o.label ?? o);
+  const q = (value || "").trim().toLowerCase();
+  const exact = options.some(o => labelOf(o).toLowerCase() === q);
+  const shown = !q || exact ? options : options.filter(o => labelOf(o).toLowerCase().includes(q));
+
+  return (
+    <div className="fc-group" ref={ref}>
+      {label && <label className="fc-label">{label}{required && <span className="req">*</span>}</label>}
+      <div className="fc-dd">
+        <input
+          className="fc-input" style={{ paddingRight: 36 }} autoComplete="off"
+          value={value} placeholder={placeholder} disabled={disabled} maxLength={maxLength}
+          onChange={e => { onChange(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+        />
+        <span className="fc-input-icon" style={{ cursor: "pointer" }} onClick={() => !disabled && setOpen(o => !o)}>
+          <ChevronDown size={15} style={{ transform: open ? "rotate(180deg)" : "", transition: "transform 0.2s" }} />
+        </span>
+        {open && shown.length > 0 && (
+          <div className="fc-dd-menu">
+            {shown.map(o => {
+              const lbl = labelOf(o);
+              const isSel = lbl === value;
+              return (
+                <div key={lbl} className={`fc-dd-item${isSel ? " selected" : ""}`}
+                  onMouseDown={e => e.preventDefault()}
+                  onClick={() => { onChange(lbl); setOpen(false); }}>
+                  {lbl} {isSel && <Check size={14} />}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      {error && <div className="fc-error">{error}</div>}
+      {hint && !error && <div className="fc-hint">{hint}</div>}
+    </div>
+  );
+}
+
 /* ── FormDate (custom calendar picker) ── */
 export function FormDate({ label, required, hint, error, value, onChange, disabled, min, max, placeholder = "Select date" }) {
   injectStyles();
@@ -427,13 +479,16 @@ export function FormDate({ label, required, hint, error, value, onChange, disabl
     if (left + popupWidth > window.innerWidth - 8) {
       left = window.innerWidth - popupWidth - 8;
     }
-    let top = rect.bottom + 6;
-    // if not enough room below, flip above
-    const estimatedHeight = 340;
-    if (top + estimatedHeight > window.innerHeight && rect.top > estimatedHeight) {
-      top = rect.top - estimatedHeight - 6;
+    const h = popupRef.current?.offsetHeight || 300;       // real height once the popup is shown
+    const below = window.innerHeight - rect.bottom - 6;
+    const above = rect.top - 6;
+    if (below >= h) {
+      setPopupPos({ top: rect.bottom + 6, left, width: popupWidth });                                   // fits below the field
+    } else if (above >= h) {
+      setPopupPos({ bottom: window.innerHeight - rect.top + 6, left, width: popupWidth });             // fits above the field
+    } else {
+      setPopupPos({ top: Math.max(8, window.innerHeight - h - 8), left, width: popupWidth });          // neither: keep it fully on screen
     }
-    setPopupPos({ top, left, width: popupWidth });
   };
 
   useEffect(() => {
@@ -446,7 +501,7 @@ export function FormDate({ label, required, hint, error, value, onChange, disabl
       window.removeEventListener("scroll", onScrollOrResize, true);
       window.removeEventListener("resize", onScrollOrResize);
     };
-  }, [open, mode, view.year]);
+  }, [open, mode, view.year, view.month]);
 
   // Close on outside click (checks both trigger and portaled popup)
   useEffect(() => {
@@ -520,7 +575,7 @@ export function FormDate({ label, required, hint, error, value, onChange, disabl
     <div
       ref={popupRef}
       className="fc-cal-popup"
-      style={{ position: "fixed", top: popupPos.top, left: popupPos.left, width: popupPos.width, zIndex: 10000 }}
+      style={{ position: "fixed", top: popupPos.top ?? "auto", bottom: popupPos.bottom ?? "auto", left: popupPos.left, width: popupPos.width, zIndex: 10050 }}
     >
       <div className="fc-cal-header">
         <button className="fc-cal-nav" type="button" onClick={() => {
