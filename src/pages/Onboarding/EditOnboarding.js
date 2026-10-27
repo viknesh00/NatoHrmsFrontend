@@ -11,7 +11,7 @@ import PhoneField, { buildPhone, findCountry, parsePhone } from "../../component
 import FileUploadBox from "../../components/FileUploadBox";
 import MultiFileUploadBox from "../../components/MultiFileUploadBox";
 import Group from "../../components/GroupCard";
-import { usePermissions } from "../../services/Permissions";
+import { getCookie } from "../../services/Cookies";
 
 const STATUS_OPTIONS = [{ label: "Active", value: "Active" }, { label: "Inactive", value: "Inactive" }];
 
@@ -34,8 +34,8 @@ const extOf = (file) => (file?.name?.split(".").pop() || "").toLowerCase();
 export default function EditOnboarding() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const perms = usePermissions();
-  const canEdit = !!perms?.onboarding?.edit;   // Read-only users see the details but cannot change them
+  const role = getCookie("role");
+  const canEdit = role === "Admin" || role === "Manager";   // Read-only users see the details but cannot change them
 
   const [loading, setLoading] = useState(false);
   const [record, setRecord] = useState(null);     // original row (for file names / audit info)
@@ -260,7 +260,7 @@ export default function EditOnboarding() {
       </div>
 
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
-        {perms && !canEdit && (
+        {!canEdit && (
           <div style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 10, background: "#fef3c7", color: "#92400e", fontSize: 13, fontWeight: 600 }}>
             You have view-only access. Contact an Admin or Manager to change these details.
           </div>

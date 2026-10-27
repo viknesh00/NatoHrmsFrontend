@@ -427,13 +427,13 @@ export function FormDate({ label, required, hint, error, value, onChange, disabl
     if (left + popupWidth > window.innerWidth - 8) {
       left = window.innerWidth - popupWidth - 8;
     }
-    let top = rect.bottom + 6;
-    // if not enough room below, flip above
     const estimatedHeight = 340;
-    if (top + estimatedHeight > window.innerHeight && rect.top > estimatedHeight) {
-      top = rect.top - estimatedHeight - 6;
+    // not enough room below but enough above: open upwards, anchored to the field (no gap)
+    if (rect.bottom + 6 + estimatedHeight > window.innerHeight && rect.top > estimatedHeight) {
+      setPopupPos({ bottom: window.innerHeight - rect.top + 6, left, width: popupWidth });
+    } else {
+      setPopupPos({ top: rect.bottom + 6, left, width: popupWidth });
     }
-    setPopupPos({ top, left, width: popupWidth });
   };
 
   useEffect(() => {
@@ -520,7 +520,7 @@ export function FormDate({ label, required, hint, error, value, onChange, disabl
     <div
       ref={popupRef}
       className="fc-cal-popup"
-      style={{ position: "fixed", top: popupPos.top, left: popupPos.left, width: popupPos.width, zIndex: 3000 }}
+      style={{ position: "fixed", top: popupPos.top, bottom: popupPos.bottom, left: popupPos.left, width: popupPos.width, zIndex: 10050 }}
     >
       <div className="fc-cal-header">
         <button className="fc-cal-nav" type="button" onClick={() => {

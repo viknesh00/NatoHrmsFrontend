@@ -9,19 +9,20 @@ import LoadingMask from "../../services/LoadingMask";
 import Breadcrumb from "../../services/Breadcrumb";
 import ProTable from "../../components/ProTable";
 import { FormInput, FormSelect, FormDate } from "../../components/FormComponents";
-import { usePermissions } from "../../services/Permissions";
+import { getCookie } from "../../services/Cookies";
 
 const STATUS_OPTIONS = [{ label: "Active", value: "Active" }, { label: "Deactive", value: "Deactive" }];
 const fmtDate = (d) => (d ? dayjs(d).format("DD-MM-YYYY") : "—");
+const NEW_PM = "__new__";   // "Add new PM" choice in the dropdown
 const EMPTY = { workStatusId: null, submissionId: "", salCode: "", pmName: "", startDate: "", endDate: "", workStatus: "Active" };
 
 export default function WorkStatus() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const employeeFilter = params.get("employee");        // opened from the Onboarding list for one employee
-  const perms = usePermissions();
-  const canWrite = !!perms?.workStatus?.write;
-  const canEdit = !!perms?.workStatus?.edit;
+  const role = getCookie("role");
+  const canEdit = role === "Admin" || role === "Manager";     // modify / delete
+  const canWrite = canEdit || role === "TeamLead";            // add new
 
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState([]);
@@ -29,6 +30,7 @@ export default function WorkStatus() {
   const [pms, setPms] = useState([]);
   const [form, setForm] = useState(null);                // record being added / edited
   const [errors, setErrors] = useState({});
+  const [typePm, setTypePm] = useState(false);          // PM not in the list: type the name
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   const load = () => {
@@ -60,16 +62,16 @@ export default function WorkStatus() {
     const list = pms.map((p) => ({ label: p.name, value: p.name }));
     // keep a stored PM visible even if that user is no longer in the list
     if (form?.pmName && !list.some((o) => o.value === form.pmName)) list.unshift({ label: form.pmName, value: form.pmName });
-    return [{ label: "Select PM", value: "" }, ...list];
+    return [{ label: "Select PM", value: "" }, ...list, { label: "+ Add new PM…", value: NEW_PM }];
   }, [pms, form?.pmName]);
 
   const openAdd = () => {
     const emp = employees.find((e) => String(e.submissionId) === employeeFilter);
-    setErrors({});
+    setErrors({}); setTypePm(false);
     setForm({ ...EMPTY, submissionId: employeeFilter || "", salCode: emp?.salCode || "" });
   };
   const openEdit = (r) => {
-    setErrors({});
+    setErrors({}); setTypePm(false);
     setForm({
       workStatusId: r.workStatusId, submissionId: String(r.submissionId), salCode: r.salCode, pmName: r.pmName,
       startDate: r.startDate ? r.startDate.split("T")[0] : "", endDate: r.endDate ? r.endDate.split("T")[0] : "", workStatus: r.workStatus,
@@ -89,17 +91,18 @@ export default function WorkStatus() {
     if (!form.submissionId) e.submissionId = "Please select an employee";
     if (!form.salCode.trim()) e.salCode = "SAL Code is required";
     else if (!/^[A-Za-z0-9\-_/ ]{1,50}$/.test(form.salCode.trim())) e.salCode = "SAL Code contains invalid characters";
-    if (!form.pmName) e.pmName = "PM Name is required";
+    if (!form.pmName.trim()) e.pmName = "PM Name is required";
     if (!form.startDate) e.startDate = "Start Date is required";
     if (form.startDate && form.endDate && form.endDate < form.startDate) e.endDate = "End Date cannot be before Start Date";
     if (!["Active", "Deactive"].includes(form.workStatus)) e.workStatus = "Select Active or Deactive";
     if (Object.keys(e).length) { setErrors(e); return; }
 
-    const pm = pms.find((p) => p.name === form.pmName);
+    const pmName = form.pmName.trim();
+    const pm = pms.find((p) => p.name === pmName);
     setLoading(true);
     postRequest("WorkStatus/Save", {
       workStatusId: form.workStatusId, submissionId: Number(form.submissionId), salCode: form.salCode.trim(),
-      pmName: form.pmName, pmEmail: pm?.email || null,
+      pmName, pmEmail: pm?.email || null,
       startDate: form.startDate, endDate: form.endDate || null, workStatus: form.workStatus,
     })
       .then(() => { ToastSuccess("Work status saved"); setForm(null); load(); })
@@ -170,7 +173,16 @@ export default function WorkStatus() {
               <FormSelect label="Employee" required options={employeeOptions} value={form.submissionId} onChange={pickEmployee} error={errors.submissionId} disabled={!!form.workStatusId} />
               <div className="fc-row fc-row-2">
                 <FormInput label="SAL Code" required value={form.salCode} onChange={set("salCode")} error={errors.salCode} maxLength={50} />
-                <FormSelect label="PM Name" required options={pmOptions} value={form.pmName} onChange={set("pmName")} error={errors.pmName} />
+                {typePm ? (
+                  <div>
+                    <FormInput label="PM Name" required placeholder="Type the PM name" value={form.pmName} onChange={set("pmName")} error={errors.pmName} maxLength={150} autoFocus />
+                    <button type="button" className="btn btn-ghost" style={{ padding: "2px 8px", fontSize: 12, marginTop: -6 }}
+                      onClick={() => { setTypePm(false); setForm((p) => ({ ...p, pmName: "" })); }}>Choose from list</button>
+                  </div>
+                ) : (
+                  <FormSelect label="PM Name" required options={pmOptions} value={form.pmName} error={errors.pmName}
+                    onChange={(e) => { if (e.target.value === NEW_PM) { setTypePm(true); setForm((p) => ({ ...p, pmName: "" })); } else set("pmName")(e); }} />
+                )}
                 <FormDate label="Start Date" required value={form.startDate} onChange={set("startDate")} error={errors.startDate} />
                 <FormDate label="End Date" value={form.endDate} onChange={set("endDate")} error={errors.endDate} min={form.startDate || undefined} />
               </div>

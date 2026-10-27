@@ -8,7 +8,7 @@ import { ToastError, ToastSuccess } from "../../services/ToastMsg";
 import LoadingMask from "../../services/LoadingMask";
 import Breadcrumb from "../../services/Breadcrumb";
 import ProTable from "../../components/ProTable";
-import { usePermissions } from "../../services/Permissions";
+import { getCookie } from "../../services/Cookies";
 
 // Name, the selection box and Actions can never be hidden
 const ALWAYS_VISIBLE = ["select", "fullName", "actions"];
@@ -34,8 +34,9 @@ export default function Onboarding() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [deleteTarget, setDeleteTarget] = useState(null); // array of rows to delete
   const [certView, setCertView] = useState(null);         // { row, items } - certificates popup
-  const perms = usePermissions();                          // Read / Write / Edit rights of this user
-  const canEdit = !!perms?.onboarding?.edit;
+  const role = getCookie("role");
+  const isAdminOrManager = role === "Admin" || role === "Manager";
+  const canEdit = isAdminOrManager;                        // only Admin / Manager can edit or delete
   const [hiddenCols, setHiddenCols] = useState([]);        // column keys hidden for everybody (set by Admin / Manager)
   const [colDraft, setColDraft] = useState(null);          // hidden list being edited in the Columns popup
 
@@ -220,9 +221,9 @@ export default function Onboarding() {
       field: "actions", label: "Actions",
       renderCell: (row) => (
         <div style={{ display: "flex", gap: 4 }}>
-          <button className="icon-btn" title="View / Edit" onClick={() => navigate(`/onboarding/edit/${row.submissionId}`)}><Pencil size={15} /></button>
+          {canEdit && <button className="icon-btn" title="View / Edit" onClick={() => navigate(`/onboarding/edit/${row.submissionId}`)}><Pencil size={15} /></button>}
           <button className="icon-btn" title="Download details + files" onClick={() => downloadOne(row)}><Download size={15} /></button>
-          {perms?.workStatus?.read && (
+          {(
             <button className="icon-btn" title="Work status" onClick={() => navigate(`/work-status?employee=${row.submissionId}`)}><Briefcase size={15} /></button>
           )}
           {canEdit && <button className="icon-btn" title="Delete" onClick={() => setDeleteTarget([row])}><Trash2 size={15} /></button>}
@@ -244,7 +245,7 @@ export default function Onboarding() {
           <p className="page-subtitle">Details and documents submitted through the employee details form</p>
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {perms?.isAdminOrManager && (
+          {isAdminOrManager && (
             <button className="btn btn-outline" onClick={() => setColDraft([...hiddenCols])}><SlidersHorizontal size={15} /> Columns</button>
           )}
           <button className="btn btn-outline" onClick={copyFormLink}><Link2 size={15} /> Copy form link</button>

@@ -7,12 +7,13 @@ import LoadingMask from "../../services/LoadingMask";
 import Breadcrumb from "../../services/Breadcrumb";
 import ProTable from "../../components/ProTable";
 import { FormDate } from "../../components/FormComponents";
-import { usePermissions } from "../../services/Permissions";
+import { getCookie } from "../../services/Cookies";
 
 const fmtDate = (d) => (d ? dayjs(d).format("DD-MM-YYYY") : "—");
 
 export default function WorkStatusReport() {
-  const perms = usePermissions();
+  const role = getCookie("role");
+  const isAdminOrManager = role === "Admin" || role === "Manager";
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [rows, setRows] = useState([]);
@@ -34,9 +35,9 @@ export default function WorkStatusReport() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { if (perms?.isAdminOrManager) run("", ""); /* eslint-disable-next-line */ }, [perms?.isAdminOrManager]);
+  useEffect(() => { if (isAdminOrManager) run("", ""); /* eslint-disable-next-line */ }, [isAdminOrManager]);
 
-  if (perms && !perms.isAdminOrManager) {
+  if (!isAdminOrManager) {
     return <div style={{ padding: 24, color: "var(--text-muted)" }}>The Work Status report is available to Admin and Manager only.</div>;
   }
 
