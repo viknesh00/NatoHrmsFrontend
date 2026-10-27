@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { UserCheck, FileText, Image as ImageIcon, Download, Eye, Save, X, Trash2, RotateCcw } from "lucide-react";
+import { UserCheck, FileText, Image as ImageIcon, Download, Eye, Save, X } from "lucide-react";
 import dayjs from "dayjs";
 import { getRequest, postRequest } from "../../services/Apiservice";
 import { ToastError, ToastSuccess } from "../../services/ToastMsg";
@@ -48,7 +48,7 @@ export default function EditOnboarding() {
   const [newCopy, setNewCopy] = useState(null);
   const [newPhoto, setNewPhoto] = useState(null);
   const [certificates, setCertificates] = useState([]);          // already stored
-  const [removedCertIds, setRemovedCertIds] = useState([]);        // stored ones marked for deletion (applied on save)
+  const [removedCertIds] = useState([]);        // stored ones marked for deletion (applied on save)
   const [newCertificates, setNewCertificates] = useState([]);      // files added in this session (uploaded on save)
   const [errors, setErrors] = useState({});
 
@@ -113,11 +113,6 @@ export default function EditOnboarding() {
     });
     if (fitting.length) setNewCertificates((prev) => [...prev, ...fitting]);
     setErrors((prev) => ({ ...prev, certificates: problem || undefined }));
-  };
-
-  const toggleRemoveCertificate = (certId) => {
-    setRemovedCertIds((prev) => (prev.includes(certId) ? prev.filter((x) => x !== certId) : [...prev, certId]));
-    clearError("certificates");
   };
 
   /* ── view / download the stored attachments ── */
@@ -351,9 +346,6 @@ export default function EditOnboarding() {
                 </div>
                 {!removed && <button type="button" className="btn btn-outline" style={{ padding: "6px 12px" }} onClick={() => viewCertificate(c)}><Eye size={14} /> View</button>}
                 {!removed && <button type="button" className="btn btn-outline" style={{ padding: "6px 12px" }} onClick={() => downloadCertificate(c)}><Download size={14} /> Download</button>}
-                {canEdit && <button type="button" className="btn btn-outline" style={{ padding: "6px 12px", color: "var(--coral)" }} onClick={() => toggleRemoveCertificate(c.certificateId)}>
-                  {removed ? <><RotateCcw size={14} /> Undo</> : <><Trash2 size={14} /> Remove</>}
-                </button>}
               </div>
             );
           })}
