@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { FileBarChart2, Filter } from "lucide-react";
+import { FileBarChart2 } from "lucide-react";
 import dayjs from "dayjs";
 import { getRequest } from "../../services/Apiservice";
 import { ToastError } from "../../services/ToastMsg";
@@ -14,8 +14,11 @@ const fmtDate = (d) => (d ? dayjs(d).format("DD-MM-YYYY") : "—");
 export default function WorkStatusReport() {
   const role = getCookie("role");
   const allowed = role !== "Employee";           // Admin, Manager and Team Lead
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  // default period: the last 12 months
+  const defaultFrom = () => dayjs().subtract(1, "year").format("YYYY-MM-DD");
+  const defaultTo = () => dayjs().format("YYYY-MM-DD");
+  const [from, setFrom] = useState(defaultFrom);
+  const [to, setTo] = useState(defaultTo);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -35,7 +38,7 @@ export default function WorkStatusReport() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { if (allowed) run("", ""); /* eslint-disable-next-line */ }, [allowed]);
+  useEffect(() => { if (allowed) run(); /* eslint-disable-next-line */ }, [allowed]);
 
   if (!allowed) {
     return <div style={{ padding: 24, color: "var(--text-muted)" }}>The Work Status report is not available for your role.</div>;
@@ -53,6 +56,14 @@ export default function WorkStatusReport() {
     { field: "workStatus", label: "Work Status", filterable: true },
   ];
 
+  // date range lives inside the table's own Filters panel (applied together with the column filters)
+  const dateFilters = (
+    <>
+      <FormDate label="From" value={from} onChange={(e) => setFrom(e.target.value)} />
+      <FormDate label="To" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} />
+    </>
+  );
+
   return (
     <div>
       <LoadingMask loading={loading} />
@@ -60,28 +71,20 @@ export default function WorkStatusReport() {
         <div>
           <Breadcrumb icon={<FileBarChart2 size={13} />} items={[{ label: "Work Status Report" }]} />
           <h1 className="page-title">Work Status Report</h1>
-          <p className="page-subtitle">Records that overlap the selected date or date range. One date shows that day only.</p>
+          <p className="page-subtitle">Work status records for the last 12 months. Use Filters to choose another date range.</p>
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 18 }}>
-        <div className="card-header" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Filter size={15} color="var(--primary)" />
-          <div className="card-title">Filter by date</div>
-        </div>
-        <div className="card-body">
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 260px))", gap: "0 20px" }}>
-            <FormDate label="From" value={from} onChange={(e) => setFrom(e.target.value)} />
-            <FormDate label="To" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} />
-          </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 4 }}>
-            <button className="btn btn-primary" onClick={() => run()}>Show report</button>
-            <button className="btn btn-outline" onClick={() => { setFrom(""); setTo(""); run("", ""); }}>Clear</button>
-          </div>
-        </div>
-      </div>
-
-      <ProTable title="Work Status Report" columns={columns} data={rows} multiSelect={false} />
+      <ProTable
+        title="Work Status Report"
+        columns={columns}
+        data={rows}
+        multiSelect={false}
+        filterComponents={dateFilters}
+        onApplyFilters={() => run()}
+        onResetFilters={() => { const f = defaultFrom(), t = defaultTo(); setFrom(f); setTo(t); run(f, t); }}
+        externalFilters={[{ label: "Period", value: from || to ? `${from ? fmtDate(from) : "…"} to ${to ? fmtDate(to) : "…"}` : "" }]}
+      />
     </div>
   );
 }
