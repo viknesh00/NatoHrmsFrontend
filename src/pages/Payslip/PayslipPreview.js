@@ -28,7 +28,7 @@ const numFmt=(v)=>{ const n=parseFloat(v)||0; return n===0?"—":n.toLocaleStrin
 const inr=(v)=>{ const n=parseFloat(v)||0; return n===0?"-":n.toLocaleString("en-IN",{minimumFractionDigits:0}); };
 
 function ENum({value,onChange}){
-  return <input type="number" value={value} onChange={onChange} style={{ width:80,textAlign:"right",padding:"2px 4px",border:"1px solid #c4b5f4",borderRadius:4,fontFamily:"inherit",fontSize:11,background:"#faf8ff",color:"#1e1143",fontWeight:600,outline:"none" }}/>;
+  return <input type="number" value={value} onChange={onChange} style={{ width:80,textAlign:"right",padding:"2px 4px",border:"1px solid var(--border-strong)",borderRadius:4,fontFamily:"inherit",fontSize:11,background:"#f7f9f8",color:"var(--text-primary)",fontWeight:600,outline:"none" }}/>;
 }
 
 export default function PayslipPreview(){
@@ -152,7 +152,7 @@ export default function PayslipPreview(){
 
       {/* Payslip Document - matches exact PDF format */}
       <div style={{background:"white",boxShadow:"var(--shadow-lg)",borderRadius:12,overflow:"hidden",maxWidth:820,margin:"0 auto"}}>
-        <div id="payslip-doc" style={{padding:"28px 32px",fontFamily:"Arial,sans-serif",fontSize:12,color:"#2c3e50",background:"white"}}>
+        <div id="payslip-doc" style={{padding:"28px 32px",fontFamily:"var(--ui-font-sans)",fontSize:12,color:"var(--text-primary)",background:"white"}}>
 
           {/* Header */}
           <div style={{display:"flex",alignItems:"flex-start",gap:16,marginBottom:16,paddingBottom:12,borderBottom:"2px solid #2c3e50"}}>

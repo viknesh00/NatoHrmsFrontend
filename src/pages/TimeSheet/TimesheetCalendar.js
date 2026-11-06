@@ -5,7 +5,7 @@ import isoWeek from "dayjs/plugin/isoWeek";
 import customParseFormat from "dayjs/plugin/customParseFormat"; // FIX: needed so dayjs(str, format) parses deterministically instead of falling back to the native Date constructor (which is browser/engine-dependent and returned "Invalid Date" on Safari/iOS for "Aug-2026" while working fine on desktop Chrome)
 import {
   ChevronLeft, ChevronRight, ChevronDown, X, Save, Clock, Copy,
-  FileSpreadsheet, Trash2, AlertCircle, ClipboardList, Plus, CheckCircle2, Zap,
+  FileSpreadsheet, Trash2, AlertCircle, ClipboardList, Plus, CheckCircle2, Zap, LockKeyhole, Palmtree, CalendarDays,
 } from "lucide-react";
 import { getRequest, postRequest } from "../../services/Apiservice";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -23,10 +23,10 @@ const roundH = (n) => Math.round((Number(n) || 0) * 100) / 100;
 
 const STATUS = {
   filled:   { bg: "#dcfce7", border: "#86efac", text: "#15803d",  label: "8 hrs" },
-  overtime: { bg: "#eff6ff", border: "#93c5fd", text: "#1d4ed8",  label: "Overtime" },
+  overtime: { bg: "var(--primary-ghost)", border: "var(--border-strong)", text: "var(--primary-dark)",  label: "Overtime" },
   partial:  { bg: "#fef9c3", border: "#fde047", text: "#a16207",  label: "< 8 hrs" },
   empty:    { bg: "#fff7ed", border: "#fed7aa", text: "#c2410c",  label: "Pending" },
-  leave:    { bg: "#ede9fe", border: "#c4b5f4", text: "#6c3fc5",  label: "On Leave" },
+  leave:    { bg: "var(--primary-ghost)", border: "var(--border-strong)", text: "var(--primary)",  label: "On Leave" },
   approved: { bg: "#dcfce7", border: "#86efac", text: "#15803d",  label: "Leave ✓" },
   holiday:  { bg: "#fee2e2", border: "#fca5a5", text: "#b91c1c",  label: "Holiday" },
   weekend:  { bg: "#f8fafc", border: "var(--border)", text: "var(--text-muted)", label: "Weekend" },
@@ -131,10 +131,10 @@ function DurationDropdown({ value, options, formatLabel, onChange, ot }) {
         style={{
           flex: 1, minWidth: 0, width: "100%",
           padding: "10px 6px", borderRadius: 10,
-          border: `1.5px solid ${open ? "var(--primary)" : (ot ? "#bfdbfe" : "var(--border)")}`,
+          border: `1.5px solid ${open ? "var(--primary)" : (ot ? "var(--border-strong)" : "var(--border)")}`,
           boxShadow: open ? "0 0 0 3px var(--primary-ghost)" : "none",
-          background: ot ? "#f8fbff" : "var(--bg)",
-          fontFamily: "'DM Sans',sans-serif", fontSize: 12, fontWeight: 700,
+          background: ot ? "var(--bg)" : "var(--bg)",
+          fontFamily: "var(--ui-font-sans)", fontSize: 12, fontWeight: 700,
           color: "var(--text-primary)", cursor: "pointer", outline: "none", boxSizing: "border-box",
           display: "flex", alignItems: "center", justifyContent: "center", gap: 3,
           transition: "all 0.15s",
@@ -691,7 +691,7 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
           </button>
           <div style={{ background:"var(--primary-ghost)", border:"1px solid var(--border)", borderRadius:10, padding:"8px 16px", textAlign:"center" }}>
             <div style={{ fontSize:11, fontWeight:700, color:"var(--primary)", textTransform:"uppercase", letterSpacing:"0.05em" }}>Month Total</div>
-            <div style={{ fontSize:20, fontWeight:900, color:"var(--primary)", fontFamily:"'Plus Jakarta Sans',sans-serif" }}>{monthTotal}</div>
+            <div style={{ fontSize:20, fontWeight:900, color:"var(--primary)", fontFamily:"var(--ui-font-heading)" }}>{monthTotal}</div>
           </div>
         </div>
       </div>
@@ -702,7 +702,7 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             {!isViewMode && <button className="calendar-nav-btn" onClick={()=>setCurrentMonth(c=>c.subtract(1,"month"))}><ChevronLeft size={16}/></button>}
             {isViewMode && <div style={{ width:30 }}/>}
-            <span style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:17, fontWeight:800, color:"var(--text-primary)", minWidth:160, textAlign:"center" }}>
+            <span style={{ fontFamily:"var(--ui-font-heading)", fontSize:17, fontWeight:800, color:"var(--text-primary)", minWidth:160, textAlign:"center" }}>
               {currentMonth.format("MMMM YYYY")}
             </span>
             {!isViewMode && (
@@ -719,7 +719,7 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
               </span>
             )}
             {canEdit && isPrevMonthGrace && (
-              <span style={{ background: "#eff6ff", color: "#1d4ed8", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, display: "flex", alignItems: "center", gap: 5 }}>
+              <span style={{ background: "var(--primary-ghost)", color: "var(--primary-dark)", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, display: "flex", alignItems: "center", gap: 5 }}>
                 <Clock size={12} /> Editable until {today.startOf("month").date(GRACE_DAYS).format("DD MMM")}
               </span>
             )}
@@ -739,8 +739,8 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
           </div>
         </div>
 
-        <div style={{ overflowX: "auto", padding: "4px 8px 8px" }}>
-          <table style={{ width: "100%", maxWidth: 880, margin: "0 auto", borderCollapse: "separate", borderSpacing: 0, tableLayout: "fixed" }}>
+          <div className="timesheet-calendar-scroll" style={{ overflowX: "auto", padding: "4px 8px 8px" }}>
+          <table className="timesheet-calendar-grid" style={{ width: "100%", maxWidth: 880, margin: "0 auto", borderCollapse: "separate", borderSpacing: 0, tableLayout: "fixed" }}>
             <colgroup>
               {/* 7 equal day columns + 1 slightly wider total column */}
               {Array.from({ length: 7 }).map((_, i) => (
@@ -811,14 +811,14 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
                           <div style={{ position: "absolute", inset: 0 }}>
                             {inCurrentMonth && (
                               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "6px", gap: 3 }}>
-                                <div style={{ position: "absolute", top: 5, left: 7, fontSize: 12, fontWeight: isToday2 ? 900 : 600, color: isToday2 ? "var(--primary)" : s.text, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{day.format("D")}</div>
+                                <div style={{ position: "absolute", top: 5, left: 7, fontSize: 12, fontWeight: isToday2 ? 900 : 600, color: isToday2 ? "var(--primary)" : s.text, fontFamily: "var(--ui-font-heading)" }}>{day.format("D")}</div>
                                 {rawTotal > 0 && !holiday && !leave && (
                                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, marginTop: 4 }}>
-                                    <span style={{ fontSize: 16, fontWeight: 900, color: s.text, fontFamily: "'Plus Jakarta Sans',sans-serif", lineHeight: 1 }}>
+                                    <span style={{ fontSize: 16, fontWeight: 900, color: s.text, fontFamily: "var(--ui-font-heading)", lineHeight: 1 }}>
                                       {fmtHM(regHours)}
                                     </span>
                                     {otHours > 0 && (
-                                      <span style={{ fontSize: 9, fontWeight: 800, color: "#1d4ed8", background: "#dbeafe", padding: "1px 5px", borderRadius: 20, display: "inline-flex", alignItems: "center", gap: 2, maxWidth: "92%", overflow: "hidden", whiteSpace: "nowrap" }}>
+                                      <span style={{ fontSize: 9, fontWeight: 800, color: "var(--primary-dark)", background: "var(--primary-ghost)", padding: "1px 5px", borderRadius: 20, display: "inline-flex", alignItems: "center", gap: 2, maxWidth: "92%", overflow: "hidden", whiteSpace: "nowrap" }}>
                                         <Zap size={8} /> +{fmtHM(otHours)} OT
                                       </span>
                                     )}
@@ -827,7 +827,7 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
                                 {holiday && <div style={{ fontSize: 10, color: s.text, fontWeight: 700, textAlign: "center", maxWidth: "90%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", background: "rgba(255,255,255,0.5)", padding: "2px 5px", borderRadius: 4 }}>{holiday.eventName}</div>}
                                 {!nonWorkingWeekend && leave && !holiday && <div style={{ fontSize: 10, color: s.text, fontWeight: 700, textAlign: "center", maxWidth: "90%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{leave.leaveType}</div>}
                                 {!nonWorkingWeekend && !leave && !holiday && entry?.leaveType && <div style={{ fontSize: 10, color: s.text, fontWeight: 700, textAlign: "center", maxWidth: "90%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.leaveType}</div>}
-                                {status === "pastlock" && <div style={{ fontSize: 16, color: s.text, textAlign: "center" }}>🔒</div>}
+                                {status === "pastlock" && <LockKeyhole size={14} color={s.text} aria-label="Locked day" />}
                                 {entry?.task && !holiday && !leave && <div style={{ width: 5, height: 5, borderRadius: "50%", background: s.text, opacity: 0.5, flexShrink: 0 }} />}
                               </div>
                             )}
@@ -842,7 +842,7 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
                     background: "var(--bg)",
                     padding: 0,
                   }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", minHeight: 60, fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 13, fontWeight: 800, color: "var(--primary)" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", minHeight: 60, fontFamily: "var(--ui-font-heading)", fontSize: 13, fontWeight: 800, color: "var(--primary)" }}>
                       {getWeekTotal(week)}
                     </div>
                   </td>
@@ -955,7 +955,7 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
                         </span>
                       )}
                       {savedOt.filter(t=>t.name).length>0 && (
-                        <span style={{ fontSize:11, fontWeight:700, color:"#1d4ed8", background:"#dbeafe", border:"1.5px solid #93c5fd", padding:"1px 9px", borderRadius:20, display:"flex", alignItems:"center", gap:4 }}>
+                        <span style={{ fontSize:11, fontWeight:700, color:"var(--primary-dark)", background:"var(--primary-ghost)", border:"1.5px solid var(--border-strong)", padding:"1px 9px", borderRadius:20, display:"flex", alignItems:"center", gap:4 }}>
                           <Zap size={10}/>{fmtHM(sumHours(savedOt.filter(t=>t.name)))} OT
                         </span>
                       )}
@@ -967,7 +967,7 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
                         <div style={{ width:6, height:6, borderRadius:"50%", background:"var(--primary)", opacity:0.45, flexShrink:0 }}/>
                         <span style={{ fontSize:13, color:"var(--text-primary)", fontWeight:500, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{t.name}</span>
                       </div>
-                      <span style={{ fontSize:13, fontWeight:800, color:"var(--primary)", textAlign:"right", fontFamily:"'Plus Jakarta Sans',sans-serif" }}>{fmtHM(t.hours)}</span>
+                      <span style={{ fontSize:13, fontWeight:800, color:"var(--primary)", textAlign:"right", fontFamily:"var(--ui-font-heading)" }}>{fmtHM(t.hours)}</span>
                     </div>
                   ))}
                 </div>
@@ -995,21 +995,21 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
                 <div style={{ flex:1, background:"var(--primary-ghost)", border:"1.5px solid var(--primary)", borderRadius:12, padding:"10px 14px" }}>
                   <div style={{ fontSize:10, fontWeight:700, color:"var(--primary)", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:4 }}>Regular Hours</div>
                   <div style={{ display:"flex", alignItems:"baseline", gap:4 }}>
-                    <span style={{ fontSize:22, fontWeight:900, color:"var(--primary)", fontFamily:"'Plus Jakarta Sans',sans-serif", lineHeight:1 }}>{fmtHM(regularTotal)}</span>
+                    <span style={{ fontSize:22, fontWeight:900, color:"var(--primary)", fontFamily:"var(--ui-font-heading)", lineHeight:1 }}>{fmtHM(regularTotal)}</span>
                     <span style={{ fontSize:12, fontWeight:600, color:"var(--text-muted)" }}>/ {MAX_REGULAR}h</span>
                   </div>
                   <div style={{ marginTop:6, height:4, borderRadius:99, background:"rgba(0,0,0,0.08)", overflow:"hidden" }}>
                     <div style={{ height:"100%", borderRadius:99, width:`${regularPct}%`, background:regularOver?"var(--coral)":"var(--primary)", transition:"width 0.3s" }}/>
                   </div>
                 </div>
-                <div style={{ flex:1, background:overtimeTotal>0?"#eff6ff":"var(--bg)", border:`1.5px solid ${overtimeTotal>0?"#93c5fd":"var(--border)"}`, borderRadius:12, padding:"10px 14px" }}>
-                  <div style={{ fontSize:10, fontWeight:700, color:overtimeTotal>0?"#1d4ed8":"var(--text-muted)", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:4, display:"flex", alignItems:"center", gap:5 }}>
+                <div style={{ flex:1, background:overtimeTotal>0?"var(--primary-ghost)":"var(--bg)", border:`1.5px solid ${overtimeTotal>0?"var(--border-strong)":"var(--border)"}`, borderRadius:12, padding:"10px 14px" }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:overtimeTotal>0?"var(--primary-dark)":"var(--text-muted)", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:4, display:"flex", alignItems:"center", gap:5 }}>
                     <Zap size={10}/> Overtime Hours
                   </div>
                   <div style={{ display:"flex", alignItems:"baseline", gap:4 }}>
-                    <span style={{ fontSize:22, fontWeight:900, color:overtimeTotal>0?"#1d4ed8":"var(--text-muted)", fontFamily:"'Plus Jakarta Sans',sans-serif", lineHeight:1 }}>{fmtHM(overtimeTotal)}</span>
+                    <span style={{ fontSize:22, fontWeight:900, color:overtimeTotal>0?"var(--primary-dark)":"var(--text-muted)", fontFamily:"var(--ui-font-heading)", lineHeight:1 }}>{fmtHM(overtimeTotal)}</span>
                   </div>
-                  <div style={{ marginTop:6, fontSize:11, color:overtimeTotal>0?"#1d4ed8":"var(--text-muted)", fontWeight:600 }}>
+                  <div style={{ marginTop:6, fontSize:11, color:overtimeTotal>0?"var(--primary-dark)":"var(--text-muted)", fontWeight:600 }}>
                     {overtimeTotal>0 ? `Total: ${fmtHM(grandTotal)} logged` : "No overtime logged"}
                   </div>
                 </div>
@@ -1122,9 +1122,9 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
 
                 {/* Inline hint when overtime is active and regular is full */}
                 {hasOvertimeTasks && regularTotal >= MAX_REGULAR && (
-                  <div style={{ marginTop:8, display:"flex", alignItems:"center", gap:6, padding:"6px 10px", background:"#eff6ff", border:"1px solid #bfdbfe", borderRadius:8 }}>
-                    <AlertCircle size={12} color="#3b82f6"/>
-                    <span style={{ fontSize:11, fontWeight:600, color:"#1d4ed8" }}>
+                  <div style={{ marginTop:8, display:"flex", alignItems:"center", gap:6, padding:"6px 10px", background:"var(--primary-ghost)", border:"1px solid var(--border-strong)", borderRadius:8 }}>
+                    <AlertCircle size={12} color="var(--primary)"/>
+                    <span style={{ fontSize:11, fontWeight:600, color:"var(--primary-dark)" }}>
                       Delete is hidden — regular tasks must stay at {MAX_REGULAR}h while overtime is logged
                     </span>
                   </div>
@@ -1143,20 +1143,20 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
 
               {/* ── Overtime prompt banner ── */}
               {regularTotal >= MAX_REGULAR && !showOvertime && !dayMode && (
-                <div style={{ marginBottom:16, padding:"12px 16px", background:"#eff6ff", border:"1.5px solid #93c5fd", borderRadius:12, display:"flex", alignItems:"center", justifyContent:"space-between", gap:10 }}>
+                <div style={{ marginBottom:16, padding:"12px 16px", background:"var(--primary-ghost)", border:"1.5px solid var(--border-strong)", borderRadius:12, display:"flex", alignItems:"center", justifyContent:"space-between", gap:10 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                    <div style={{ width:32, height:32, borderRadius:8, background:"#dbeafe", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                      <Zap size={16} color="#1d4ed8"/>
+                    <div style={{ width:32, height:32, borderRadius:8, background:"var(--primary-ghost)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                      <Zap size={16} color="var(--primary-dark)"/>
                     </div>
                     <div>
-                      <div style={{ fontSize:13, fontWeight:700, color:"#1d4ed8" }}>Did you work beyond {MAX_REGULAR} hours?</div>
-                      <div style={{ fontSize:11, color:"#3b82f6", marginTop:2 }}>Log remaining hours as overtime to keep records accurate.</div>
+                      <div style={{ fontSize:13, fontWeight:700, color:"var(--primary-dark)" }}>Did you work beyond {MAX_REGULAR} hours?</div>
+                      <div style={{ fontSize:11, color:"var(--primary)", marginTop:2 }}>Log remaining hours as overtime to keep records accurate.</div>
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={()=>{ setShowOvertime(true); if(overtimeTasks.length===0) setOvertimeTasks([{ name:"", hours:"" }]); }}
-                    style={{ padding:"7px 14px", borderRadius:8, border:"1.5px solid #93c5fd", background:"white", color:"#1d4ed8", fontSize:12, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:5, transition:"all 0.15s" }}
+                    style={{ padding:"7px 14px", borderRadius:8, border:"1.5px solid var(--border-strong)", background:"white", color:"var(--primary-dark)", fontSize:12, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:5, transition:"all 0.15s" }}
                   >
                     <Zap size={12}/> Add Overtime
                   </button>
@@ -1165,12 +1165,12 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
 
               {/* ── OVERTIME TASKS SECTION ── */}
               {showOvertime && (
-                <div style={{ marginBottom:16, padding:"14px 16px", background:"#f0f9ff", border:"1.5px solid #93c5fd", borderRadius:14 }}>
+                <div style={{ marginBottom:16, padding:"14px 16px", background:"var(--primary-ghost)", border:"1.5px solid var(--border-strong)", borderRadius:14 }}>
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
-                    <label className="fc-label" style={{ margin:0, display:"flex", alignItems:"center", gap:6, color:"#1d4ed8" }}>
-                      <span style={{ display:"inline-flex", width:18, height:18, borderRadius:5, background:"#1d4ed8", color:"#fff", fontSize:10, fontWeight:800, alignItems:"center", justifyContent:"center" }}><Zap size={10}/></span>
+                    <label className="fc-label" style={{ margin:0, display:"flex", alignItems:"center", gap:6, color:"var(--primary-dark)" }}>
+                      <span style={{ display:"inline-flex", width:18, height:18, borderRadius:5, background:"var(--primary-dark)", color:"#fff", fontSize:10, fontWeight:800, alignItems:"center", justifyContent:"center" }}><Zap size={10}/></span>
                       Overtime Tasks
-                      <span style={{ fontSize:10, fontWeight:600, color:"#3b82f6", textTransform:"none", letterSpacing:"normal" }}>({grandTotal}/24h used)</span>
+                      <span style={{ fontSize:10, fontWeight:600, color:"var(--primary)", textTransform:"none", letterSpacing:"normal" }}>({grandTotal}/24h used)</span>
                     </label>
                     <button
                       type="button"
@@ -1182,10 +1182,10 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
                   </div>
 
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 128px 36px", gap:8, marginBottom:6, padding:"0 2px" }}>
-                    <span style={{ fontSize:10, fontWeight:700, color:"#3b82f6", textTransform:"uppercase", letterSpacing:"0.05em" }}>OT Task Name <span style={{ color:"var(--coral)" }}>*</span></span>
+                    <span style={{ fontSize:10, fontWeight:700, color:"var(--primary)", textTransform:"uppercase", letterSpacing:"0.05em" }}>OT Task Name <span style={{ color:"var(--coral)" }}>*</span></span>
                     <div style={{ display:"flex", gap:4 }}>
-                      <span style={{ flex:1, fontSize:10, fontWeight:700, color:"#3b82f6", textTransform:"uppercase", letterSpacing:"0.05em", textAlign:"center" }}>HH</span>
-                      <span style={{ flex:1, fontSize:10, fontWeight:700, color:"#3b82f6", textTransform:"uppercase", letterSpacing:"0.05em", textAlign:"center" }}>MM</span>
+                      <span style={{ flex:1, fontSize:10, fontWeight:700, color:"var(--primary)", textTransform:"uppercase", letterSpacing:"0.05em", textAlign:"center" }}>HH</span>
+                      <span style={{ flex:1, fontSize:10, fontWeight:700, color:"var(--primary)", textTransform:"uppercase", letterSpacing:"0.05em", textAlign:"center" }}>MM</span>
                     </div>
                     <span/>
                   </div>
@@ -1236,7 +1236,7 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
                             type="button"
                             onClick={()=>removeTask("ot",idx)}
                             title="Remove"
-                            style={{ background:"none", border:"1.5px solid #bfdbfe", borderRadius:8, cursor:"pointer", color:"#3b82f6", width:36, height:42, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all 0.15s" }}
+                            style={{ background:"none", border:"1.5px solid var(--border-strong)", borderRadius:8, cursor:"pointer", color:"var(--primary)", width:36, height:42, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all 0.15s" }}
                           >
                             <X size={14}/>
                           </button>
@@ -1256,7 +1256,7 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
                     type="button"
                     disabled={addOtDisabled}
                     onClick={() => addTask("ot")}
-                    style={{ marginTop: 10, padding: "8px 14px", borderRadius: 9, border: `1.5px dashed ${addOtDisabled ? "#bfdbfe" : "#3b82f6"}`, background: addOtDisabled ? "#f0f9ff" : "white", color: addOtDisabled ? "#93c5fd" : "#1d4ed8", fontSize: 12, fontWeight: 700, cursor: addOtDisabled ? "not-allowed" : "pointer", width: "100%", transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                    style={{ marginTop: 10, padding: "8px 14px", borderRadius: 9, border: `1.5px dashed ${addOtDisabled ? "var(--border-strong)" : "var(--primary)"}`, background: addOtDisabled ? "var(--primary-ghost)" : "white", color: addOtDisabled ? "var(--border-strong)" : "var(--primary-dark)", fontSize: 12, fontWeight: 700, cursor: addOtDisabled ? "not-allowed" : "pointer", width: "100%", transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
                   >
                     <Plus size={13} />
                     {grandTotal >= 24 ? "24h total limit reached" : otIncomplete ? "Fill task details first" : "Add Overtime Task"}
@@ -1270,12 +1270,12 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
                   <label className="fc-label">Day Type <span className="req">*</span></label>
                   <div style={{ display:"flex", gap:8, marginBottom:10 }}>
                     {[
-                      { val:"leave",   label:"On Leave",  icon:"🏖️" },
-                      { val:"holiday", label:"Holiday",   icon:"🎉" },
-                    ].map(({ val, label, icon })=>(
+                      { val:"leave",   label:"On Leave",  icon:Palmtree },
+                      { val:"holiday", label:"Holiday",   icon:CalendarDays },
+                    ].map(({ val, label, icon: Icon })=>(
                       <button key={val} type="button" onClick={()=>{ setDayMode(val); setLeaveType(""); setManualHolidayName(""); }}
                         style={{ flex:1, padding:"10px 14px", borderRadius:10, fontSize:13, fontWeight:700, cursor:"pointer", transition:"all 0.15s", display:"flex", alignItems:"center", justifyContent:"center", gap:6, border:`1.5px solid ${dayMode===val?"var(--primary)":"var(--border)"}`, background:dayMode===val?"var(--primary-ghost)":"var(--bg)", color:dayMode===val?"var(--primary)":"var(--text-secondary)", boxShadow:dayMode===val?"0 0 0 3px var(--primary-ghost)":"none" }}>
-                        <span style={{ fontSize:15 }}>{icon}</span> {label}
+                        <Icon size={15} aria-hidden="true" /> {label}
                       </button>
                     ))}
                   </div>
@@ -1354,7 +1354,7 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
                           return (
                             <button key={iso} type="button"
                               onClick={()=>setOtherDays(prev=>prev.find(x=>x.isSame(dd,"day"))?prev.filter(x=>!x.isSame(dd,"day")):[...prev,dd])}
-                              style={{ width:32, height:32, borderRadius:7, border:`1.5px solid ${isSel?"var(--primary)":"var(--border)"}`, background:isSel?"var(--primary)":"var(--bg)", color:isSel?"white":"var(--text-secondary)", fontSize:12, fontWeight:700, cursor:"pointer", transition:"all 0.15s", fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
+                              style={{ width:32, height:32, borderRadius:7, border:`1.5px solid ${isSel?"var(--primary)":"var(--border)"}`, background:isSel?"var(--primary)":"var(--bg)", color:isSel?"white":"var(--text-secondary)", fontSize:12, fontWeight:700, cursor:"pointer", transition:"all 0.15s", fontFamily:"var(--ui-font-heading)" }}>
                               {dd.format("D")}
                             </button>
                           );
@@ -1377,12 +1377,12 @@ const includeSunday   = getCookie("includeSunday")   === "true" || getCookie("in
       )}
 
       <style>{`
-        .fc-label { display:block; font-family:'Plus Jakarta Sans',sans-serif; font-size:11.5px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:7px; }
+        .fc-label { display:block; font-family:var(--ui-font-heading); font-size:11.5px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:7px; }
         .req { color:var(--coral); margin-left:2px; }
-        .fc-input { width:100%; padding:10px 13px; border-radius:10px; border:1.5px solid var(--border); background:var(--bg); font-family:'DM Sans',sans-serif; font-size:13.5px; color:var(--text-primary); outline:none; transition:all 0.2s; box-sizing:border-box; }
+        .fc-input { width:100%; padding:10px 13px; border-radius:10px; border:1.5px solid var(--border); background:var(--bg); font-family:var(--ui-font-sans); font-size:13.5px; color:var(--text-primary); outline:none; transition:all 0.2s; box-sizing:border-box; }
         .fc-input:focus { border-color:var(--primary); box-shadow:0 0 0 3px var(--primary-ghost); background:#fff; }
-        .fc-input-ot { border-color:#bfdbfe !important; background:#f8fbff !important; }
-        .fc-input-ot:focus { border-color:#3b82f6 !important; box-shadow:0 0 0 3px rgba(59,130,246,0.12) !important; }
+        .fc-input-ot { border-color:var(--border-strong) !important; background:var(--bg) !important; }
+        .fc-input-ot:focus { border-color:var(--primary) !important; box-shadow:0 0 0 3px var(--primary-glow) !important; }
         .fc-input-error { border-color:var(--coral) !important; box-shadow:0 0 0 3px rgba(239,68,68,0.1) !important; }
         .fc-input-error:focus { border-color:var(--coral) !important; }
         textarea.fc-input { resize:vertical; min-height:70px; line-height:1.6; }

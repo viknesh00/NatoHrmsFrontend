@@ -6,6 +6,9 @@ import {
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { FormSelect, FormDate, FormInput } from "./FormComponents";
+import { Badge } from "./ui/badge";
+import { Card } from "./ui/card";
+import { Input } from "./ui/input";
 
 /* ─── inject panel styles once ─── */
 const PANEL_CSS = `
@@ -21,14 +24,14 @@ const PANEL_CSS = `
 .pt-filter-panel {
   background: #fff;
   border: 1.5px solid var(--border);
-  border-radius: 16px;
+  border-radius: 4px;
   margin: 0 0 16px 0;
-  box-shadow: 0 8px 32px rgba(80,60,180,0.10), 0 2px 8px rgba(80,60,180,0.06);
+  box-shadow: var(--shadow-sm);
   overflow: visible;
   animation: filterPanelIn 0.22s cubic-bezier(.22,.68,0,1.2);
 }
 .pt-filter-panel-header {
-  border-radius: 14px 14px 0 0;
+  border-radius: 4px 4px 0 0;
   overflow: hidden;
 }
 
@@ -37,7 +40,7 @@ const PANEL_CSS = `
   align-items: center;
   justify-content: space-between;
   padding: 14px 20px 12px;
-  background: linear-gradient(105deg, var(--primary-ghost) 0%, #f0f9ff 100%);
+  background: var(--primary-ghost);
   border-bottom: 1.5px solid var(--border);
 }
 
@@ -45,7 +48,7 @@ const PANEL_CSS = `
   display: flex;
   align-items: center;
   gap: 9px;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--ui-font-heading);
   font-size: 13px;
   font-weight: 800;
   color: var(--primary);
@@ -74,8 +77,8 @@ const PANEL_CSS = `
   justify-content: space-between;
   padding: 12px 20px 14px;
   border-top: 1px solid var(--border);
-  background: #faf8ff;
-  border-radius: 0 0 14px 14px;
+  background: #f7f9f8;
+  border-radius: 0 0 4px 4px;
 }
 
 .pt-filter-panel-count {
@@ -98,7 +101,7 @@ const PANEL_CSS = `
   border: 1.5px solid var(--border);
   background: white;
   color: var(--text-secondary);
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--ui-font-sans);
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
@@ -117,9 +120,9 @@ const PANEL_CSS = `
   padding: 7px 18px;
   border-radius: 9px;
   border: none;
-  background: linear-gradient(135deg, var(--primary), var(--primary-light, #6366f1));
+  background: var(--primary);
   color: white;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--ui-font-heading);
   font-size: 12.5px;
   font-weight: 700;
   cursor: pointer;
@@ -141,7 +144,7 @@ const PANEL_CSS = `
   border: 1.5px solid var(--border);
   background: white;
   color: var(--text-secondary);
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--ui-font-sans);
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
@@ -168,7 +171,7 @@ const PANEL_CSS = `
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--ui-font-heading);
   border: 2px solid white;
   animation: chipPop 0.2s ease;
 }
@@ -192,7 +195,7 @@ const PANEL_CSS = `
   border-radius: 20px;
   font-size: 11.5px;
   font-weight: 600;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--ui-font-sans);
   animation: chipPop 0.18s ease;
 }
 .pt-chip-key {
@@ -227,7 +230,7 @@ const PANEL_CSS = `
   font-size: 11.5px;
   font-weight: 600;
   cursor: pointer;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--ui-font-sans);
   transition: all 0.15s;
 }
 .pt-chip-clear-all:hover { border-color: var(--coral); color: var(--coral); }
@@ -326,7 +329,7 @@ export function StatusChip({ label }) {
   };
   const key = (label || "").toLowerCase();
   const c = map[key] || { cls: "badge-gray" };
-  return <span className={`badge ${c.cls}`}>{label}</span>;
+  return <Badge className={`badge ${c.cls}`}>{label}</Badge>;
 }
 
 /* ════════════════════════════════════════
@@ -511,7 +514,7 @@ export default function ProTable({
   });
 
   return (
-    <div className="pro-table-wrap">
+    <Card className="pro-table-wrap p-0 gap-0">
 
       {/* ── Toolbar ── */}
       <div className="pro-table-toolbar">
@@ -524,7 +527,8 @@ export default function ProTable({
 
         <div className="search-box">
           <Search size={14} color="var(--text-muted)" />
-          <input
+          <Input
+            aria-label="Search records"
             placeholder="Search..."
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(0); setSelected(new Set()); }}
@@ -784,6 +788,6 @@ export default function ProTable({
           </div>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

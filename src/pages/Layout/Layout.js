@@ -28,6 +28,7 @@ export const refreshUserCookies = () => {
 const Layout = () => {
   // Block render until cookies are fresh so Sidebar reads correct values
   const [userReady, setUserReady] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
     const token = getCookie("token");
@@ -40,9 +41,15 @@ const Layout = () => {
 
   return (
     <div className="app-wrapper">
-      <Header />
+      <Header
+        navOpen={mobileNavOpen}
+        onMenuClick={() => setMobileNavOpen(open => !open)}
+      />
       <div className="app-body">
-        <Sidebar />
+        <Sidebar
+          mobileOpen={mobileNavOpen}
+          onMobileClose={() => setMobileNavOpen(false)}
+        />
         <main className="main-content">
           <div className="page-wrap">
             <Outlet />

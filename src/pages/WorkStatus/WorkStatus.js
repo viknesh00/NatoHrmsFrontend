@@ -132,7 +132,7 @@ export default function WorkStatus() {
     }] : []),
   ];
 
-  const overlay = { position: "fixed", inset: 0, background: "rgba(20,0,50,0.55)", backdropFilter: "blur(5px)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 };
+  const overlay = { position: "fixed", inset: 0, background: "rgba(16,24,20,0.46)", backdropFilter: "blur(5px)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 };
   const card = { background: "white", borderRadius: 20, boxShadow: "0 20px 60px rgba(0,0,0,0.25)", width: "100%", overflow: "hidden" };
 
   return (
@@ -155,9 +155,9 @@ export default function WorkStatus() {
       {form && createPortal(
         <div style={overlay} onClick={() => setForm(null)}>
           <div style={{ ...card, maxWidth: 560 }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ height: 4, background: "linear-gradient(90deg,#6c3fc5,#0d9488)" }} />
+            <div style={{ height: 4, background: "var(--primary)" }} />
             <div style={{ padding: "20px 24px 8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 18, fontWeight: 900, color: "#1e1143" }}>{form.workStatusId ? "Edit work status" : "Add work status"}</div>
+              <div style={{ fontFamily: "var(--ui-font-heading)", fontSize: 18, fontWeight: 900, color: "var(--text-primary)" }}>{form.workStatusId ? "Edit work status" : "Add work status"}</div>
               <button onClick={() => setForm(null)} style={{ width: 30, height: 30, borderRadius: 8, background: "#f1f5f9", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b" }}><X size={16} /></button>
             </div>
             <div style={{ padding: "8px 24px 4px", maxHeight: "70vh", overflowY: "auto" }}>

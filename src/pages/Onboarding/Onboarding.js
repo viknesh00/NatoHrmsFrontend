@@ -266,14 +266,14 @@ export default function Onboarding() {
 
       {/* ── Columns popup (Admin / Manager) ── */}
       {colDraft && createPortal(
-        <div style={{ position: "fixed", inset: 0, background: "rgba(20,0,50,0.55)", backdropFilter: "blur(5px)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(16,24,20,0.46)", backdropFilter: "blur(5px)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
           onClick={() => setColDraft(null)}>
           <div style={{ background: "white", borderRadius: 20, boxShadow: "0 20px 60px rgba(0,0,0,0.25)", width: "100%", maxWidth: 460, maxHeight: "85vh", overflow: "hidden", display: "flex", flexDirection: "column" }}
             onClick={(e) => e.stopPropagation()}>
-            <div style={{ height: 4, background: "linear-gradient(90deg,#6c3fc5,#0d9488)" }} />
+            <div style={{ height: 4, background: "var(--primary)" }} />
             <div style={{ padding: "20px 24px 8px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div>
-                <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 18, fontWeight: 900, color: "#1e1143" }}>Columns</div>
+                <div style={{ fontFamily: "var(--ui-font-heading)", fontSize: 18, fontWeight: 900, color: "var(--text-primary)" }}>Columns</div>
                 <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 2 }}>Choose the columns shown to everyone. Name and Actions are always visible. The employee data is not changed.</div>
               </div>
               <button onClick={() => setColDraft(null)} style={{ width: 30, height: 30, borderRadius: 8, background: "#f1f5f9", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", flexShrink: 0 }}><X size={16} /></button>
@@ -306,14 +306,14 @@ export default function Onboarding() {
 
       {/* ── Certificates popup ── */}
       {certView && createPortal(
-        <div style={{ position: "fixed", inset: 0, background: "rgba(20,0,50,0.55)", backdropFilter: "blur(5px)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(16,24,20,0.46)", backdropFilter: "blur(5px)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
           onClick={() => setCertView(null)}>
           <div style={{ background: "white", borderRadius: 20, boxShadow: "0 20px 60px rgba(0,0,0,0.25)", width: "100%", maxWidth: 520, maxHeight: "85vh", overflow: "hidden", display: "flex", flexDirection: "column", animation: "slideUp 0.25s ease" }}
             onClick={(e) => e.stopPropagation()}>
-            <div style={{ height: 4, background: "linear-gradient(90deg,#6c3fc5,#0d9488)" }} />
+            <div style={{ height: 4, background: "var(--primary)" }} />
             <div style={{ padding: "20px 24px 12px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div>
-                <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 18, fontWeight: 900, color: "#1e1143" }}>Certificates</div>
+                <div style={{ fontFamily: "var(--ui-font-heading)", fontSize: 18, fontWeight: 900, color: "var(--text-primary)" }}>Certificates</div>
                 <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 2 }}>{certView.row.firstName} {certView.row.lastName} · {certView.items.length} file{certView.items.length === 1 ? "" : "s"}</div>
               </div>
               <button onClick={() => setCertView(null)} style={{ width: 30, height: 30, borderRadius: 8, background: "#f1f5f9", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b" }}>
@@ -342,17 +342,17 @@ export default function Onboarding() {
 
       {/* ── Delete confirmation ── */}
       {deleteTarget && createPortal(
-        <div style={{ position: "fixed", inset: 0, background: "rgba(20,0,50,0.55)", backdropFilter: "blur(5px)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(16,24,20,0.46)", backdropFilter: "blur(5px)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ background: "white", borderRadius: 20, boxShadow: "0 20px 60px rgba(0,0,0,0.25)", width: "100%", maxWidth: 420, overflow: "hidden", animation: "slideUp 0.25s ease" }}>
-            <div style={{ height: 4, background: "linear-gradient(90deg,#f43f5e,#f97316)" }} />
+            <div style={{ height: 4, background: "var(--destructive)" }} />
             <div style={{ padding: "24px 24px 0" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                   <div style={{ width: 48, height: 48, borderRadius: 14, background: "#fff1f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <AlertTriangle size={24} color="#f43f5e" />
+                    <AlertTriangle size={24} color="var(--coral)" />
                   </div>
                   <div>
-                    <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 18, fontWeight: 900, color: "#1e1143" }}>Confirm Delete</div>
+                    <div style={{ fontFamily: "var(--ui-font-heading)", fontSize: 18, fontWeight: 900, color: "var(--text-primary)" }}>Confirm Delete</div>
                     <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 2 }}>
                       {deleteTarget.length === 1
                         ? `${deleteTarget[0].firstName} ${deleteTarget[0].lastName} will be removed`
@@ -369,10 +369,10 @@ export default function Onboarding() {
               </p>
             </div>
             <div style={{ padding: "0 24px 22px", display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button onClick={() => setDeleteTarget(null)} style={{ padding: "9px 20px", borderRadius: 10, border: "1.5px solid #e2e8f0", background: "white", color: "#475569", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}>
+              <button onClick={() => setDeleteTarget(null)} style={{ padding: "9px 20px", borderRadius: 10, border: "1.5px solid #e2e8f0", background: "white", color: "#475569", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "var(--ui-font-sans)" }}>
                 Cancel
               </button>
-              <button onClick={executeDelete} style={{ padding: "9px 20px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#f43f5e,#f97316)", color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 7, fontFamily: "'Plus Jakarta Sans',sans-serif", boxShadow: "0 3px 12px rgba(244,63,94,0.3)" }}>
+              <button onClick={executeDelete} style={{ padding: "9px 20px", borderRadius: 4, border: "none", background: "var(--destructive)", color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 7, fontFamily: "var(--ui-font-sans)", boxShadow: "none" }}>
                 <Trash2 size={15} /> Yes, Delete
               </button>
             </div>

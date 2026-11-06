@@ -8,7 +8,7 @@ import { ChevronDown, X, Calendar, Clock, Eye, EyeOff, Check } from "lucide-reac
 const FORM_STYLES = `
 .fc-group { margin-bottom: 18px; }
 .fc-label {
-  display: block; font-family: 'Plus Jakarta Sans', sans-serif;
+  display: block; font-family: var(--ui-font-heading);
   font-size: 11.5px; font-weight: 700; color: var(--text-secondary);
   text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 7px;
 }
@@ -16,7 +16,7 @@ const FORM_STYLES = `
 .fc-input {
   width: 100%; padding: 10px 13px; border-radius: 10px;
   border: 1.5px solid var(--border); background: var(--bg);
-  font-family: 'DM Sans', sans-serif; font-size: 13.5px;
+  font-family: var(--ui-font-sans); font-size: 13.5px;
   color: var(--text-primary); outline: none; transition: all 0.2s;
   appearance: none; -webkit-appearance: none;
 }
@@ -35,7 +35,7 @@ textarea.fc-input { resize: vertical; min-height: 80px; line-height: 1.6; }
 .fc-row-3 { grid-template-columns: 1fr 1fr 1fr; }
 .fc-section { margin-bottom: 28px; }
 .fc-section-title {
-  font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 800;
+  font-family: var(--ui-font-heading); font-size: 13px; font-weight: 800;
   color: var(--primary); text-transform: uppercase; letter-spacing: 0.08em;
   padding-bottom: 10px; border-bottom: 2px solid var(--primary-ghost);
   margin-bottom: 18px; display: flex; align-items: center; gap: 8px;
@@ -49,7 +49,7 @@ textarea.fc-input { resize: vertical; min-height: 80px; line-height: 1.6; }
 .fc-dd-trigger {
   width: 100%; padding: 10px 36px 10px 13px; border-radius: 10px;
   border: 1.5px solid var(--border); background: var(--bg);
-  font-family: 'DM Sans', sans-serif; font-size: 13.5px;
+  font-family: var(--ui-font-sans); font-size: 13.5px;
   color: var(--text-primary); outline: none; transition: all 0.2s;
   cursor: pointer; text-align: left; display: flex; align-items: center; justify-content: space-between;
 }
@@ -72,9 +72,9 @@ textarea.fc-input { resize: vertical; min-height: 80px; line-height: 1.6; }
 /* ── Custom Calendar Picker ── */
 .fc-cal-wrap { position: relative; }
 .fc-cal-trigger {
-  width: 100%; padding: 10px 13px; border-radius: 10px;
-  border: 1.5px solid var(--border); background: var(--bg);
-  font-family: 'DM Sans', sans-serif; font-size: 13.5px;
+  width: 100%; padding: 10px 13px; border-radius: 4px;
+  border: 1px solid var(--border); background: var(--bg);
+  font-family: var(--ui-font-sans); font-size: 13.5px;
   color: var(--text-primary); outline: none; transition: all 0.2s;
   cursor: pointer; text-align: left; display: flex; align-items: center;
   justify-content: space-between; gap: 8px;
@@ -84,22 +84,22 @@ textarea.fc-input { resize: vertical; min-height: 80px; line-height: 1.6; }
 .fc-cal-trigger:disabled { opacity: 0.55; cursor: not-allowed; }
 .fc-cal-popup {
   position: absolute; top: calc(100% + 6px); left: 0; z-index: 600;
-  background: #fff; border-radius: 16px; border: 1.5px solid var(--border);
-  box-shadow: 0 8px 32px rgba(80,60,180,0.13); padding: 14px 16px 16px;
-  width: 280px; animation: slideUp 0.18s ease;
+  background: #fff; border-radius: 4px; border: 1px solid var(--border);
+  box-shadow: var(--shadow-md); padding: 14px 16px 16px;
+  width: 280px; max-width: calc(100vw - 24px); animation: slideUp 0.18s ease;
 }
 .fc-cal-header {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 12px;
 }
 .fc-cal-nav {
-  background: none; border: none; cursor: pointer; border-radius: 8px;
+  background: none; border: 1px solid transparent; cursor: pointer; border-radius: 4px;
   padding: 5px 8px; color: var(--text-muted); display: flex; align-items: center;
   transition: background 0.15s, color 0.15s;
 }
 .fc-cal-nav:hover { background: var(--primary-ghost); color: var(--primary); }
 .fc-cal-title {
-  font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 700;
+  font-family: var(--ui-font-heading); font-size: 14px; font-weight: 700;
   color: var(--text-primary); display: flex; gap: 4px;
 }
 .fc-cal-month-btn, .fc-cal-year-btn {
@@ -114,30 +114,36 @@ textarea.fc-input { resize: vertical; min-height: 80px; line-height: 1.6; }
   color: var(--text-muted); padding: 4px 0 6px; letter-spacing: 0.03em;
 }
 .fc-cal-day {
-  text-align: center; font-size: 13px; padding: 5px 2px; border-radius: 8px;
-  cursor: pointer; transition: background 0.12s, color 0.12s; color: var(--text-primary);
-  font-family: 'DM Sans', sans-serif;
+  min-width: 0; min-height: 32px; padding: 0; border: 1px solid transparent;
+  border-radius: 4px; background: transparent; text-align: center;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background 0.12s, color 0.12s, border-color 0.12s;
+  color: var(--text-primary); font: 500 13px var(--ui-font-sans);
 }
+.fc-cal-day:focus-visible, .fc-cal-overlay-item:focus-visible, .fc-cal-nav:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+.fc-cal-day:disabled { cursor: default; }
 .fc-cal-day:hover:not(.fc-cal-day-empty):not(.fc-cal-day-selected) { background: var(--primary-ghost); color: var(--primary); }
 .fc-cal-day-empty { cursor: default; color: var(--text-muted); opacity: 0.4; }
 .fc-cal-day-selected { background: var(--primary) !important; color: #fff !important; font-weight: 700; }
-.fc-cal-day-today:not(.fc-cal-day-selected) { background: var(--primary-ghost); color: var(--primary); font-weight: 700; border-radius: 8px; }
+.fc-cal-day-today:not(.fc-cal-day-selected) { background: var(--primary-ghost); color: var(--primary); font-weight: 700; }
 /* month/year picker overlay */
 .fc-cal-overlay {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 6px;
 }
 .fc-cal-overlay-item {
-  padding: 7px 4px; text-align: center; border-radius: 8px; cursor: pointer;
-  font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--text-primary);
-  transition: background 0.12s, color 0.12s;
+  min-height: 32px; padding: 5px 4px; text-align: center; border-radius: 4px;
+  border: 1px solid transparent; background: transparent; cursor: pointer;
+  font: 500 13px var(--ui-font-sans); color: var(--text-primary);
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
+.fc-cal-overlay-item:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
 .fc-cal-overlay-item:hover { background: var(--primary-ghost); color: var(--primary); }
 .fc-cal-overlay-item.active { background: var(--primary); color: #fff; font-weight: 700; }
 .fc-cal-overlay-nav {
   display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
 }
 .fc-cal-overlay-title {
-  font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px;
+  font-family: var(--ui-font-heading); font-size: 14px;
   font-weight: 700; color: var(--text-primary);
 }
 /* Checkbox */
@@ -171,19 +177,19 @@ textarea.fc-input { resize: vertical; min-height: 80px; line-height: 1.6; }
 }
 .form-card-header {
   padding: 20px 24px; border-bottom: 1px solid var(--border);
-  background: linear-gradient(135deg, var(--primary-ghost), #f0fdf4 80%);
+  background: var(--primary-ghost);
   display: flex; align-items: center; gap: 12px;
 }
 .form-card-icon {
   width: 42px; height: 42px; border-radius: 12px;
-  background: linear-gradient(135deg, var(--primary), var(--teal));
+  background: var(--primary);
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
-.form-card-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 17px; font-weight: 800; color: var(--text-primary); }
+.form-card-title { font-family: var(--ui-font-heading); font-size: 17px; font-weight: 800; color: var(--text-primary); }
 .form-card-subtitle { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
 .form-card-body { padding: 24px; }
 .form-card-footer {
-  padding: 16px 24px; border-top: 1px solid var(--border); background: #faf8ff;
+  padding: 16px 24px; border-top: 1px solid var(--border); background: #f7f9f8;
   display: flex; justify-content: flex-end; gap: 10px;
 }
 @media (max-width: 640px) { .fc-row-2, .fc-row-3 { grid-template-columns: 1fr; } }
@@ -608,10 +614,13 @@ export function FormDate({ label, required, hint, error, value, onChange, disabl
         <div className="fc-cal-grid">
           {DAYS.map(d => <div key={d} className="fc-cal-dow">{d}</div>)}
           {cells.map((c, i) => (
-            <div key={i}
+            <button key={i}
+              type="button"
+              disabled={!c.current || isDisabled(c.day)}
+              aria-pressed={!!(c.current && isSelected(c.day))}
               className={`fc-cal-day${!c.current ? " fc-cal-day-empty" : ""}${c.current && isSelected(c.day) ? " fc-cal-day-selected" : ""}${c.current && isToday(c.day) ? " fc-cal-day-today" : ""}${c.current && isDisabled(c.day) ? " fc-cal-day-empty" : ""}`}
               onClick={() => c.current && !isDisabled(c.day) && selectDay(c.day)}
-            >{c.day}</div>
+            >{c.day}</button>
           ))}
         </div>
       )}
@@ -619,10 +628,12 @@ export function FormDate({ label, required, hint, error, value, onChange, disabl
       {mode === "month" && (
         <div className="fc-cal-overlay">
           {MONTHS_SHORT.map((m, i) => (
-            <div key={m}
+            <button key={m}
+              type="button"
+              aria-pressed={view.month === i}
               className={`fc-cal-overlay-item${view.month === i ? " active" : ""}`}
               onClick={() => { setView(v => ({ ...v, month: i })); setMode("day"); }}
-            >{m}</div>
+            >{m}</button>
           ))}
         </div>
       )}
@@ -630,10 +641,12 @@ export function FormDate({ label, required, hint, error, value, onChange, disabl
       {mode === "year" && (
         <div className="fc-cal-overlay">
           {Array.from({ length: 12 }, (_, i) => yearPage + i).map(y => (
-            <div key={y}
+            <button key={y}
+              type="button"
+              aria-pressed={view.year === y}
               className={`fc-cal-overlay-item${view.year === y ? " active" : ""}`}
               onClick={() => { setView(v => ({ ...v, year: y })); setMode("day"); }}
-            >{y}</div>
+            >{y}</button>
           ))}
         </div>
       )}
@@ -769,11 +782,14 @@ export function FormMonth({ label, required, hint, error, value, onChange, disab
             {mode === "month" && (
               <div className="fc-cal-overlay">
                 {MONTHS_SHORT.map((m, i) => (
-                  <div key={m}
+                  <button key={m}
+                    type="button"
+                    disabled={monthBlocked(viewYear, i)}
+                    aria-pressed={!!(parsed && parsed.month === i && parsed.year === viewYear)}
                     className={`fc-cal-overlay-item${parsed && parsed.month === i && parsed.year === viewYear ? " active" : ""}${today.getMonth() === i && today.getFullYear() === viewYear && !(parsed && parsed.month === i && parsed.year === viewYear) ? " fc-cal-day-today" : ""}`}
                     style={monthBlocked(viewYear, i) ? blockedStyle : undefined}
                     onClick={() => selectMonth(i)}
-                  >{m}</div>
+                  >{m}</button>
                 ))}
               </div>
             )}
@@ -782,11 +798,14 @@ export function FormMonth({ label, required, hint, error, value, onChange, disab
             {mode === "year" && (
               <div className="fc-cal-overlay">
                 {Array.from({ length: 12 }, (_, i) => yearPage + i).map(y => (
-                  <div key={y}
+                  <button key={y}
+                    type="button"
+                    disabled={yearBlocked(y)}
+                    aria-pressed={viewYear === y}
                     className={`fc-cal-overlay-item${viewYear === y ? " active" : ""}`}
                     style={yearBlocked(y) ? blockedStyle : undefined}
                     onClick={() => { if (!yearBlocked(y)) { setViewYear(y); setMode("month"); } }}
-                  >{y}</div>
+                  >{y}</button>
                 ))}
               </div>
             )}
@@ -841,7 +860,7 @@ export function PasswordStrength({ password }) {
   if (/[A-Z]/.test(password)) score++;
   if (/[0-9]/.test(password)) score++;
   if (/[^A-Za-z0-9]/.test(password)) score++;
-  const colors = ["#ef4444", "#f59e0b", "#3b82f6", "#22c55e"];
+  const colors = ["#ef4444", "#f59e0b", "var(--primary)", "#22c55e"];
   const labels = ["Weak", "Fair", "Good", "Strong"];
   return (
     <div style={{ marginTop: 6, marginBottom: 12 }}>

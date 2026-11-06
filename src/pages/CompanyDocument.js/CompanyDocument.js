@@ -271,7 +271,7 @@ export default function CompanyDocument() {
         <div
           style={{
             position: "fixed", inset: 0,
-            background: "rgba(20,0,50,0.55)",
+            background: "rgba(16,24,20,0.46)",
             backdropFilter: "blur(5px)",
             zIndex: 9999,
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -288,7 +288,7 @@ export default function CompanyDocument() {
             }}
           >
             {/* top accent bar */}
-            <div style={{ height: 4, background: "linear-gradient(90deg,#f43f5e,#f97316)" }} />
+            <div style={{ height: 4, background: "var(--destructive)" }} />
 
             <div style={{ padding: "24px 24px 0" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
@@ -301,10 +301,10 @@ export default function CompanyDocument() {
                       flexShrink: 0,
                     }}
                   >
-                    <AlertTriangle size={24} color="#f43f5e" />
+                    <AlertTriangle size={24} color="var(--coral)" />
                   </div>
                   <div>
-                    <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 18, fontWeight: 900, color: "#1e1143" }}>
+                    <div style={{ fontFamily: "var(--ui-font-heading)", fontSize: 18, fontWeight: 900, color: "var(--text-primary)" }}>
                       Confirm Delete
                     </div>
                     <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 2 }}>
@@ -341,7 +341,7 @@ export default function CompanyDocument() {
                   padding: "9px 20px", borderRadius: 10,
                   border: "1.5px solid #e2e8f0", background: "white",
                   color: "#475569", fontSize: 13, fontWeight: 600,
-                  cursor: "pointer", fontFamily: "'DM Sans',sans-serif",
+                  cursor: "pointer", fontFamily: "var(--ui-font-sans)",
                 }}
               >
                 Cancel
@@ -350,10 +350,10 @@ export default function CompanyDocument() {
                 onClick={executeDelete}
                 style={{
                   padding: "9px 20px", borderRadius: 10, border: "none",
-                  background: "linear-gradient(135deg,#f43f5e,#f97316)",
+                  background: "var(--destructive)",
                   color: "white", fontSize: 13, fontWeight: 700,
                   cursor: "pointer", display: "flex", alignItems: "center",
-                  gap: 7, fontFamily: "'Plus Jakarta Sans',sans-serif",
+                  gap: 7, fontFamily: "var(--ui-font-heading)",
                   boxShadow: "0 3px 12px rgba(244,63,94,0.3)",
                 }}
               >

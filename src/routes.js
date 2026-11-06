@@ -35,6 +35,7 @@ import EditOnboarding from "./pages/Onboarding/EditOnboarding";
 import WorkStatus from "./pages/WorkStatus/WorkStatus";
 import WorkStatusReport from "./pages/WorkStatus/WorkStatusReport";
 import EmployeeDetailsForm from "./pages/PublicForms/EmployeeDetailsForm";
+import Chat from "./pages/Chat/Chat";
 
 const routes = [
   { path: "/", element: <Login /> },
@@ -48,6 +49,7 @@ const routes = [
     element: (<ProtectedRoute><Layout /></ProtectedRoute>),
     children: [
       { path: "dashboard", element: <DashboardGuard><Dashboard /></DashboardGuard> },
+      { path: "chat", element: <Chat /> },
       { path: "employees", element: <Employees /> },
       { path: "job-management", element: <JobManagement /> },
       { path: "job-management/add-profile", element: <AddProfile /> },

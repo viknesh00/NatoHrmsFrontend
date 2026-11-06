@@ -29,8 +29,8 @@ const deptStringToArray = (str) =>
 
 /* ── Input styles (same as DocumentUploadForm) ── */
 const IS = {
-  label: { display:"block", fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:11.5, fontWeight:700, color:"var(--text-secondary)", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:7 },
-  input: { width:"100%", padding:"10px 13px", borderRadius:10, border:"1.5px solid var(--border)", background:"var(--bg)", fontFamily:"'DM Sans',sans-serif", fontSize:13.5, color:"var(--text-primary)", outline:"none", transition:"all 0.2s", boxSizing:"border-box" },
+  label: { display:"block", fontFamily:"var(--ui-font-heading)", fontSize:11.5, fontWeight:700, color:"var(--text-secondary)", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:7 },
+  input: { width:"100%", padding:"10px 13px", borderRadius:10, border:"1.5px solid var(--border)", background:"var(--bg)", fontFamily:"var(--ui-font-sans)", fontSize:13.5, color:"var(--text-primary)", outline:"none", transition:"all 0.2s", boxSizing:"border-box" },
   error: { fontSize:12, color:"var(--coral)", marginTop:4 },
 };
 

@@ -10,8 +10,8 @@ import { FormInput, FormSelect, FormRow, FormSection, FormDate } from "../../com
 
 /* ── Input styles (same as DocumentUploadForm) ── */
 const IS = {
-  label: { display:"block", fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:11.5, fontWeight:700, color:"var(--text-secondary)", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:7 },
-  input: { width:"100%", padding:"10px 13px", borderRadius:10, border:"1.5px solid var(--border)", background:"var(--bg)", fontFamily:"'DM Sans',sans-serif", fontSize:13.5, color:"var(--text-primary)", outline:"none", transition:"all 0.2s", boxSizing:"border-box" },
+  label: { display:"block", fontFamily:"var(--ui-font-heading)", fontSize:11.5, fontWeight:700, color:"var(--text-secondary)", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:7 },
+  input: { width:"100%", padding:"10px 13px", borderRadius:10, border:"1.5px solid var(--border)", background:"var(--bg)", fontFamily:"var(--ui-font-sans)", fontSize:13.5, color:"var(--text-primary)", outline:"none", transition:"all 0.2s", boxSizing:"border-box" },
   error: { fontSize:12, color:"var(--coral)", marginTop:4 },
 };
 
@@ -572,15 +572,15 @@ export default function AddEmployee() {
         <div className="card">
 
           {/* Gradient bar */}
-          <div style={{ height: 5, background: "linear-gradient(90deg,var(--primary),var(--teal))" }} />
+          <div style={{ height: 5, background: "var(--primary)" }} />
 
           {/* Card Header */}
           <div style={{ padding:"20px 24px 16px", borderBottom:"1px solid var(--border)", display:"flex", alignItems:"center", gap:12 }}>
-            <div style={{ width:40, height:40, borderRadius:12, background:"linear-gradient(135deg,var(--primary),var(--teal))", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            <div style={{ width:40, height:40, borderRadius:6, background:"var(--primary)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
               <Users size={20} color="white" />
             </div>
             <div>
-              <div style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:17, fontWeight:800, color:"var(--text-primary)" }}>
+              <div style={{ fontFamily:"var(--ui-font-heading)", fontSize:17, fontWeight:800, color:"var(--text-primary)" }}>
                 {isEditMode ? "Edit Employee" : "Add New Employee"}
               </div>
               <div style={{ fontSize:12, color:"var(--text-muted)", marginTop:2 }}>
@@ -598,9 +598,9 @@ export default function AddEmployee() {
                     <div style={{
                       width:36, height:36, borderRadius:"50%",
                       display:"flex", alignItems:"center", justifyContent:"center",
-                      background: activeStep > index ? "var(--teal)" : activeStep === index ? "linear-gradient(135deg,var(--primary),var(--primary-light))" : "var(--bg)",
+                      background: activeStep > index ? "var(--teal)" : activeStep === index ? "var(--primary)" : "var(--bg)",
                       color: activeStep >= index ? "white" : "var(--text-muted)",
-                      fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:14, fontWeight:800,
+                      fontFamily:"var(--ui-font-heading)", fontSize:14, fontWeight:800,
                       border:`2px solid ${activeStep > index ? "var(--teal)" : activeStep === index ? "var(--primary)" : "var(--border)"}`,
                       transition:"all 0.3s", flexShrink:0,
                     }}>
@@ -624,7 +624,7 @@ export default function AddEmployee() {
           </div>
 
           {/* Footer */}
-          <div style={{ padding:"16px 24px", borderTop:"1px solid var(--border)", display:"flex", justifyContent:"space-between", background:"#faf8ff" }}>
+          <div style={{ padding:"16px 24px", borderTop:"1px solid var(--border)", display:"flex", justifyContent:"space-between", background:"#f7f9f8" }}>
             <button
               disabled={activeStep === 0}
               onClick={handleBack}

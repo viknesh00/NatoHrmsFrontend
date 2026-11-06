@@ -61,11 +61,11 @@ export default function JobManagement() {
                 borderRadius: 9,
                 border:      "none",
                 cursor:      "pointer",
-                fontFamily:  "'DM Sans', sans-serif",
+                fontFamily:  "var(--ui-font-sans)",
                 fontSize:    13,
                 fontWeight:  600,
                 background:  isActive
-                  ? "linear-gradient(135deg, var(--primary), var(--primary-light))"
+                  ? "var(--primary)"
                   : "transparent",
                 color:       isActive ? "white" : "var(--text-secondary)",
                 boxShadow:   isActive ? "0 2px 8px var(--primary-glow)" : "none",

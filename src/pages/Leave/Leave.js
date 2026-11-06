@@ -124,7 +124,7 @@ export default function Leave() {
             <div className="modal-header">
               <div style={{ display:"flex", alignItems:"center", gap:12 }}>
                 <div className="modal-icon" style={{ background: selectedStatus ? "#f0fdf4" : "#fff1f2" }}>
-                  <AlertCircle size={20} color={selectedStatus ? "#22c55e" : "#f43f5e"} />
+                  <AlertCircle size={20} color={selectedStatus ? "#22c55e" : "var(--coral)"} />
                 </div>
                 <div>
                   <div className="modal-title">Leave Approval</div>

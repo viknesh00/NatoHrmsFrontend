@@ -314,7 +314,7 @@ export default function TimeSheetOverview({ tabSwitcher }) {
       label: "Regular Hrs",
       renderCell: (row) => (
         <span style={{
-          fontFamily: "'Plus Jakarta Sans', sans-serif",
+          fontFamily: "var(--ui-font-heading)",
           fontWeight: 700,
           color: "#15803d",
           background: "#dcfce7",
@@ -334,10 +334,10 @@ export default function TimeSheetOverview({ tabSwitcher }) {
         const hasOt = row._rawOvertime > 0;
         return (
           <span style={{
-            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            fontFamily: "var(--ui-font-heading)",
             fontWeight: 700,
-            color:      hasOt ? "#1d4ed8" : "#94a3b8",
-            background: hasOt ? "#dbeafe"  : "#f1f5f9",
+            color:      hasOt ? "var(--primary-dark)" : "#94a3b8",
+            background: hasOt ? "var(--primary-ghost)"  : "#f1f5f9",
             padding:    "3px 10px",
             borderRadius: 20,
             fontSize: 12,
@@ -356,9 +356,9 @@ export default function TimeSheetOverview({ tabSwitcher }) {
       label: "Total Hours",
       renderCell: (row) => (
         <span style={{
-          fontFamily: "'Plus Jakarta Sans', sans-serif",
+          fontFamily: "var(--ui-font-heading)",
           fontWeight: 800,
-          color: "var(--primary, #6366f1)",
+          color: "var(--primary, var(--primary))",
           fontSize: 13,
         }}>
           {row.totalWorkingHours}

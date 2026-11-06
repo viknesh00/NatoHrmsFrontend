@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import {
   Edit, User, Briefcase, DollarSign, GraduationCap,
-  Phone, MapPin, FileText, Shield, Heart, Clock,
+  Phone, MapPin, FileText, Shield, Heart, Clock, IdCard,
   Users
 } from "lucide-react";
 
@@ -22,11 +22,11 @@ const fmt = (v) => {
 function Section({ icon, title, children }) {
   return (
     <div style={{ background: "var(--bg-card)", borderRadius: "var(--radius-lg)", border: "1px solid var(--border)", overflow: "hidden", boxShadow: "var(--shadow-sm)", marginBottom: 16 }}>
-      <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", background: "linear-gradient(135deg, var(--primary-ghost), #f0fdf4 80%)", display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ width: 34, height: 34, borderRadius: 10, background: "linear-gradient(135deg, var(--primary), var(--teal))", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", background: "var(--muted)", display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ width: 34, height: 34, borderRadius: 6, background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
           {React.cloneElement(icon, { size: 17, color: "white" })}
         </div>
-        <span style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 14, fontWeight: 800, color: "var(--text-primary)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{title}</span>
+        <span style={{ fontFamily: "var(--ui-font-heading)", fontSize: 14, fontWeight: 800, color: "var(--text-primary)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{title}</span>
       </div>
       <div style={{ padding: "18px 20px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "12px 24px" }}>
@@ -80,28 +80,25 @@ export default function ViewEmployee() {
       </div>
 
       {/* Profile Hero Card */}
-      <div style={{ background: "linear-gradient(135deg, var(--primary-dark), var(--primary), var(--primary-light))", borderRadius: "var(--radius-xl)", padding: "28px 32px", marginBottom: 20, display: "flex", alignItems: "center", gap: 24, boxShadow: "0 8px 32px var(--primary-glow)", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", right: -30, top: -30, width: 180, height: 180, borderRadius: "50%", background: "rgba(255,255,255,0.07)" }} />
-        <div style={{ position: "absolute", right: 80, bottom: -40, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.05)" }} />
-
-        <div style={{ width: 80, height: 80, borderRadius: "50%", background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 28, fontWeight: 900, color: "white", border: "3px solid rgba(255,255,255,0.3)", flexShrink: 0, backdropFilter: "blur(10px)" }}>
+      <div className="profile-hero-card">
+        <div className="profile-hero-avatar">
           {initials}
         </div>
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 22, fontWeight: 900, color: "white", lineHeight: 1.2 }}>
+        <div className="profile-hero-copy">
+          <div className="profile-hero-title">
             {data.firstName} {data.lastName}
           </div>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.8)", marginTop: 4 }}>
+          <div className="profile-hero-subtitle">
             {data.designation} · {data.department}
           </div>
-          <div style={{ display: "flex", gap: 12, marginTop: 10, flexWrap: "wrap" }}>
+          <div className="profile-hero-meta">
             {[
-              { label: data.employeeId, icon: "🆔" },
-              { label: data.workLocation, icon: "📍" },
-              { label: data.accessRole, icon: "🔑" },
+              { label: data.employeeId, icon: IdCard },
+              { label: data.workLocation, icon: MapPin },
+              { label: data.accessRole, icon: Shield },
             ].filter(b => b.label).map((b, i) => (
-              <span key={i} style={{ background: "rgba(255,255,255,0.15)", color: "white", padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600, backdropFilter: "blur(6px)" }}>
-                {b.icon} {b.label}
+              <span key={i} className="profile-hero-chip">
+                <b.icon size={13} aria-hidden="true" /> {b.label}
               </span>
             ))}
           </div>

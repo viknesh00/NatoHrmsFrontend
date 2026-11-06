@@ -24,7 +24,7 @@ export default function CreateJob() {
     location:         editData?.location                     || "",
     salary:           editData?.salary                       || "",
     jobType:          editData?.jobType                      || "Full-time",
-    skills:           editData?.skills                       || "", // ✅ ADDED
+    skills:           editData?.skills                       || "", // Added.
     date:             editData?.postedDate
                         ? dayjs(editData.postedDate).format("YYYY-MM-DD")
                         : dayjs().format("YYYY-MM-DD"),
@@ -42,7 +42,7 @@ export default function CreateJob() {
     if (!form.role.trim())             e.role    = "Required";
     if (!form.location.trim())         e.loc     = "Required";
     if (!form.salary.trim())           e.salary  = "Required";
-    if (!form.skills.trim())           e.skills  = "Required"; // ✅ ADDED
+    if (!form.skills.trim())           e.skills  = "Required"; // Added.
     if (!form.description.trim())      e.desc    = "Required";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -58,7 +58,7 @@ export default function CreateJob() {
       location:         form.location,
       salary:           form.salary,
       jobType:          form.jobType,
-      skills:           form.skills,           // ✅ ADDED
+      skills:           form.skills,           // Added.
       description:      form.description,
       responsibilities: form.responsibilities,
       qualifications:   form.qualifications,
@@ -189,7 +189,7 @@ export default function CreateJob() {
               </div>
             </FormRow>
 
-            {/* Row 4: Skills (full width) ✅ ADDED */}
+            {/* Row 4: Skills (full width). */}
             <FormRow cols={1}>
               <FormInput
                 label="Skills"
@@ -241,8 +241,8 @@ export default function CreateJob() {
       </div>
 
       <style>{`
-        .fc-label { display:block; font-family:'Plus Jakarta Sans',sans-serif; font-size:11.5px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:7px; }
-        .fc-input { width:100%; padding:10px 13px; border-radius:10px; border:1.5px solid var(--border); background:var(--bg); font-family:'DM Sans',sans-serif; font-size:13.5px; color:var(--text-primary); outline:none; transition:all 0.2s; box-sizing:border-box; }
+        .fc-label { display:block; font-family:var(--ui-font-heading); font-size:11.5px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:7px; }
+        .fc-input { width:100%; padding:10px 13px; border-radius:10px; border:1.5px solid var(--border); background:var(--bg); font-family:var(--ui-font-sans); font-size:13.5px; color:var(--text-primary); outline:none; transition:all 0.2s; box-sizing:border-box; }
         .fc-input:focus { border-color:var(--primary); box-shadow:0 0 0 3px var(--primary-ghost); background:#fff; }
         .fc-error { font-size:12px; color:var(--coral); margin-top:5px; }
         .fc-hint  { font-size:12px; color:var(--text-muted); margin-top:5px; }

@@ -5,6 +5,7 @@ import {
   LogOut,
   ChevronDown,
   AlertTriangle,
+  Menu,
 } from "lucide-react";
 import { cookieKeys, getCookie, setCookie } from "../../services/Cookies";
 import { cookieObj } from "../../models/cookieObj";
@@ -14,6 +15,16 @@ import { refreshUserCookies } from "./Layout";
 import { getRequest, postRequest } from "../../services/Apiservice";
 import LoadingMask from "../../services/LoadingMask";
 import { ToastError, ToastSuccess } from "../../services/ToastMsg";
+import { Button } from "../../components/ui/button";
+import { Avatar, AvatarFallback } from "../../components/ui/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -385,7 +396,7 @@ const formatDate = (d) =>
 // Component
 // ---------------------------------------------------------------------------
 
-const Header = () => {
+const Header = ({ onMenuClick = () => {}, navOpen = false }) => {
   const navigate = useNavigate();
 
   // Clock state
@@ -772,6 +783,17 @@ const Header = () => {
 
   return (
     <header className="header">
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="header-menu-toggle"
+        aria-label="Toggle navigation"
+        aria-expanded={navOpen}
+        onClick={onMenuClick}
+      >
+        <Menu size={17} />
+      </Button>
       <LoadingMask loading={loading} />
 
       {/* Password change modal */}
@@ -789,185 +811,30 @@ const Header = () => {
         />
       )}
 
-      {/* Logout confirm modal */}
-      {showLogoutConfirm && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background:
-              "rgba(20,0,50,0.5)",
-            backdropFilter:
-              "blur(4px)",
-            zIndex: 3000,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 20,
-          }}
-        >
-          <div
-            style={{
-              background:
-                "var(--bg-card)",
-              borderRadius: 20,
-              boxShadow:
-                "var(--shadow-xl)",
-              width: "100%",
-              maxWidth: 380,
-              overflow: "hidden",
-              animation:
-                "slideUp 0.25s ease",
-            }}
-          >
-            <div
-              style={{
-                height: 4,
-                background:
-                  "linear-gradient(90deg, var(--coral), #f97316)",
-              }}
-            />
-
-            <div
-              style={{
-                padding:
-                  "24px 24px 0",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems:
-                    "center",
-                  gap: 14,
-                  marginBottom: 12,
-                }}
-              >
-                <div
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 12,
-                    background:
-                      "#fff1f2",
-                    display: "flex",
-                    alignItems:
-                      "center",
-                    justifyContent:
-                      "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <AlertTriangle
-                    size={22}
-                    color="var(--coral)"
-                  />
-                </div>
-
-                <div>
-                  <div
-                    style={{
-                      fontFamily:
-                        "'Plus Jakarta Sans',sans-serif",
-                      fontSize: 17,
-                      fontWeight: 800,
-                      color:
-                        "var(--text-primary)",
-                    }}
-                  >
-                    Confirm Logout
-                  </div>
-
-                  <div
-                    style={{
-                      fontSize: 13,
-                      color:
-                        "var(--text-muted)",
-                      marginTop: 2,
-                    }}
-                  >
-                    Are you sure you want to log out?
-                  </div>
-                </div>
-              </div>
-
-              <p
-                style={{
-                  fontSize: 13.5,
-                  color:
-                    "var(--text-secondary)",
-                  lineHeight: 1.7,
-                  marginBottom: 20,
-                }}
-              >
-                You will be signed out of your
-                Natobotics HRMS account. Any
-                unsaved changes will be lost.
-              </p>
-            </div>
-
-            <div
-              style={{
-                padding:
-                  "0 24px 20px",
-                display: "flex",
-                gap: 10,
-                justifyContent:
-                  "flex-end",
-              }}
-            >
-              <button
-                onClick={() =>
-                  setShowLogoutConfirm(false)
-                }
-                style={{
-                  padding:
-                    "9px 20px",
-                  borderRadius: 9,
-                  border:
-                    "1.5px solid var(--border)",
-                  background:
-                    "var(--bg-card)",
-                  color:
-                    "var(--text-secondary)",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                Stay Logged In
-              </button>
-
-              <button
-                onClick={handleLogout}
-                style={{
-                  padding:
-                    "9px 20px",
-                  borderRadius: 9,
-                  border: "none",
-                  background:
-                    "linear-gradient(135deg, var(--coral), #f97316)",
-                  color: "white",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems:
-                    "center",
-                  gap: 7,
-                  boxShadow:
-                    "0 3px 10px rgba(244,63,94,0.3)",
-                  fontFamily:
-                    "'Plus Jakarta Sans',sans-serif",
-                }}
-              >
-                <LogOut size={15} />
-                Yes, Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
+        <DialogContent className="logout-dialog">
+          <DialogHeader className="logout-dialog-header">
+            <span className="logout-dialog-icon" aria-hidden="true">
+              <AlertTriangle size={20} />
+            </span>
+            <span>
+              <DialogTitle>Confirm Logout</DialogTitle>
+              <DialogDescription>Are you sure you want to log out?</DialogDescription>
+            </span>
+          </DialogHeader>
+          <p className="logout-dialog-copy">
+            You will be signed out of your Natobotics HRMS account. Any unsaved changes will be lost.
+          </p>
+          <DialogFooter className="logout-dialog-actions">
+            <Button variant="outline" onClick={() => setShowLogoutConfirm(false)}>
+              Stay Logged In
+            </Button>
+            <Button variant="destructive" className="logout-dialog-confirm" onClick={handleLogout}>
+              <LogOut size={15} /> Yes, Logout
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Brand */}
       <div className="header-brand">
@@ -986,7 +853,10 @@ const Header = () => {
 
         {/* Clock button */}
         {!isDeizeisau && (
-          <button
+          <Button
+            type="button"
+            variant={clockedIn ? "secondary" : "default"}
+            size="lg"
             className={`clock-btn ${
               clockedIn
                 ? "clock-btn-active"
@@ -994,6 +864,7 @@ const Header = () => {
             }`}
             onClick={handleClock}
             disabled={loading}
+            aria-label={clockedIn ? "Clock out" : "Clock in"}
           >
             {clockedIn ? (
               <>
@@ -1021,7 +892,7 @@ const Header = () => {
             ) : (
               "Clock In"
             )}
-          </button>
+          </Button>
         )}
 
         {/* User info */}
@@ -1036,26 +907,18 @@ const Header = () => {
         </div>
 
         {/* Avatar + dropdown */}
-        <div
-          style={{
-            position: "relative",
-          }}
-          ref={menuRef}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              cursor: "pointer",
-            }}
-            onClick={() =>
-              setMenuOpen((o) => !o)
-            }
+        <div className="profile-menu-anchor" ref={menuRef}>
+          <button
+            type="button"
+            className="profile-menu-trigger"
+            aria-label="Open profile menu"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen(o => !o)}
           >
-            <div className="header-avatar">
-              {initials}
-            </div>
+            <Avatar className="header-avatar">
+              <AvatarFallback>{initials}</AvatarFallback>
+            </Avatar>
 
             <ChevronDown
               size={13}
@@ -1068,39 +931,12 @@ const Header = () => {
                   : "",
               }}
             />
-          </div>
+          </button>
 
           {menuOpen && (
-            <div
-              style={{
-                position: "absolute",
-                top:
-                  "calc(100% + 10px)",
-                right: 0,
-                background: "white",
-                borderRadius: 16,
-                border:
-                  "1px solid var(--border)",
-                boxShadow:
-                  "var(--shadow-lg)",
-                minWidth: 210,
-                overflow: "hidden",
-                animation:
-                  "slideUp 0.2s ease",
-                zIndex: 300,
-              }}
-            >
+            <div className="profile-menu" role="menu">
               {/* User header */}
-              <div
-                style={{
-                  padding:
-                    "14px 16px",
-                  borderBottom:
-                    "1px solid var(--border)",
-                  background:
-                    "linear-gradient(135deg, var(--primary-ghost), #f0fdf4)",
-                }}
-              >
+              <div className="profile-menu-header">
                 <div
                   style={{
                     display: "flex",
@@ -1109,51 +945,16 @@ const Header = () => {
                     gap: 10,
                   }}
                 >
-                  <div
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: "50%",
-                      background:
-                        "linear-gradient(135deg, var(--primary), var(--teal))",
-                      display: "flex",
-                      alignItems:
-                        "center",
-                      justifyContent:
-                        "center",
-                      fontFamily:
-                        "'Plus Jakarta Sans',sans-serif",
-                      fontSize: 13,
-                      fontWeight: 800,
-                      color: "white",
-                      flexShrink: 0,
-                    }}
-                  >
+                  <div className="profile-menu-avatar" aria-hidden="true">
                     {initials}
                   </div>
 
                   <div>
-                    <div
-                      style={{
-                        fontFamily:
-                          "'Plus Jakarta Sans',sans-serif",
-                        fontWeight: 800,
-                        fontSize: 13.5,
-                        color:
-                          "var(--text-primary)",
-                      }}
-                    >
+                    <div className="profile-menu-name">
                       {firstName} {lastName}
                     </div>
 
-                    <div
-                      style={{
-                        fontSize: 11.5,
-                        color:
-                          "var(--text-muted)",
-                        marginTop: 1,
-                      }}
-                    >
+                    <div className="profile-menu-meta">
                       {employeeId} · {employeeRole}
                     </div>
                   </div>
@@ -1182,42 +983,12 @@ const Header = () => {
               ].map((item, i) => (
                 <button
                   key={i}
+                  type="button"
+                  role="menuitem"
+                  className="profile-menu-item"
                   onClick={item.action}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding:
-                      "11px 16px",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    fontSize: 13.5,
-                    fontFamily:
-                      "'DM Sans',sans-serif",
-                    fontWeight: 500,
-                    color:
-                      "var(--text-primary)",
-                    textAlign: "left",
-                    transition:
-                      "background 0.15s",
-                  }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.background =
-                      "var(--bg)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.background =
-                      "none")
-                  }
                 >
-                  <span
-                    style={{
-                      color:
-                        "var(--text-muted)",
-                    }}
-                  >
+                  <span className="profile-menu-item-icon">
                     {item.icon}
                   </span>
 
@@ -1232,38 +1003,13 @@ const Header = () => {
                 }}
               >
                 <button
+                  type="button"
+                  role="menuitem"
+                  className="profile-menu-item profile-menu-item-danger"
                   onClick={() => {
                     setMenuOpen(false);
                     setShowLogoutConfirm(true);
                   }}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding:
-                      "11px 16px",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    fontSize: 13.5,
-                    fontFamily:
-                      "'DM Sans',sans-serif",
-                    fontWeight: 600,
-                    color:
-                      "var(--coral)",
-                    textAlign: "left",
-                    transition:
-                      "background 0.15s",
-                  }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.background =
-                      "#fff1f2")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.background =
-                      "none")
-                  }
                 >
                   <LogOut size={15} />
                   Logout

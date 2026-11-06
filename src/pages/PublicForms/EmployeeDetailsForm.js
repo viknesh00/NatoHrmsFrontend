@@ -77,7 +77,7 @@ function Group({ title, children }) {
 const GF_STYLES = `
 .gf-card { background:#fff; border:1px solid var(--border); border-radius:12px; padding:20px 24px; margin-bottom:12px; box-shadow:var(--shadow-sm); }
 .gf-group { background:#fff; border:1px solid var(--border); border-radius:12px; padding:22px 24px 8px; margin:0 0 22px; min-width:0; box-shadow:var(--shadow-sm); }
-.gf-legend { padding:0 8px; margin-left:-2px; font-family:'DM Sans',sans-serif; font-size:13.5px; font-weight:600; letter-spacing:0; text-transform:none; color:var(--text-secondary); }
+.gf-legend { padding:0 8px; margin-left:-2px; font-family:var(--ui-font-sans); font-size:13.5px; font-weight:600; letter-spacing:0; text-transform:none; color:var(--text-secondary); }
 .gf-group .fc-row { column-gap:20px; }
 .gf-group .fc-label { text-transform:none; letter-spacing:0; font-size:13.5px; font-weight:700; color:var(--text-primary); }
 .gf-actions { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; background:#fff; border:1px solid var(--border); border-radius:12px; padding:16px 24px; box-shadow:var(--shadow-sm); }
@@ -276,7 +276,7 @@ export default function EmployeeDetailsForm() {
 
         {/* Form header */}
         <div className="gf-card" style={{ padding: 0, overflow: "hidden", marginBottom: 22 }}>
-          <div style={{ height: 10, background: "linear-gradient(90deg,var(--primary),var(--teal))" }} />
+          <div style={{ height: 10, background: "var(--primary)" }} />
           <div style={{ padding: "22px 24px 20px", textAlign: "center" }}>
             <img src={LOGO_URL} alt="Natobotics" style={{ height: 56, maxWidth: "100%", objectFit: "contain", display: "block", margin: "0 auto 14px" }} />
             <h1 className="page-title" style={{ fontSize: 24 }}>Employee Details Form</h1>
@@ -291,7 +291,7 @@ export default function EmployeeDetailsForm() {
             <div style={{ width: 64, height: 64, borderRadius: "50%", background: "var(--teal-ghost)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
               <CheckCircle2 size={34} color="var(--teal)" />
             </div>
-            <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 20, fontWeight: 800, color: "var(--text-primary)" }}>
+            <div style={{ fontFamily: "var(--ui-font-heading)", fontSize: 20, fontWeight: 800, color: "var(--text-primary)" }}>
               Thank you! Your details have been submitted
             </div>
             <p style={{ fontSize: 13.5, color: "var(--text-secondary)", marginTop: 8 }}>

@@ -22,7 +22,7 @@ const Field = ({ label, value, setValue, showKey, show, setShow }) => (
         style={{
           width:"100%", padding:"10px 40px 10px 13px", borderRadius:10,
           border:"1.5px solid var(--border)", background:"var(--bg-card)",
-          fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"var(--text-primary)",
+          fontFamily:"var(--ui-font-sans)", fontSize:14, color:"var(--text-primary)",
           outline:"none", transition:"border-color 0.2s, box-shadow 0.2s", boxSizing:"border-box",
         }}
         onFocus={e => { e.target.style.borderColor="var(--primary)"; e.target.style.boxShadow="0 0 0 3px var(--primary-ghost)"; }}
@@ -60,7 +60,7 @@ const PasswordChange = ({ onSuccess, isManualChange = false, onClose }) => {
   };
 
   const strength = getStrength(newPassword);
-  const sColors = ["#ef4444","#f59e0b","#3b82f6","#22c55e"];
+  const sColors = ["#ef4444","#f59e0b","var(--primary)","#22c55e"];
   const sLabels = ["Weak","Fair","Good","Strong"];
 
   const handleUpdate = useCallback(async () => {
@@ -85,7 +85,7 @@ const PasswordChange = ({ onSuccess, isManualChange = false, onClose }) => {
 
   return (
     <div
-      style={{ position:"fixed", inset:0, background:"rgba(20,0,50,0.5)", backdropFilter:"blur(4px)", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}
+      style={{ position:"fixed", inset:0, background:"rgba(16,24,20,0.46)", backdropFilter:"blur(4px)", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}
       onMouseDown={() => isManualChange && onClose && onClose()}
     >
       <div
@@ -94,16 +94,16 @@ const PasswordChange = ({ onSuccess, isManualChange = false, onClose }) => {
         onClick={stopProp}
       >
         {/* Top gradient bar */}
-        <div style={{ height:5, background:"linear-gradient(90deg,var(--primary),var(--teal))" }} />
+        <div style={{ height:5, background:"var(--primary)" }} />
 
         {/* Header */}
         <div style={{ padding:"20px 24px 14px", borderBottom:"1px solid var(--border)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            <div style={{ width:40, height:40, borderRadius:12, background:"linear-gradient(135deg,var(--primary),var(--teal))", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <div style={{ width:40, height:40, borderRadius:6, background:"var(--primary)", display:"flex", alignItems:"center", justifyContent:"center" }}>
               <KeyRound size={20} color="white"/>
             </div>
             <div>
-              <div style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:17, fontWeight:800, color:"var(--text-primary)" }}>
+              <div style={{ fontFamily:"var(--ui-font-heading)", fontSize:17, fontWeight:800, color:"var(--text-primary)" }}>
                 {isManualChange ? "Change Password" : "Set New Password"}
               </div>
               <div style={{ fontSize:12, color:"var(--text-muted)", marginTop:2 }}>
@@ -192,7 +192,7 @@ const PasswordChange = ({ onSuccess, isManualChange = false, onClose }) => {
           <button
             onClick={handleUpdate}
             disabled={loading}
-            style={{ padding:"9px 22px", borderRadius:9, border:"none", background:loading ? "#9ca3af" : "linear-gradient(135deg,var(--primary),var(--primary-light))", color:"white", fontSize:13, fontWeight:700, cursor:loading ? "not-allowed" : "pointer", fontFamily:"'Plus Jakarta Sans',sans-serif", display:"flex", alignItems:"center", gap:7, boxShadow:loading ? "none" : "0 3px 10px var(--primary-glow)" }}
+            style={{ padding:"9px 22px", borderRadius:4, border:"none", background:loading ? "#9ca3af" : "var(--primary)", color:"white", fontSize:13, fontWeight:700, cursor:loading ? "not-allowed" : "pointer", fontFamily:"var(--ui-font-sans)", display:"flex", alignItems:"center", gap:7, boxShadow:"none" }}
           >
             {loading ? "Updating..." : <><Shield size={15}/> Update Password</>}
           </button>

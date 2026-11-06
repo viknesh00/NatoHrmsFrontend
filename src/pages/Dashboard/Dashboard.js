@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Users, CalendarCheck2, UserMinus, Megaphone, Clock, ChevronRight, ArrowUpRight, Briefcase } from "lucide-react";
+import { Users, CalendarCheck2, UserMinus, Megaphone, Clock, ChevronRight, ArrowUpRight, Briefcase, ClipboardList, Sparkles, CalendarDays } from "lucide-react";
 import { getRequest, postRequest } from "../../services/Apiservice";
 import { getCookie } from "../../services/Cookies";
 import { useNavigate } from "react-router-dom";
@@ -8,19 +8,19 @@ import isoWeek from "dayjs/plugin/isoWeek";
 dayjs.extend(isoWeek);
 
 const ACCENT_COLORS = [
-  { bg:"linear-gradient(135deg,#6c3fc5,#8b5cf6)", ghost:"#ede9fe", text:"#6c3fc5" },
-  { bg:"linear-gradient(135deg,#0d9488,#14b8a6)", ghost:"#ccfbf1", text:"#0d9488" },
-  { bg:"linear-gradient(135deg,#f59e0b,#fbbf24)", ghost:"#fef3c7", text:"#b45309" },
-  { bg:"linear-gradient(135deg,#f43f5e,#fb7185)", ghost:"#ffe4e6", text:"#f43f5e" },
+  { bg:"var(--primary)", ghost:"var(--primary-ghost)", text:"var(--primary)" },
+  { bg:"var(--primary)", ghost:"var(--primary-ghost)", text:"var(--primary)" },
+  { bg:"var(--primary)", ghost:"var(--primary-ghost)", text:"var(--primary)" },
+  { bg:"var(--primary)", ghost:"var(--primary-ghost)", text:"var(--primary)" },
 ];
 
 const PROJECT_COLORS = [
-  { bg:"#ede9fe", text:"#6c3fc5" },
-  { bg:"#ccfbf1", text:"#0d9488" },
-  { bg:"#fef3c7", text:"#b45309" },
-  { bg:"#ffe4e6", text:"#f43f5e" },
-  { bg:"#dbeafe", text:"#1e40af" },
-  { bg:"#dcfce7", text:"#166534" },
+  { bg:"var(--primary-ghost)", text:"var(--primary-dark)" },
+  { bg:"#eaf4ef", text:"#39745a" },
+  { bg:"#edf5f0", text:"#4d6d5b" },
+  { bg:"#e2f0e7", text:"#2f7654" },
+  { bg:"#f0f5f1", text:"#56675d" },
+  { bg:"#e7f3ec", text:"#3f775a" },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -47,7 +47,7 @@ function projectStatusBadge(status) {
 function ProjectProgress({ project, userDept }) {
   if (!project) return (
     <div style={{ textAlign:"center", padding:"28px 0", color:"var(--text-muted)", fontSize:13 }}>
-      <div style={{ fontSize:32, marginBottom:8 }}>📋</div>
+      <div style={{ display:"flex", justifyContent:"center", marginBottom:8, color:"var(--primary)" }}><ClipboardList size={28} aria-hidden="true" /></div>
       <div style={{ fontWeight:600, color:"var(--text-secondary)", marginBottom:4 }}>No project assigned</div>
       <div style={{ fontSize:12 }}>Contact your manager to get assigned to a project</div>
     </div>
@@ -68,7 +68,7 @@ function ProjectProgress({ project, userDept }) {
     <div style={{ background:"var(--bg)", borderRadius:10, padding:"14px 16px", border:"1px solid var(--border)" }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:6 }}>
         <div>
-          <div style={{ fontSize:15, fontWeight:700, color:"var(--text-primary)", fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
+          <div style={{ fontSize:15, fontWeight:700, color:"var(--text-primary)", fontFamily:"var(--ui-font-heading)" }}>
             {project.projectName}
           </div>
           {project.clientName && (
@@ -89,7 +89,7 @@ function ProjectProgress({ project, userDept }) {
           <div style={{
             height:"100%",
             width:`${pct}%`,
-            background:"linear-gradient(90deg,var(--primary),var(--primary-light))",
+            background:"var(--primary)",
             borderRadius:3,
             transition:"width 1s ease",
           }} />
@@ -389,7 +389,7 @@ export default function Dashboard() {
 
       {/* Greeting Banner */}
       <div className="greeting-banner" style={{ marginBottom:24 }}>
-        <div className="greeting-title">{greeting}, {firstName}! 👋</div>
+        <div className="greeting-title">{greeting}, {firstName}! <Sparkles size={18} aria-hidden="true" /></div>
         <div className="greeting-sub">Here's what's happening at Natobotics today.</div>
         <div className="greeting-date">
           <Clock size={12} style={{ verticalAlign:"middle", marginRight:5 }}/>{today}
@@ -485,7 +485,7 @@ export default function Dashboard() {
                     { label:"Planning", value: pendingProjects.length, color:"var(--amber)"   },
                   ].map((s, i) => (
                     <div key={i} style={{ padding:"10px 0", textAlign:"center", borderRight:i < 2 ? "1px solid var(--border)" : "none" }}>
-                      <div style={{ fontSize:20, fontWeight:800, color:s.color, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
+                      <div style={{ fontSize:20, fontWeight:800, color:s.color, fontFamily:"var(--ui-font-heading)" }}>
                         {loading ? "—" : s.value}
                       </div>
                       <div style={{ fontSize:11, color:"var(--text-muted)", marginTop:2 }}>{s.label}</div>
@@ -517,7 +517,7 @@ export default function Dashboard() {
                               <div style={{
                                 width:32, height:32, borderRadius:8, background:c.bg,
                                 display:"flex", alignItems:"center", justifyContent:"center",
-                                fontFamily:"'Plus Jakarta Sans',sans-serif",
+                                fontFamily:"var(--ui-font-heading)",
                                 fontSize:13, fontWeight:800, color:c.text, flexShrink:0,
                               }}>
                                 {(proj.projectName || "P")[0].toUpperCase()}
@@ -586,7 +586,7 @@ export default function Dashboard() {
                                       width:28, height:28, borderRadius:7,
                                       background:"var(--primary-ghost)",
                                       display:"flex", alignItems:"center", justifyContent:"center",
-                                      fontFamily:"'Plus Jakarta Sans',sans-serif",
+                                      fontFamily:"var(--ui-font-heading)",
                                       fontSize:11, fontWeight:800, color:"var(--primary)", flexShrink:0,
                                     }}>
                                       {(row.employeeName || row.userName || "?")[0]?.toUpperCase()}
@@ -635,7 +635,7 @@ export default function Dashboard() {
                 : announcements.length === 0
                   ? <div style={{ textAlign:"center", padding:"24px 0", color:"var(--text-muted)", fontSize:13 }}>No announcements</div>
                   : announcements.map((ann, i) => {
-                      const colors = ["var(--primary)","var(--teal)","var(--coral)","var(--amber)","var(--sky)","var(--emerald)"];
+                      const colors = ["#07996f", "#087a59", "#25ad82"];
                       const c = colors[i % colors.length];
                       const isNew = dayjs().diff(dayjs(ann.announcementDate || ann.createdDate, "DD-MM-YYYY"), "day") <= 7;
                       return (
@@ -682,7 +682,7 @@ export default function Dashboard() {
                       <div className="dist-bar-wrap">
                         <div className="dist-bar-fill" style={{
                           width:`${totalEmp ? (v / totalEmp) * 100 : 0}%`,
-                          background:"linear-gradient(90deg,var(--primary),var(--primary-light))",
+                          background:"var(--primary)",
                         }}/>
                       </div>
                       <span className="dist-count">{v}</span>
@@ -712,7 +712,7 @@ export default function Dashboard() {
           <div className="card">
             <div className="card-header">
               <span className="card-title" style={{ display:"flex", alignItems:"center", gap:8 }}>
-                🎉 Upcoming Events
+                <CalendarDays size={17} aria-hidden="true" /> Upcoming Events
               </span>
             </div>
             <div className="card-body" style={{ paddingTop:8, paddingBottom:8 }}>

@@ -26,8 +26,8 @@ export default function TimeSheetLayout() {
           style={{
             display: "flex", alignItems: "center", gap: 6,
             padding: "7px 20px", borderRadius: 8, border: "none", cursor: "pointer",
-            fontFamily: "'DM Sans',sans-serif", fontSize: 13, fontWeight: 600,
-            background: activeTab === key ? "linear-gradient(135deg,var(--primary),var(--primary-light))" : "transparent",
+            fontFamily: "var(--ui-font-sans)", fontSize: 13, fontWeight: 600,
+            background: activeTab === key ? "var(--primary)" : "transparent",
             color: activeTab === key ? "white" : "var(--text-secondary)",
             boxShadow: activeTab === key ? "0 2px 8px var(--primary-glow)" : "none",
             transition: "all 0.2s",

@@ -178,14 +178,14 @@ export default function AddProfile() {
       <div style={{ maxWidth: 860, background: "#fff", borderRadius: 16, boxShadow: "0 2px 16px rgba(0,0,0,0.08)", overflow: "hidden", margin: "0 auto 40px" }}>
 
         {/* Card header accent */}
-        <div style={{ height: 4, background: "linear-gradient(90deg,#0c4a6e,#0ea5e9)" }} />
+        <div style={{ height: 4, background: "var(--primary)" }} />
 
         <div style={{ padding: "28px 28px 0" }}>
           <div style={{ fontSize: 15, fontWeight: 800, color: "#1e293b", marginBottom: 4 }}>Job & Candidate Details</div>
           <div style={{ fontSize: 12.5, color: "#64748b", marginBottom: 24 }}>Select a job opening and enter the candidate information below</div>
 
           {/* ── Section: Job Info ── */}
-          <div style={{ fontSize: 11, fontWeight: 800, color: "#0c4a6e", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 14, paddingBottom: 6, borderBottom: "1.5px solid #e2e8f0" }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: "var(--primary-dark)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 14, paddingBottom: 6, borderBottom: "1.5px solid #e2e8f0" }}>
             Job Position
           </div>
 
@@ -228,7 +228,7 @@ export default function AddProfile() {
           </div>
 
           {/* ── Section: Candidate Info ── */}
-          <div style={{ fontSize: 11, fontWeight: 800, color: "#0c4a6e", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 14, paddingBottom: 6, borderBottom: "1.5px solid #e2e8f0" }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: "var(--primary-dark)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 14, paddingBottom: 6, borderBottom: "1.5px solid #e2e8f0" }}>
             Candidate Information
           </div>
 
@@ -267,7 +267,7 @@ export default function AddProfile() {
           </div>
 
           {/* ── Section: Resume Upload ── */}
-          <div style={{ fontSize: 11, fontWeight: 800, color: "#0c4a6e", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 14, paddingBottom: 6, borderBottom: "1.5px solid #e2e8f0" }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: "var(--primary-dark)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 14, paddingBottom: 6, borderBottom: "1.5px solid #e2e8f0" }}>
             Resume Upload <span style={{ color: "#ef4444" }}>*</span>
           </div>
 
@@ -286,7 +286,7 @@ export default function AddProfile() {
               marginBottom:  16,
               transition:    "all 0.2s",
             }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = "#0c4a6e"; e.currentTarget.style.background = "#f0f9ff"; }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--primary-dark)"; e.currentTarget.style.background = "var(--primary-ghost)"; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = "#cbd5e1"; e.currentTarget.style.background = "#f8fafc"; }}
           >
             <input
@@ -296,7 +296,7 @@ export default function AddProfile() {
               accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg"
               onChange={e => handleFileSelect(e.target.files[0])}
             />
-            <Upload size={30} color="#0c4a6e" style={{ margin: "0 auto 10px" }} />
+            <Upload size={30} color="var(--primary-dark)" style={{ margin: "0 auto 10px" }} />
             <div style={{ fontSize: 14, fontWeight: 700, color: "#1e293b", marginBottom: 4 }}>
               Drag & drop resume here or click to browse
             </div>
@@ -307,9 +307,9 @@ export default function AddProfile() {
 
           {/* Uploaded file row */}
           {uploadedFile && (
-            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: "#f0f9ff", borderRadius: 10, border: "1.5px solid #bae6fd", marginBottom: 16 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 8, background: "#dbeafe", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <span style={{ fontSize: 10, fontWeight: 800, color: "#0c4a6e" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: "var(--primary-ghost)", borderRadius: 10, border: "1.5px solid var(--border-strong)", marginBottom: 16 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: "var(--primary-ghost)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <span style={{ fontSize: 10, fontWeight: 800, color: "var(--primary-dark)" }}>
                   {uploadedFile.name.split(".").pop()?.toUpperCase()}
                 </span>
               </div>
@@ -324,7 +324,7 @@ export default function AddProfile() {
               <button
                 onClick={previewFile}
                 title="Preview"
-                style={{ background: "none", border: "none", cursor: "pointer", color: "#0c4a6e", padding: 4, display: "flex", alignItems: "center" }}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--primary-dark)", padding: 4, display: "flex", alignItems: "center" }}
               >
                 <Eye size={16} />
               </button>
@@ -349,7 +349,7 @@ export default function AddProfile() {
           </button>
           <button
             onClick={handleSave}
-            style={{ padding: "9px 22px", borderRadius: 10, border: "none", background: "#0c4a6e", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6, boxShadow: "0 3px 12px rgba(12,74,110,0.25)" }}
+            style={{ padding: "9px 22px", borderRadius: 10, border: "none", background: "var(--primary-dark)", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6, boxShadow: "0 3px 12px var(--primary-glow)" }}
           >
             <Save size={14} /> Save Profile
           </button>

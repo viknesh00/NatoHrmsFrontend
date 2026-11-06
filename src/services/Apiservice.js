@@ -16,7 +16,7 @@ export const getRequest = async (endpoint, config = {}, isBlob = false) => {
   const token = getCookie("token");
   const url = `${BASE_URL}${endpoint}`;
 
-  const safeConfig = config || {};   // ✅ prevent null crash
+  const safeConfig = config || {};   // Prevent null-config crashes.
 
   try {
     const options = {

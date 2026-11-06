@@ -99,12 +99,12 @@ export default function Payslip() {
       {/* Generator Panel */}
       {showForm && (
         <div style={{ background: "var(--bg-card)", borderRadius: "var(--radius-xl)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)", overflow: "hidden", marginBottom: 20 }}>
-          <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", background: "linear-gradient(135deg, var(--primary-ghost), #f0fdf4)", display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, var(--primary), var(--teal))", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", background: "var(--muted)", display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 6, background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <FileText size={18} color="white" />
             </div>
             <div>
-              <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 15, fontWeight: 800, color: "var(--text-primary)" }}>Generate Payslip</div>
+              <div style={{ fontFamily: "var(--ui-font-heading)", fontSize: 15, fontWeight: 800, color: "var(--text-primary)" }}>Generate Payslip</div>
               <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Select employee and month to generate salary slip</div>
             </div>
           </div>
@@ -168,7 +168,7 @@ export default function Payslip() {
         data={generated}
       />
 
-      <style>{`.fc-input{width:100%;padding:10px 13px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);font-family:'DM Sans',sans-serif;font-size:13.5px;color:var(--text-primary);outline:none;transition:all 0.2s;}.fc-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-ghost);background:#fff;}`}</style>
+      <style>{`.fc-input{width:100%;padding:10px 13px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);font-family:var(--ui-font-sans);font-size:13.5px;color:var(--text-primary);outline:none;transition:all 0.2s;}.fc-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-ghost);background:#fff;}`}</style>
     </div>
   );
 }

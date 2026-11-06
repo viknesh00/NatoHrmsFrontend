@@ -2,7 +2,7 @@ import React from 'react';
 import './App.css';
 import { BrowserRouter, useRoutes } from 'react-router-dom';
 import routes from "./routes";
-import { ToastContainer, Zoom } from "react-toastify";
+import { Toaster } from "./components/ui/toast";
 
 
 const AppRoutes = () => {
@@ -14,12 +14,10 @@ function App() {
   return (
     <React.Fragment>
       <BrowserRouter>
-            <AppRoutes />
-        </BrowserRouter>
-        <ToastContainer
-          transition={Zoom}
-          style={{ zIndex: 999999 }}
-        />
+        <Toaster>
+          <AppRoutes />
+        </Toaster>
+      </BrowserRouter>
     </React.Fragment>
   );
 }

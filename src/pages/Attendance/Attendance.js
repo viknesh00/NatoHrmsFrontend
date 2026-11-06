@@ -170,8 +170,8 @@ export default function Attendance() {
             onClick={() => setLogType(t)}
             style={{
               padding: "7px 20px", borderRadius: 8, border: "none", cursor: "pointer",
-              fontFamily: "'DM Sans',sans-serif", fontSize: 13, fontWeight: 600,
-              background: logType === t ? "linear-gradient(135deg,var(--primary),var(--primary-light))" : "transparent",
+              fontFamily: "var(--ui-font-sans)", fontSize: 13, fontWeight: 600,
+              background: logType === t ? "var(--primary)" : "transparent",
               color: logType === t ? "white" : "var(--text-secondary)",
               boxShadow: logType === t ? "0 2px 8px var(--primary-glow)" : "none",
               transition: "all 0.2s",

@@ -97,9 +97,9 @@ export default function JobPosted() {
 
   const JOB_TYPE_STYLES = {
     "Full-time":  { bg: "#dcfce7", color: "#15803d" },
-    "Part-time":  { bg: "#dbeafe", color: "#1d4ed8" },
+    "Part-time":  { bg: "var(--primary-ghost)", color: "var(--primary-dark)" },
     "Contract":   { bg: "#fef3c7", color: "#b45309" },
-    "Remote":     { bg: "#ede9fe", color: "#6c3fc5" },
+    "Remote":     { bg: "var(--primary-ghost)", color: "var(--primary)" },
     "Internship": { bg: "#fee2e2", color: "#b91c1c" },
   };
 
@@ -167,13 +167,13 @@ export default function JobPosted() {
                 onMouseLeave={e => e.currentTarget.style.boxShadow = "var(--shadow-sm)"}
               >
                 {/* accent bar */}
-                <div style={{ height: 4, background: "linear-gradient(90deg,var(--primary),var(--teal))" }} />
+                <div style={{ height: 4, background: "var(--primary)" }} />
 
                 <div style={{ padding: "14px 16px" }}>
                   {/* Title row */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
                     <div style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
-                      <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 14.5, fontWeight: 800, color: "var(--text-primary)", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <div style={{ fontFamily: "var(--ui-font-heading)", fontSize: 14.5, fontWeight: 800, color: "var(--text-primary)", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {job.title}
                       </div>
                       <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{job.role}</div>
@@ -303,20 +303,20 @@ export default function JobPosted() {
 
       {/* ── Delete Confirmation Modal (identical style to Sidebar logout) ── */}
       {deleteTarget && createPortal(
-        <div style={{ position: "fixed", inset: 0, background: "rgba(20,0,50,0.55)", backdropFilter: "blur(5px)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(16,24,20,0.46)", backdropFilter: "blur(5px)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ background: "white", borderRadius: 20, boxShadow: "0 20px 60px rgba(0,0,0,0.25)", width: "100%", maxWidth: 380, overflow: "hidden", animation: "slideUp 0.25s ease" }}>
 
             {/* accent bar */}
-            <div style={{ height: 4, background: "linear-gradient(90deg,#f43f5e,#f97316)" }} />
+            <div style={{ height: 4, background: "var(--destructive)" }} />
 
             <div style={{ padding: "24px 24px 0" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                   <div style={{ width: 48, height: 48, borderRadius: 14, background: "#fff1f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <AlertTriangle size={24} color="#f43f5e" />
+                    <AlertTriangle size={24} color="var(--coral)" />
                   </div>
                   <div>
-                    <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 18, fontWeight: 900, color: "#1e1143" }}>
+                    <div style={{ fontFamily: "var(--ui-font-heading)", fontSize: 18, fontWeight: 900, color: "var(--text-primary)" }}>
                       Confirm Delete
                     </div>
                     <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 2 }}>
@@ -340,13 +340,13 @@ export default function JobPosted() {
             <div style={{ padding: "0 24px 22px", display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button
                 onClick={() => setDeleteTarget(null)}
-                style={{ padding: "9px 20px", borderRadius: 10, border: "1.5px solid #e2e8f0", background: "white", color: "#475569", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}
+                style={{ padding: "9px 20px", borderRadius: 10, border: "1.5px solid #e2e8f0", background: "white", color: "#475569", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "var(--ui-font-sans)" }}
               >
                 Cancel
               </button>
               <button
                 onClick={executeDelete}
-                style={{ padding: "9px 20px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#f43f5e,#f97316)", color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 7, fontFamily: "'Plus Jakarta Sans',sans-serif", boxShadow: "0 3px 12px rgba(244,63,94,0.3)" }}
+                style={{ padding: "9px 20px", borderRadius: 4, border: "none", background: "var(--destructive)", color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 7, fontFamily: "var(--ui-font-sans)", boxShadow: "none" }}
               >
                 <Trash2 size={15} /> Yes, Delete
               </button>

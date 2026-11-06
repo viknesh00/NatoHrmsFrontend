@@ -31,10 +31,10 @@ export default function Breadcrumb({ items, icon }) {
   return (
     <nav style={{
       display: "inline-flex", alignItems: "center", gap: 0, marginBottom: 10,
-      background: "linear-gradient(135deg, var(--primary-ghost), #f0fdf4)",
-      border: "1px solid var(--border-strong)", borderRadius: 10,
+      background: "var(--primary-ghost)",
+      border: "1px solid var(--border)", borderRadius: 4,
       padding: "7px 14px",
-      boxShadow: "0 1px 4px rgba(108,63,197,0.1)",
+      boxShadow: "none",
     }}>
       {/* Page icon passed from parent */}
       {icon && (

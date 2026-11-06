@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Plus, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Calendar, CalendarDays } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import LoadingMask from "../../services/LoadingMask";
 import Breadcrumb from "../../services/Breadcrumb";
@@ -12,7 +12,7 @@ dayjs.extend(isoWeek);
 
 const COLORS = {
   Holiday: { bg: "#fee2e2", text: "#b91c1c", dot: "#ef4444", cellBg: "rgba(254,226,226,0.5)" },
-  Event: { bg: "#ede9fe", text: "#6c3fc5", dot: "#8b5cf6", cellBg: "rgba(237,233,254,0.5)" },
+  Event: { bg: "var(--primary-ghost)", text: "var(--primary)", dot: "var(--primary-light)", cellBg: "rgba(231,244,237,0.72)" },
 };
 
 export default function Holiday() {
@@ -59,15 +59,15 @@ export default function Holiday() {
         )}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 256px", gap: 16, alignItems: "start" }}>
+      <div className="company-calendar-layout">
         {/* Main Calendar */}
-        <div className="card">
-          <div className="card-header">
+        <div className="card company-calendar-main">
+          <div className="card-header company-calendar-header">
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <button className="calendar-nav-btn" onClick={() => setCurrent(c => c.subtract(1, "month"))}>
                 <ChevronLeft size={16} />
               </button>
-              <span style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 18, fontWeight: 800, color: "var(--text-primary)", minWidth: 150, textAlign: "center" }}>
+              <span className="calendar-month" style={{ minWidth: 150, textAlign: "center" }}>
                 {current.format("MMMM YYYY")}
               </span>
               <button className="calendar-nav-btn" onClick={() => canGoNext && setCurrent(c => c.add(1, "month"))} style={{ opacity: canGoNext ? 1 : 0.35, cursor: canGoNext ? "pointer" : "not-allowed" }}>
@@ -75,7 +75,7 @@ export default function Holiday() {
               </button>
             </div>
             <div style={{ display: "flex", gap: 16 }}>
-              {[["Holiday", "#ef4444"], ["Event", "#8b5cf6"]].map(([t, color]) => (
+              {[["Holiday", "#ef4444"], ["Event", "var(--primary-light)"]].map(([t, color]) => (
                 <div key={t} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "var(--text-secondary)" }}>
                   <div style={{ width: 9, height: 9, borderRadius: "50%", background: color }} />
                   {t}
@@ -85,8 +85,8 @@ export default function Holiday() {
           </div>
 
           {/* Calendar grid - full width, equal columns */}
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+          <div className="company-calendar-scroll">
+            <table className="company-calendar-grid" style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
               <thead>
                 <tr>
                   {DAYS.map(d => (
@@ -110,9 +110,10 @@ export default function Holiday() {
                       return (
                         <td key={day.format("YYYY-MM-DD")}
                           onClick={() => clickable && navigate("/calendar/edit-event", { state: { holiday: h } })}
+                          className="company-calendar-cell"
                           style={{
-                            height: 80, border: "1px solid var(--border)", verticalAlign: "top", padding: 0,
-                            background: !inMonth ? "var(--bg)" : c ? c.cellBg : today2 ? "var(--primary-ghost)" : isWknd ? "#fefbff" : "white",
+                            border: "1px solid var(--border)", verticalAlign: "top", padding: 0,
+                            background: !inMonth ? "var(--bg)" : c ? c.cellBg : today2 ? "var(--primary-ghost)" : isWknd ? "#fbfcfb" : "white",
                             cursor: clickable ? "pointer" : "default",
                             transition: "background 0.15s",
                           }}
@@ -121,13 +122,11 @@ export default function Holiday() {
                           <div style={{ padding: "6px 8px", display: "flex", flexDirection: "column", height: "100%", gap: 4 }}>
                             {/* Date number */}
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-                              <div style={{
-                                width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-                                fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 13,
+                              <div className={`company-calendar-day-number${today2 ? " is-today" : ""}${!inMonth ? " is-outside" : ""}`} style={{
+                                fontFamily: "var(--ui-font-heading)", fontSize: 13,
                                 fontWeight: today2 ? 900 : inMonth ? 600 : 400,
                                 color: !inMonth ? "#c9d0d8" : today2 ? "white" : isWknd ? "var(--coral)" : "var(--text-primary)",
                                 background: today2 ? "var(--primary)" : "transparent",
-                                boxShadow: today2 ? "0 2px 8px var(--primary-glow)" : "none",
                               }}>
                                 {day.format("D")}
                               </div>
@@ -140,9 +139,9 @@ export default function Holiday() {
                                 alignItems: "center",
                                 flex: 1,                    // ← take remaining cell height
                               }}>
-                                <div style={{
+                                <div className="company-calendar-event-pill" style={{
                                   background: c.bg, color: c.text, fontSize: 10, fontWeight: 700,
-                                  padding: "2px 6px", borderRadius: 5,
+                                  padding: "2px 6px",
                                   overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                                   lineHeight: 1.4, maxWidth: "90%", textAlign: "center",
                                 }} title={h.eventName}>
@@ -162,10 +161,10 @@ export default function Holiday() {
         </div>
 
         {/* Events sidebar - compact */}
-        <div className="card" style={{ position: "sticky", top: 80 }}>
+        <div className="card company-calendar-events" style={{ position: "sticky", top: 80 }}>
           <div className="card-header" style={{ padding: "12px 16px" }}>
             <span className="card-title" style={{ fontSize: 14, display: "flex", alignItems: "center", gap: 7 }}>
-              🗓️ Events this month
+              <CalendarDays size={16} aria-hidden="true" /> Events this month
             </span>
             <span style={{ background: "var(--primary-ghost)", color: "var(--primary)", fontSize: 11, fontWeight: 800, padding: "2px 8px", borderRadius: 12 }}>
               {monthHolidays.length}

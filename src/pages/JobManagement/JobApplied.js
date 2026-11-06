@@ -12,9 +12,9 @@ import * as XLSX from "xlsx";
 const STATUS_OPTS = ["New", "Still Searching", "Interviewing", "Placed", "Rejected"].map(v => ({ label: v, value: v }));
 
 const STATUS_MAP = {
-  "new":             { bg: "#dbeafe", color: "#1d4ed8" },
+  "new":             { bg: "var(--primary-ghost)", color: "var(--primary-dark)" },
   "still searching": { bg: "#fff7ed", color: "#c2410c" },
-  "interviewing":    { bg: "#ede9fe", color: "#6c3fc5" },
+  "interviewing":    { bg: "var(--primary-ghost)", color: "var(--primary)" },
   "placed":          { bg: "#dcfce7", color: "#15803d" },
   "rejected":        { bg: "#fee2e2", color: "#b91c1c" },
 };
@@ -309,7 +309,7 @@ export default function JobApplied() {
           style={{
             position:       "fixed",
             inset:          0,
-            background:     "rgba(20,0,50,0.55)",
+            background:     "rgba(16,24,20,0.46)",
             backdropFilter: "blur(5px)",
             zIndex:         9999,
             display:        "flex",
@@ -330,7 +330,7 @@ export default function JobApplied() {
             }}
           >
             {/* top accent bar */}
-            <div style={{ height: 4, background: "linear-gradient(90deg,#0c4a6e,#0ea5e9)" }} />
+            <div style={{ height: 4, background: "var(--primary)" }} />
 
             {/* Header */}
             <div style={{ padding: "22px 24px 14px", borderBottom: "1px solid #f0f0f0", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
@@ -382,8 +382,8 @@ export default function JobApplied() {
                         borderRadius: 8,
                         fontSize:     12.5,
                         fontWeight:   700,
-                        border:       `1.5px solid ${selStatus === o.value ? "#0c4a6e" : "#e2e8f0"}`,
-                        background:   selStatus === o.value ? "#0c4a6e" : "#f8fafc",
+                        border:       `1.5px solid ${selStatus === o.value ? "var(--primary-dark)" : "#e2e8f0"}`,
+                        background:   selStatus === o.value ? "var(--primary-dark)" : "#f8fafc",
                         color:        selStatus === o.value ? "#fff" : "#64748b",
                         cursor:       "pointer",
                         transition:   "all 0.15s",
@@ -434,7 +434,7 @@ export default function JobApplied() {
               </button>
               <button
                 onClick={handleStatusSave}
-                style={{ padding: "9px 20px", borderRadius: 10, border: "none", background: "#0c4a6e", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7, fontFamily: "inherit", boxShadow: "0 3px 12px rgba(12,74,110,0.25)" }}
+                style={{ padding: "9px 20px", borderRadius: 10, border: "none", background: "var(--primary-dark)", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7, fontFamily: "inherit", boxShadow: "0 3px 12px var(--primary-glow)" }}
               >
                 <Check size={15} /> Update
               </button>

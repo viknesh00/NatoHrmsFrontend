@@ -89,16 +89,16 @@ const CreateHoliday = () => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && createPortal(
-        <div style={{ position: "fixed", inset: 0, background: "rgba(20,0,50,0.5)", backdropFilter: "blur(4px)", zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(16,24,20,0.46)", backdropFilter: "blur(4px)", zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ background: "var(--bg-card)", borderRadius: 20, boxShadow: "var(--shadow-xl)", width: "100%", maxWidth: 380, overflow: "hidden", animation: "slideUp 0.25s ease" }}>
-            <div style={{ height: 4, background: "linear-gradient(90deg, var(--coral), #f97316)" }} />
+            <div style={{ height: 4, background: "var(--destructive)" }} />
             <div style={{ padding: "24px 24px 0" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 12 }}>
                 <div style={{ width: 44, height: 44, borderRadius: 12, background: "#fff1f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <AlertTriangle size={22} color="var(--coral)" />
                 </div>
                 <div>
-                  <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 17, fontWeight: 800, color: "var(--text-primary)" }}>Delete Event</div>
+                  <div style={{ fontFamily: "var(--ui-font-heading)", fontSize: 17, fontWeight: 800, color: "var(--text-primary)" }}>Delete Event</div>
                   <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>This action cannot be undone</div>
                 </div>
               </div>
@@ -157,7 +157,7 @@ const CreateHoliday = () => {
 
                 {rows.length > 1 && (
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--primary)", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Entry {i + 1}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--primary)", fontFamily: "var(--ui-font-heading)" }}>Entry {i + 1}</span>
                     <button onClick={() => removeRow(i)} style={{ background: "var(--coral-ghost)", color: "var(--coral)", border: "none", cursor: "pointer", borderRadius: 7, padding: "4px 10px", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
                       <X size={12} /> Remove
                     </button>
