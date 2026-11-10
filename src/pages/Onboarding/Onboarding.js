@@ -9,6 +9,7 @@ import LoadingMask from "../../services/LoadingMask";
 import Breadcrumb from "../../services/Breadcrumb";
 import ProTable from "../../components/ProTable";
 import { getCookie } from "../../services/Cookies";
+import { FormDate } from "../../components/FormComponents";
 
 // Name, the selection box and Actions can never be hidden
 const ALWAYS_VISIBLE = ["select", "fullName", "actions"];
@@ -38,6 +39,8 @@ export default function Onboarding() {
   const isAdminOrManager = role === "Admin" || role === "Manager";
   const canEdit = isAdminOrManager;                        // only Admin / Manager can edit or delete
   const [hiddenCols, setHiddenCols] = useState([]);        // column keys hidden for everybody (set by Admin / Manager)
+  const [dateDraft, setDateDraft] = useState({ from: "", to: "" });    // work-period filter being edited in the Filters panel
+  const [dateFilter, setDateFilter] = useState({ from: "", to: "" });  // applied work-period filter
   const [colDraft, setColDraft] = useState(null);          // hidden list being edited in the Columns popup
 
   useEffect(() => {
@@ -60,6 +63,8 @@ export default function Onboarding() {
           siemensMonthText: d.siemensIdReceivedMonth ? dayjs(d.siemensIdReceivedMonth).format("MMM YYYY") : "—",
           workStatus: d.workStatus || "Not assigned",
           workPmName: d.workPmName || "—",
+          workStartText: fmtDate(d.workStartDate),
+          workEndText: d.workStartDate ? (d.workEndDate ? fmtDate(d.workEndDate) : "Ongoing") : "—",
           consentText: d.consentGiven ? "Yes" : "—",
           visaExpiryText: fmtDate(d.workVisaExpiryDate),
           submittedText: fmtDateTime(d.submittedAt),
@@ -189,9 +194,11 @@ export default function Onboarding() {
     { field: "mobileNumber", label: "Mobile" },
     { field: "passportNo", label: "Passport No." },
     { field: "salCode", label: "SAL Code", filterable: true },
-    { field: "employeeStatus", label: "Status", filterable: true },
+    { field: "employeeStatus", label: "Employee Status", filterable: true },
     { field: "workStatus", label: "Work Status", filterable: true },
     { field: "workPmName", label: "PM Name" },
+    { field: "workStartText", label: "Work Start Date" },
+    { field: "workEndText", label: "Work End Date" },
     { field: "city", label: "City", filterable: true },
     { field: "country", label: "Country", filterable: true },
     { field: "nConsEmail", label: "N-Cons Email" },
@@ -223,7 +230,7 @@ export default function Onboarding() {
         <div style={{ display: "flex", gap: 4 }}>
           {canEdit && <button className="icon-btn" title="View / Edit" onClick={() => navigate(`/onboarding/edit/${row.submissionId}`)}><Pencil size={15} /></button>}
           <button className="icon-btn" title="Download details + files" onClick={() => downloadOne(row)}><Download size={15} /></button>
-          {(
+          {role !== "Employee" && (
             <button className="icon-btn" title="Work status" onClick={() => navigate(`/work-status?employee=${row.submissionId}`)}><Briefcase size={15} /></button>
           )}
           {canEdit && <button className="icon-btn" title="Delete" onClick={() => setDeleteTarget([row])}><Trash2 size={15} /></button>}
@@ -231,6 +238,26 @@ export default function Onboarding() {
       ),
     },
   ];
+
+  // work period filter: keeps employees whose latest work period overlaps the chosen dates (no end date = still running)
+  const day = (v) => (v ? String(v).split("T")[0] : "");
+  const visibleRows = list.filter((r) => {
+    if (!dateFilter.from && !dateFilter.to) return true;
+    const start = day(r.workStartDate);
+    if (!start) return false;
+    const end = day(r.workEndDate);
+    if (dateFilter.to && start > dateFilter.to) return false;
+    if (dateFilter.from && end && end < dateFilter.from) return false;
+    return true;
+  });
+  const dateFilterFields = (
+    <>
+      <FormDate label="Work Date From" value={dateDraft.from} onChange={(e) => setDateDraft((d) => ({ ...d, from: e.target.value }))} />
+      <FormDate label="Work Date To" value={dateDraft.to} min={dateDraft.from || undefined} onChange={(e) => setDateDraft((d) => ({ ...d, to: e.target.value }))} />
+    </>
+  );
+  const dateChip = dateFilter.from || dateFilter.to
+    ? `${dateFilter.from ? fmtDate(dateFilter.from) : "…"} to ${dateFilter.to ? fmtDate(dateFilter.to) : "…"}` : "";
 
   const columns = allColumns.filter((c) => ALWAYS_VISIBLE.includes(c.field) || !hiddenCols.includes(c.field));
   const toggleableColumns = allColumns.filter((c) => !ALWAYS_VISIBLE.includes(c.field));
@@ -262,7 +289,16 @@ export default function Onboarding() {
         </div>
       )}
 
-      <ProTable title="Employee Details" columns={columns} data={list} multiSelect={false} />
+      <ProTable
+        title="Employee Details" columns={columns} data={visibleRows} multiSelect={false}
+        filterComponents={dateFilterFields}
+        onApplyFilters={() => {
+          if (dateDraft.from && dateDraft.to && dateDraft.to < dateDraft.from) { ToastError("'Work Date To' cannot be before 'Work Date From'"); return; }
+          setDateFilter(dateDraft);
+        }}
+        onResetFilters={() => { setDateDraft({ from: "", to: "" }); setDateFilter({ from: "", to: "" }); }}
+        externalFilters={[{ label: "Work Date", value: dateChip }]}
+      />
 
       {/* ── Columns popup (Admin / Manager) ── */}
       {colDraft && createPortal(
