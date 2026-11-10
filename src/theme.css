@@ -792,6 +792,9 @@ textarea:focus-visible,
 
 .pro-table-search {
   min-width: 0;
+  height: 36px;
+  min-height: 36px;
+  padding: 5px 10px;
   gap: 8px;
 }
 
