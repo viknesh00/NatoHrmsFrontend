@@ -1975,7 +1975,7 @@ table.pro-table tbody td {
   display: grid;
   min-height: 0;
   flex: 1 1 auto;
-  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
 }
 
@@ -1999,104 +1999,6 @@ table.pro-table tbody td {
   border-radius: var(--radius-lg) !important;
   background: #fff;
   box-shadow: var(--shadow-sm);
-}
-
-.chat-access-panel {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  align-self: stretch;
-  gap: 12px;
-  padding: 16px 14px !important;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg) !important;
-  background: #fff;
-  box-shadow: var(--shadow-sm);
-}
-
-.chat-access-heading {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-bottom: 11px;
-  border-bottom: 1px solid var(--border);
-}
-
-.chat-access-icon {
-  display: inline-flex;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 34px;
-  align-items: center;
-  justify-content: center;
-  background: var(--primary-ghost);
-  color: var(--primary);
-}
-
-.chat-access-heading h2 {
-  margin: 0;
-  color: var(--text-primary);
-  font-family: var(--ui-font-heading);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.chat-access-heading p {
-  margin: 3px 0 0;
-  color: var(--text-muted);
-  font-size: 10.5px;
-}
-
-.chat-access-graph-wrap {
-  min-width: 0;
-}
-
-.chat-access-graph {
-  display: block;
-  width: 100%;
-  height: auto;
-  overflow: visible;
-}
-
-.access-graph-core-label,
-.access-graph-module-label {
-  fill: #57657a;
-  font-family: var(--ui-font-sans);
-  font-size: 9px;
-  font-weight: 600;
-  pointer-events: none;
-}
-
-.access-graph-core-label {
-  fill: var(--text-secondary);
-  font-size: 10px;
-}
-
-.chat-access-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin: -4px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.chat-access-list li {
-  padding: 4px 6px;
-  border: 1px solid var(--border);
-  background: #f8fafc;
-  color: #5f6c80;
-  font-size: 9px;
-  line-height: 1.25;
-}
-
-.chat-access-note {
-  margin-top: auto;
-  padding-top: 10px;
-  border-top: 1px solid var(--border);
-  color: var(--text-muted);
-  font-size: 9.5px;
-  line-height: 1.55;
 }
 
 .chat-panel-topbar {
@@ -2488,24 +2390,12 @@ table.pro-table tbody td {
 
   .chat-layout {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(400px, 1fr) auto;
+    grid-template-rows: minmax(400px, 1fr);
     overflow-y: auto;
   }
 
   .chat-panel {
     min-height: 400px;
-  }
-
-  .chat-access-panel {
-    min-height: 0;
-  }
-
-  .chat-access-graph {
-    max-height: 240px;
-  }
-
-  .chat-access-note {
-    margin-top: 0;
   }
 
   .chat-page-header {
