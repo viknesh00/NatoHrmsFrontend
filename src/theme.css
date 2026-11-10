@@ -790,6 +790,108 @@ textarea:focus-visible,
   color: var(--text-primary);
 }
 
+.pro-table-search {
+  min-width: 0;
+  gap: 8px;
+}
+
+.pro-table-search input {
+  min-width: 0;
+  flex: 1 1 0;
+  line-height: 22px;
+}
+
+.pro-table-search-icon {
+  display: block;
+  flex: 0 0 16px;
+  color: var(--text-muted);
+}
+
+.pro-table-search-clear {
+  display: inline-flex;
+  flex: 0 0 24px;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.pro-table-search-clear:hover {
+  background: var(--muted);
+  color: var(--text-primary);
+}
+
+.pro-table-actions {
+  flex-wrap: wrap;
+}
+
+.pro-table-actions .pro-table-export {
+  width: auto;
+  min-height: 36px;
+  height: auto;
+  gap: 8px;
+  padding: 8px 12px;
+  color: var(--teal);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.pro-table-wrap :is(.search-box, .pro-table-actions, .page-btns, .pt-filter-panel) svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+.table-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 220px;
+  padding: 40px 20px;
+  text-align: center;
+  white-space: normal;
+}
+
+.table-empty-icon {
+  display: flex;
+  flex: 0 0 56px;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 0 4px;
+  border-radius: 50%;
+  background: var(--muted);
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.table-empty-icon svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+.table-empty-description {
+  max-width: 320px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+table.pro-table tbody .table-empty-cell {
+  padding: 0;
+}
+
 table.pro-table {
   font-size: 12.5px;
 }
@@ -1324,12 +1426,14 @@ table.pro-table tbody td {
     min-width: 760px;
   }
 
-  .pro-table-wrap .pro-table-toolbar {
-    min-width: 760px;
+  .pro-table-wrap .pro-table-empty {
+    min-width: 0;
   }
 
+  .pro-table-wrap .pro-table-toolbar,
   .pro-table-wrap .pro-table-footer {
-    min-width: 760px;
+    min-width: 0;
+    width: 100%;
   }
 
   .form-card,

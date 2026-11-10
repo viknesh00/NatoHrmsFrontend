@@ -1,8 +1,8 @@
-import React, { useState, useMemo, useRef, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Search, ChevronUp, ChevronDown, ChevronLeft, ChevronRight,
-  ChevronsLeft, ChevronsRight, Filter, X, FileSpreadsheet, Check,
-  SlidersHorizontal, RotateCcw,
+  ChevronsLeft, ChevronsRight, X, FileSpreadsheet, Check,
+  SlidersHorizontal, RotateCcw, Inbox, SearchX, ChevronsUpDown,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { FormSelect, FormDate, FormInput } from "./FormComponents";
@@ -512,6 +512,7 @@ export default function ProTable({
     if (typeof v === "object") return v.from || v.to;
     return true;
   });
+  const hasSearchOrFilters = Boolean(search.trim()) || activeChips.length > 0 || externalFilters.some(f => f.value);
 
   return (
     <Card className="pro-table-wrap p-0 gap-0">
@@ -525,8 +526,8 @@ export default function ProTable({
           </span>
         )}
 
-        <div className="search-box">
-          <Search size={14} color="var(--text-muted)" />
+        <div className="search-box pro-table-search">
+          <Search size={16} className="pro-table-search-icon" aria-hidden="true" />
           <Input
             aria-label="Search records"
             placeholder="Search..."
@@ -534,8 +535,13 @@ export default function ProTable({
             onChange={e => { setSearch(e.target.value); setPage(0); setSelected(new Set()); }}
           />
           {search && (
-            <button onClick={() => setSearch("")} style={{ background:"none",border:"none",cursor:"pointer",display:"flex",color:"var(--text-muted)",padding:0 }}>
-              <X size={13}/>
+            <button
+              type="button"
+              className="pro-table-search-clear"
+              aria-label="Clear search"
+              onClick={() => { setSearch(""); setPage(0); setSelected(new Set()); }}
+            >
+              <X size={14} aria-hidden="true" />
             </button>
           )}
         </div>
@@ -550,9 +556,11 @@ export default function ProTable({
           {hasAnyFilter && (
             <button
               className={`pt-filter-toggle${showFilters ? " active" : ""}`}
+              type="button"
+              aria-expanded={showFilters}
               onClick={() => setShowFilters(s => !s)}
             >
-              <SlidersHorizontal size={14}/>
+              <SlidersHorizontal size={16} aria-hidden="true" />
               Filters
               {activeFilterCount > 0 && (
                 <span className="pt-filter-toggle-badge">{activeFilterCount}</span>
@@ -561,13 +569,14 @@ export default function ProTable({
           )}
 
           <button
-            className="icon-btn"
+            type="button"
+            className="icon-btn pro-table-export"
             onClick={onExport ? () => onExport(exportData) : handleExportExcel}
             title="Export to Excel"
-            style={{ color: "var(--teal)" }}
+            aria-label="Export to Excel"
           >
-            <FileSpreadsheet size={15}/>
-            <span style={{ fontSize:11, fontWeight:700 }}>Excel</span>
+            <FileSpreadsheet size={16} aria-hidden="true" />
+            <span>Excel</span>
           </button>
 
           {actions}
@@ -611,6 +620,8 @@ export default function ProTable({
               Filter Records
             </div>
             <button
+              type="button"
+              aria-label="Close filters"
               onClick={() => setShowFilters(false)}
               style={{ background:"none", border:"none", cursor:"pointer", color:"var(--text-muted)", display:"flex", padding:4, borderRadius:7 }}
             >
@@ -687,7 +698,7 @@ export default function ProTable({
 
       {/* ── Table ── */}
       <div style={{ overflowX:"auto" }}>
-        <table className="pro-table">
+        <table className={`pro-table${paged.length === 0 ? " pro-table-empty" : ""}`}>
           <thead>
             <tr>
               {multiSelect && (
@@ -709,8 +720,8 @@ export default function ProTable({
                   <span style={{ display:"inline-flex", alignItems:"center", gap:4 }}>
                     {col.label}
                     {!col.renderCell && sortCol === col.field
-                      ? (sortDir==="asc" ? <ChevronUp size={12}/> : <ChevronDown size={12}/>)
-                      : (!col.renderCell && <ChevronUp size={12} style={{ opacity:0.25 }}/>)}
+                      ? (sortDir==="asc" ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronDown size={14} aria-hidden="true" />)
+                      : (!col.renderCell && <ChevronsUpDown size={14} aria-hidden="true" style={{ opacity:0.4 }}/>)}
                   </span>
                 </th>
               ))}
@@ -719,10 +730,15 @@ export default function ProTable({
           <tbody>
             {paged.length === 0 ? (
               <tr>
-                <td colSpan={visibleCols.length + (multiSelect ? 1 : 0)}>
-                  <div className="table-empty">
-                    <div className="table-empty-icon"><Search size={36}/></div>
+                <td className="table-empty-cell" colSpan={Math.max(1, visibleCols.length + (multiSelect ? 1 : 0))}>
+                  <div className="table-empty" role="status">
+                    <div className="table-empty-icon" aria-hidden="true">
+                      {hasSearchOrFilters ? <SearchX size={28} /> : <Inbox size={28} />}
+                    </div>
                     <div className="table-empty-text">No records found</div>
+                    <p className="table-empty-description">
+                      {hasSearchOrFilters ? "Try a different search or adjust your filters." : "Records will appear here when they are available."}
+                    </p>
                   </div>
                 </td>
               </tr>
@@ -777,14 +793,14 @@ export default function ProTable({
             {[5,10,25,50,100].map(n => <option key={n} value={n}>{n}</option>)}
           </select>
           <div className="page-btns">
-            <button className="page-btn" disabled={page===0} onClick={()=>setPage(0)}><ChevronsLeft size={13}/></button>
-            <button className="page-btn" disabled={page===0} onClick={()=>setPage(p=>p-1)}><ChevronLeft size={13}/></button>
+            <button type="button" className="page-btn" aria-label="First page" disabled={page===0} onClick={()=>setPage(0)}><ChevronsLeft size={16} aria-hidden="true" /></button>
+            <button type="button" className="page-btn" aria-label="Previous page" disabled={page===0} onClick={()=>setPage(p=>p-1)}><ChevronLeft size={16} aria-hidden="true" /></button>
             {Array.from({length:Math.min(5,totalPages)},(_,i)=>{
               const p = Math.max(0,Math.min(page-2,totalPages-5))+i;
               return <button key={p} className={`page-btn ${p===page?"active":""}`} onClick={()=>setPage(p)}>{p+1}</button>;
             })}
-            <button className="page-btn" disabled={page>=totalPages-1} onClick={()=>setPage(p=>p+1)}><ChevronRight size={13}/></button>
-            <button className="page-btn" disabled={page>=totalPages-1} onClick={()=>setPage(totalPages-1)}><ChevronsRight size={13}/></button>
+            <button type="button" className="page-btn" aria-label="Next page" disabled={page>=totalPages-1} onClick={()=>setPage(p=>p+1)}><ChevronRight size={16} aria-hidden="true" /></button>
+            <button type="button" className="page-btn" aria-label="Last page" disabled={page>=totalPages-1} onClick={()=>setPage(totalPages-1)}><ChevronsRight size={16} aria-hidden="true" /></button>
           </div>
         </div>
       </div>
