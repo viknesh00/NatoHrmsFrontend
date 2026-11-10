@@ -61,3 +61,9 @@ The API base URL is read from `REACT_APP_API_BASE_URL` in `src/services/Apiservi
 Deploy `build/` as the static output. `vercel.json` rewrites application URLs to `index.html` so opening or refreshing a nested route works. Other static hosts need the equivalent SPA fallback (for example, `try_files $uri $uri/ /index.html` in Nginx).
 
 Private routes require both the login flag and a token. Visitors are sent to `/login`, then returned to the requested page after signing in. Signed-in users opening an auth page go to their role and department home. `/employee-details` remains public.
+
+## Licence
+
+Copyright (c) 2026 Natobotics Technologies Private Limited. All rights reserved.
+
+Nato HRMS is proprietary software for authorised internal company use. External use, disclosure, or redistribution requires separate written authorisation. See [LICENSE](LICENSE) for the full terms. Third-party dependencies and assets retain their respective licences.

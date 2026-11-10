@@ -1,0 +1,63 @@
+NATO HRMS - PROPRIETARY SOFTWARE LICENCE
+
+Copyright (c) 2026 Natobotics Technologies Private Limited.
+All rights reserved.
+
+1. Scope and ownership
+
+This licence applies to the original source code, application assets, and
+documentation of the Nato HRMS project (the "Software") owned by Natobotics
+Technologies Private Limited (the "Company"). These materials are proprietary. Access to
+this repository does not grant ownership or a public or open-source licence.
+
+2. Authorised use
+
+Employees, contractors, and service providers authorised by the Company may
+access, run, copy, and modify the Software only as necessary to develop,
+test, maintain, or operate the Company's internal HRMS, and only within
+the scope of their authorisation. This permission includes authorised
+deployments, employee access, and operational backups.
+
+Use by another organisation, including a customer or affiliate, requires
+separate written authorisation from the Company.
+
+3. Restrictions and confidentiality
+
+Except as permitted by applicable law or a separate written agreement with
+the Company, you may not publish, disclose, distribute, sell, sublicense,
+or otherwise make the Software or its source code available to an
+unauthorised person or use it to provide services to another organisation.
+
+Keep non-public source code, documentation, and other confidential project
+materials confidential. Preserve copyright, ownership, and licence notices
+in authorised copies.
+
+4. HR information and access controls
+
+This licence does not grant access to employee records, personal data,
+credentials, or other HR information. Such access requires separate
+authorisation and remains subject to applicable law, Company policies,
+confidentiality obligations, and application access controls.
+
+5. Third-party materials
+
+Third-party libraries, models, fonts, icons, and other third-party materials
+remain subject to their respective licences and notices. This licence does
+not replace, restrict, or expand the rights granted by those licences.
+Retain applicable third-party notices when using or distributing those
+materials as required by their licences.
+
+6. End of authorisation
+
+When your authorisation ends, stop using and accessing the Software and
+return or delete copies under your control as directed by the Company,
+subject to applicable legal retention requirements and written agreements.
+
+7. Separate agreements and mandatory rights
+
+A separate written agreement with the Company controls to the extent it
+conflicts with these terms. Nothing in this licence limits rights or
+obligations that cannot be limited under applicable law.
+
+For permission beyond the scope of this licence, obtain written
+authorisation from Natobotics Technologies Private Limited.
