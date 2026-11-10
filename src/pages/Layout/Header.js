@@ -7,8 +7,8 @@ import {
   AlertTriangle,
   Menu,
 } from "lucide-react";
-import { cookieKeys, getCookie, setCookie } from "../../services/Cookies";
-import { cookieObj } from "../../models/cookieObj";
+import { getCookie, setCookie } from "../../services/Cookies";
+import { clearSession } from "../../services/Auth";
 import PasswordChange from "../../services/PasswordChange";
 import { useNavigate } from "react-router-dom";
 import { refreshUserCookies } from "./Layout";
@@ -768,9 +768,9 @@ const Header = ({ onMenuClick = () => {}, navOpen = false }) => {
   // -------------------------------------------------------------------------
 
   const handleLogout = () => {
-    cookieKeys(cookieObj, 0);
+    clearSession();
 
-    navigate("/login");
+    navigate("/login", { replace: true });
 
     setMenuOpen(false);
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ToastError, ToastSuccess } from "../../services/ToastMsg";
-import { postRequest } from "../../services/Apiservice";
+import { postPublicRequest } from "../../services/Apiservice";
 import { ArrowLeft, Mail, ShieldCheck, KeyRound, Check, Eye, EyeOff } from "lucide-react";
 import { PasswordStrength } from "../../components/FormComponents";
 
@@ -26,7 +26,7 @@ const ForgotPassword = () => {
   const callApi = (url, data, successMsg, nextStep) => {
     if (loading) return;
     setLoading(true);
-    postRequest(url, data)
+    postPublicRequest(url, data)
       .then(() => { ToastSuccess(successMsg); if (nextStep) setStep(nextStep); })
       .catch(err => ToastError(err?.response?.data?.message || "Something went wrong."))
       .finally(() => setLoading(false));

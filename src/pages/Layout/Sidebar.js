@@ -6,8 +6,8 @@ import {
   Megaphone, File, CalendarCheck2, UserMinus, ClipboardList, Calendar, Receipt,
   AlertTriangle, Briefcase, UserCheck, FileBarChart2,
 } from "lucide-react";
-import { cookieKeys, getCookie } from "../../services/Cookies";
-import { cookieObj } from "../../models/cookieObj";
+import { getCookie } from "../../services/Cookies";
+import { clearSession } from "../../services/Auth";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import {
@@ -149,8 +149,9 @@ export default function Sidebar({ mobileOpen = false, onMobileClose = () => {} }
   })).filter((section) => section.items.length > 0);
 
   const handleLogout = () => {
-    cookieKeys(cookieObj, 0);
-    navigate("/login");
+    clearSession();
+    onMobileClose();
+    navigate("/login", { replace: true });
     setShowLogout(false);
   };
 

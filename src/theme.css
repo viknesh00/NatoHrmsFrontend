@@ -951,27 +951,30 @@ table.pro-table tbody td {
 }
 
 [data-slot="dialog-overlay"] {
-  z-index: 9998;
+  z-index: 11000;
   background: rgba(16, 24, 40, 0.42);
   backdrop-filter: blur(2px);
 }
 
 [data-slot="alert-dialog-overlay"] {
-  z-index: 9998;
+  z-index: 11000;
   background: rgba(16, 24, 40, 0.42);
   backdrop-filter: blur(2px);
 }
 
-[data-slot="dialog-content"] {
-  z-index: 9999;
+[data-slot="dialog-content"],
+[data-slot="alert-dialog-content"] {
+  z-index: 11001;
   border: 1px solid var(--border);
   background: var(--popover);
   box-shadow: var(--shadow-lg);
 }
 
 .logout-dialog {
-  width: min(100%, 420px);
+  width: calc(100vw - 32px);
   max-width: 420px;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
   gap: 18px;
   padding: 24px;
   border-radius: 14px;
@@ -1037,6 +1040,7 @@ table.pro-table tbody td {
 .logout-dialog-actions {
   display: flex;
   flex-direction: row;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
   margin: 0;

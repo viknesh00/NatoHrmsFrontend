@@ -1,7 +1,6 @@
 import axios from "axios";
 import { getCookie } from "./Cookies";
-import { cookieKeys } from "./Cookies";
-import { cookieObj } from "../models/cookieObj";
+import { clearSession } from "./Auth";
 
 const BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
@@ -31,8 +30,8 @@ export const getRequest = async (endpoint, config = {}, isBlob = false) => {
     return await axios.get(url, options);
   } catch (error) {
     if (error.response?.status === 401) {
-      cookieKeys(cookieObj, 0);
-      window.location.href = "/sign-in";
+      clearSession();
+      window.location.replace("/login");
     }
     throw error;
   }
@@ -56,8 +55,8 @@ export const postRequest = async (endpoint, data, isBlob = false) => {
     return await axios.post(url, data, options);
   } catch (error) {
     if (error.response?.status === 401) {
-      cookieKeys(cookieObj, 0);
-      window.location.href = "/sign-in";
+      clearSession();
+      window.location.replace("/login");
     }
     throw error;
   }
@@ -73,8 +72,8 @@ export const putRequest = async (endpoint, data) => {
     return await axios.put(url, data, options);
   } catch (error) {
     if (error.response?.status === 401) {
-      cookieKeys(cookieObj, 0);
-      window.location.href = "/sign-in";
+      clearSession();
+      window.location.replace("/login");
     }
     throw error;
   }
@@ -89,8 +88,8 @@ export const deleteRequest = async (endpoint) => {
     return await axios.delete(url, options);
   } catch (error) {
     if (error.response?.status === 401) {
-      cookieKeys(cookieObj, 0);
-      window.location.href = "/sign-in";
+      clearSession();
+      window.location.replace("/login");
     }
     throw error;
   }

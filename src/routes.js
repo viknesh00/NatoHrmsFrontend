@@ -1,6 +1,6 @@
 import React from "react";
-import { Navigate } from "react-router-dom";
 import ProtectedRoute from "./services/ProtectedRoute";
+import GuestRoute from "./services/GuestRoute";
 import Dashboard from "./pages/Dashboard/Dashboard";
 import Layout from "./pages/Layout/Layout";
 import Login from "./pages/Login/Login";
@@ -38,14 +38,13 @@ import EmployeeDetailsForm from "./pages/PublicForms/EmployeeDetailsForm";
 import Chat from "./pages/Chat/Chat";
 
 const routes = [
-  { path: "/", element: <Login /> },
-  { path: "/login", element: <Login /> },
-  { path: "/sign-in", element: <Login /> },
-  { path: "/forgot-password", element: <ForgotPassword /> },
+  { path: "/", element: <GuestRoute><Login /></GuestRoute> },
+  { path: "/login", element: <GuestRoute><Login /></GuestRoute> },
+  { path: "/sign-in", element: <GuestRoute><Login /></GuestRoute> },
+  { path: "/forgot-password", element: <GuestRoute><ForgotPassword /></GuestRoute> },
   // Public (no login) - shareable link for employees to submit their details
   { path: "/employee-details", element: <EmployeeDetailsForm /> },
   {
-    path: "/*",
     element: (<ProtectedRoute><Layout /></ProtectedRoute>),
     children: [
       { path: "dashboard", element: <DashboardGuard><Dashboard /></DashboardGuard> },
@@ -85,7 +84,6 @@ const routes = [
       { path: "*", element: <RoleBasedRedirect /> },
     ],
   },
-  { path: "*", element: <Navigate to="/" /> },
 ];
 
 export default routes;

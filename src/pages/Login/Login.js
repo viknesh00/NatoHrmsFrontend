@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ToastError, ToastSuccess } from "../../services/ToastMsg";
 import { cookieKeys } from "../../services/Cookies";
-import { postRequest } from "../../services/Apiservice";
+import { postPublicRequest } from "../../services/Apiservice";
 import { cookieObj } from "../../models/cookieObj";
 import { Eye, EyeOff, LogIn, Users, Clock3, ClipboardList, Sparkles } from "lucide-react";
-import { getHomePath } from "../../services/HomePath";
+import { getLoginRedirect } from "../../services/Auth";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 
@@ -15,6 +15,7 @@ const Login = () => {
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const isToday = (dateStr) => dateStr && new Date(dateStr).toDateString() === new Date().toDateString();
 
@@ -22,7 +23,7 @@ const Login = () => {
     e.preventDefault();
     if (!email || !password) { ToastError("Please fill in both fields!"); return; }
     setLoading(true);
-    postRequest("Auth/Login", { username: email, password })
+    postPublicRequest("Auth/Login", { username: email, password })
       .then(res => {
         if (res.status === 200 && res.data?.token) {
           ToastSuccess("Login successful!");
@@ -46,7 +47,7 @@ const Login = () => {
             workLocationCity: res.data.workLocationCity || "",
             geoFenceEnabled: res.data.geoFenceEnabled,
           }, new Date(res.data.expiration));
-          setTimeout(() => navigate(getHomePath()), 800);
+          navigate(getLoginRedirect(location.state?.from), { replace: true });
         } else ToastError("Invalid credentials!");
       })
       .catch(err => ToastError(err?.response?.data?.message || "Unable to connect. Please try again."))

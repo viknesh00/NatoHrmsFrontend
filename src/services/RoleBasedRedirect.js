@@ -1,9 +1,6 @@
-import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { Navigate } from "react-router-dom";
 import { getHomePath } from "./HomePath";
 
 export default function RoleBasedRedirect() {
-  const navigate = useNavigate();
-  useEffect(() => { navigate(getHomePath()); }, [navigate]);
-  return null;
+  return <Navigate to={getHomePath()} replace />;
 }

@@ -55,3 +55,9 @@ The web frontend for Nato HRMS, an employee and human-resources management syste
 - `src/routes.js` — application routes
 
 The API base URL is read from `REACT_APP_API_BASE_URL` in `src/services/Apiservice.js`. Authenticated API requests use the saved bearer token; the API service redirects to sign-in when the API returns `401`.
+
+## Production routing
+
+Deploy `build/` as the static output. `vercel.json` rewrites application URLs to `index.html` so opening or refreshing a nested route works. Other static hosts need the equivalent SPA fallback (for example, `try_files $uri $uri/ /index.html` in Nginx).
+
+Private routes require both the login flag and a token. Visitors are sent to `/login`, then returned to the requested page after signing in. Signed-in users opening an auth page go to their role and department home. `/employee-details` remains public.
