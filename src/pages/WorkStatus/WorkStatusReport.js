@@ -33,6 +33,9 @@ export default function WorkStatusReport() {
         location: [r.city, r.country].filter(Boolean).join(", ") || "—",
         startDateText: fmtDate(r.startDate),
         endDateText: r.endDate ? fmtDate(r.endDate) : "—",
+        asset: r.asset || "—",
+        comments: r.comments || "—",
+        activity: (r.activity || "").split(";").map((x) => x.trim()).filter(Boolean).join(", ") || "—",
       }))))
       .catch((err) => ToastError(err.response?.data?.message || "Failed to load the report"))
       .finally(() => setLoading(false));
@@ -54,6 +57,9 @@ export default function WorkStatusReport() {
     { field: "startDateText", label: "Start Date" },
     { field: "endDateText", label: "End Date" },
     { field: "workStatus", label: "Work Status", filterable: true },
+    { field: "asset", label: "Asset", filterable: true },
+    { field: "comments", label: "Comments" },
+    { field: "activity", label: "Activity", filterable: true },
   ];
 
   // date range lives inside the table's own Filters panel (applied together with the column filters)

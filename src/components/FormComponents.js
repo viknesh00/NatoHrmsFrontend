@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, X, Calendar, Clock, Eye, EyeOff, Check } from "lucide-react";
+import { ChevronDown, X, Calendar, Clock, Eye, EyeOff, Check, Trash2 } from "lucide-react";
 
 /* ── CSS injected once ── */
 const FORM_STYLES = `
@@ -338,6 +338,113 @@ export function FormMultiSelect({ label, required, hint, error, options = [], va
   );
 }
 
+/* ── FormCreatableMultiSelect: choose several values (chips), add a new value that is not in the list,
+      and optionally delete a saved value from the list (onDeleteOption shows a trash icon on every option).
+      value = array of strings. onCreate(text) may save the new value (e.g. to a master table) and return its stored spelling. ── */
+export function FormCreatableMultiSelect({ label, required, hint, error, options = [], value = [], onChange, onCreate, onDeleteOption, placeholder = "Select or add...", disabled, maxLength = 100 }) {
+  injectStyles();
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) { setOpen(false); setText(""); } };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  const typed = text.trim();
+  const q = typed.toLowerCase();
+  const shown = options.filter(o => o.toLowerCase().includes(q));
+  const exists = options.some(o => o.toLowerCase() === q) || value.some(v => v.toLowerCase() === q);
+  const canAdd = !!onCreate && typed.length > 0 && !exists;
+
+  const toggle = o => onChange(value.includes(o) ? value.filter(v => v !== o) : [...value, o]);
+
+  const addNew = async () => {
+    if (busy || !canAdd) return;
+    try {
+      setBusy(true);
+      const saved = await onCreate(typed);
+      const name = typeof saved === "string" && saved ? saved : typed;
+      if (!value.some(v => v.toLowerCase() === name.toLowerCase())) onChange([...value, name]);
+      setText("");
+    } catch { /* the caller shows the error */ }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className="fc-group" ref={ref}>
+      {label && <label className="fc-label">{label}{required && <span className="req">*</span>}</label>}
+      <div className="fc-dd">
+        <button type="button" disabled={disabled} onClick={() => !disabled && setOpen(o => !o)}
+          className={`fc-dd-trigger${open ? " open" : ""}${disabled ? " disabled" : ""}`}
+          style={{ flexWrap: "wrap", height: "auto", minHeight: 42, gap: 4, alignItems: "center" }}>
+          {value.length === 0 ? (
+            <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>{placeholder}</span>
+          ) : (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, flex: 1 }}>
+              {value.map(v => (
+                <span key={v} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "var(--primary-ghost)", color: "var(--primary)", borderRadius: 6, padding: "2px 8px", fontSize: 12, fontWeight: 600, border: "1px solid var(--primary)", lineHeight: 1.6 }}>
+                  {v}
+                  {!disabled && (
+                    <span onClick={e => { e.stopPropagation(); onChange(value.filter(x => x !== v)); }} style={{ cursor: "pointer", display: "flex", alignItems: "center", marginLeft: 2 }}>
+                      <X size={11} />
+                    </span>
+                  )}
+                </span>
+              ))}
+            </div>
+          )}
+          <ChevronDown size={15} color="var(--text-muted)" style={{ transform: open ? "rotate(180deg)" : "", transition: "transform 0.2s", flexShrink: 0, marginLeft: "auto" }} />
+        </button>
+
+        {open && (
+          <div className="fc-dd-menu">
+            <div style={{ padding: "8px 8px 4px" }}>
+              <input className="fc-input" style={{ padding: "7px 10px", fontSize: 13 }} autoFocus autoComplete="off" maxLength={maxLength}
+                placeholder={onCreate ? "Search or type a new value" : "Search"} value={text}
+                onChange={e => setText(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); if (canAdd) addNew(); } if (e.key === "Escape") setOpen(false); }} />
+            </div>
+            {shown.map(o => {
+              const isSel = value.includes(o);
+              return (
+                <div key={o} className={`fc-dd-item${isSel ? " selected" : ""}`} onClick={() => toggle(o)}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                    <span style={{ width: 16, height: 16, borderRadius: 4, border: "1.5px solid " + (isSel ? "var(--primary)" : "var(--border)"), background: isSel ? "var(--primary)" : "transparent", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      {isSel && <Check size={11} color="white" />}
+                    </span>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{o}</span>
+                  </span>
+                  {onDeleteOption && (
+                    <button type="button" title="Remove from the list" onClick={e => { e.stopPropagation(); onDeleteOption(o); }}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", padding: 4, borderRadius: 6, flexShrink: 0 }}>
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            {shown.length === 0 && !canAdd && <div className="fc-dd-empty">No options</div>}
+            {canAdd && (
+              <div className="fc-dd-item" style={{ color: "var(--primary)", fontWeight: 700, borderTop: shown.length ? "1px solid var(--border)" : "none" }} onClick={addNew}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ width: 16, height: 16, borderRadius: "50%", border: "1.5px solid currentColor", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13, lineHeight: 1 }}>+</span>
+                  "{typed}"
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      {error && <div className="fc-error">{error}</div>}
+      {hint && !error && <div className="fc-hint">{hint}</div>}
+    </div>
+  );
+}
+
 /* ── FormSelect (native) ── */
 export function FormSelect({ label, required, hint, error, options = [], placeholder, ...props }) {
   injectStyles();
@@ -405,10 +512,13 @@ export function FormDropdown({ label, required, hint, error, options = [], value
   );
 }
 
-/* ── FormCombo: dropdown list (same look as FormDropdown) that also lets the user type a value not in the list ── */
-export function FormCombo({ label, required, hint, error, options = [], value = "", onChange, placeholder = "Select or type", disabled, maxLength }) {
+/* ── FormCombo: dropdown list (same look as FormDropdown) that also lets the user type a value not in the list.
+      creatable + onCreate: shows  (+) "typed text"  at the end of the list; onCreate(text) may save the new value
+      (e.g. to a master table) and the text becomes the field value. ── */
+export function FormCombo({ label, required, hint, error, options = [], value = "", onChange, placeholder = "Select or type", disabled, maxLength, creatable = false, onCreate }) {
   injectStyles();
   const [open, setOpen] = useState(false);
+  const [adding, setAdding] = useState(false);
   const ref = useRef(null);
 
   useEffect(() => {
@@ -418,24 +528,43 @@ export function FormCombo({ label, required, hint, error, options = [], value = 
   }, []);
 
   const labelOf = o => String(o.label ?? o);
-  const q = (value || "").trim().toLowerCase();
+  const typed = (value || "").trim();
+  const q = typed.toLowerCase();
   const exact = options.some(o => labelOf(o).toLowerCase() === q);
   const shown = !q || exact ? options : options.filter(o => labelOf(o).toLowerCase().includes(q));
+  const canAdd = creatable && typed.length > 0 && !exact;
+
+  const addNew = async () => {
+    if (adding) return;
+    try {
+      setAdding(true);
+      const saved = onCreate ? await onCreate(typed) : typed;   // onCreate may return the stored spelling
+      onChange(typeof saved === "string" && saved ? saved : typed);
+      setOpen(false);
+    } catch { /* the caller shows the error; the typed text stays in the field */ }
+    finally { setAdding(false); }
+  };
 
   return (
     <div className="fc-group" ref={ref}>
       {label && <label className="fc-label">{label}{required && <span className="req">*</span>}</label>}
       <div className="fc-dd">
         <input
-          className="fc-input" style={{ paddingRight: 36 }} autoComplete="off"
+          className="fc-input" style={{ paddingRight: 64 }} autoComplete="off"
           value={value} placeholder={placeholder} disabled={disabled} maxLength={maxLength}
           onChange={e => { onChange(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
+          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); if (canAdd) addNew(); else setOpen(false); } if (e.key === "Escape") setOpen(false); }}
         />
-        <span className="fc-input-icon" style={{ cursor: "pointer" }} onClick={() => !disabled && setOpen(o => !o)}>
+        {!disabled && value && (
+          <button type="button" className="fc-input-icon-btn" style={{ right: 34 }} title="Clear" onClick={() => { onChange(""); setOpen(true); }}>
+            <X size={14} />
+          </button>
+        )}
+        <button type="button" className="fc-input-icon-btn" tabIndex={-1} disabled={disabled} onClick={() => setOpen(o => !o)}>
           <ChevronDown size={15} style={{ transform: open ? "rotate(180deg)" : "", transition: "transform 0.2s" }} />
-        </span>
-        {open && shown.length > 0 && (
+        </button>
+        {open && (shown.length > 0 || canAdd) && (
           <div className="fc-dd-menu">
             {shown.map(o => {
               const lbl = labelOf(o);
@@ -448,6 +577,15 @@ export function FormCombo({ label, required, hint, error, options = [], value = 
                 </div>
               );
             })}
+            {canAdd && (
+              <div className="fc-dd-item" style={{ color: "var(--primary)", fontWeight: 700, borderTop: shown.length ? "1px solid var(--border)" : "none", marginTop: shown.length ? 4 : 0, paddingTop: 10 }}
+                onMouseDown={e => e.preventDefault()} onClick={addNew}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ width: 16, height: 16, borderRadius: "50%", border: "1.5px solid currentColor", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13, lineHeight: 1 }}>+</span>
+                  "{typed}"
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>
