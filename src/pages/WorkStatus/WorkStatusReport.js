@@ -6,10 +6,22 @@ import { ToastError } from "../../services/ToastMsg";
 import LoadingMask from "../../services/LoadingMask";
 import Breadcrumb from "../../services/Breadcrumb";
 import ProTable from "../../components/ProTable";
-import { FormDate } from "../../components/FormComponents";
+import { FormMultiSelect, FormDate } from "../../components/FormComponents";
 import { getCookie } from "../../services/Cookies";
 
 const fmtDate = (d) => (d ? dayjs(d).format("DD-MM-YYYY") : "—");
+
+// filters of the table: several values per column, combined across columns (same as the Onboarding page)
+const split = (v) => (v ? String(v).split(",").map((x) => x.trim()).filter(Boolean) : []);
+const FILTERS = [
+  { key: "employeeStatuses", label: "Employee Status", get: (r) => [r.employeeStatus] },
+  { key: "salCodes", label: "SAL Code", get: (r) => [r.salCode] },
+  { key: "pmNames", label: "PM Name", get: (r) => [r.pmName] },
+  { key: "statuses", label: "Work Status", get: (r) => [r.workStatus] },
+  { key: "assets", label: "Asset", get: (r) => (r.asset === "—" ? [] : split(r.asset)) },
+  { key: "activities", label: "Activity", get: (r) => (r.activity === "—" ? [] : split(r.activity)) },
+];
+const EMPTY_FILTER = Object.fromEntries(FILTERS.map((f) => [f.key, []]));
 
 export default function WorkStatusReport() {
   const role = getCookie("role");
@@ -20,6 +32,8 @@ export default function WorkStatusReport() {
   const [from, setFrom] = useState(defaultFrom);
   const [to, setTo] = useState(defaultTo);
   const [rows, setRows] = useState([]);
+  const [filterDraft, setFilterDraft] = useState(EMPTY_FILTER);
+  const [filters, setFilters] = useState(EMPTY_FILTER);
   const [loading, setLoading] = useState(false);
 
   const run = (f = from, t = to) => {
@@ -33,7 +47,7 @@ export default function WorkStatusReport() {
         location: [r.city, r.country].filter(Boolean).join(", ") || "—",
         startDateText: fmtDate(r.startDate),
         endDateText: r.endDate ? fmtDate(r.endDate) : "—",
-        asset: r.asset || "—",
+        asset: (r.asset ? String(r.asset).split(";").map((x) => x.trim()).filter(Boolean).join(", ") : "") || "—",
         comments: r.comments || "—",
         activity: (r.activity || "").split(";").map((x) => x.trim()).filter(Boolean).join(", ") || "—",
       }))))
@@ -51,22 +65,29 @@ export default function WorkStatusReport() {
     { field: "employeeName", label: "Employee" },
     { field: "passportNo", label: "Passport No." },
     { field: "location", label: "City / Country" },
-    { field: "employeeStatus", label: "Employee Status", filterable: true },
-    { field: "salCode", label: "SAL Code", filterable: true },
-    { field: "pmName", label: "PM Name", filterable: true },
+    { field: "employeeStatus", label: "Employee Status" },
+    { field: "salCode", label: "SAL Code" },
+    { field: "pmName", label: "PM Name" },
     { field: "startDateText", label: "Start Date" },
     { field: "endDateText", label: "End Date" },
-    { field: "workStatus", label: "Work Status", filterable: true },
-    { field: "asset", label: "Asset", filterable: true },
-    { field: "comments", label: "Comments" },
-    { field: "activity", label: "Activity", filterable: true },
+    { field: "workStatus", label: "Work Status" },
+    { field: "asset", label: "Asset", maxWidth: 160 },
+    { field: "comments", label: "Comments", maxWidth: 200 },
+    { field: "activity", label: "Activity", maxWidth: 160 },
   ];
+
+  const visibleRows = rows.filter((r) => FILTERS.every((f) => !filters[f.key].length || f.get(r).some((v) => filters[f.key].includes(v))));
+  const filterOptions = Object.fromEntries(FILTERS.map((f) => [f.key, [...new Set(rows.flatMap(f.get).filter(Boolean))].sort((a, b) => a.localeCompare(b))]));
 
   // date range lives inside the table's own Filters panel (applied together with the column filters)
   const dateFilters = (
     <>
       <FormDate label="From" value={from} onChange={(e) => setFrom(e.target.value)} />
       <FormDate label="To" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} />
+      {FILTERS.map((f) => (
+        <FormMultiSelect key={f.key} label={f.label} options={filterOptions[f.key]} value={filterDraft[f.key]} placeholder="All"
+          onChange={(v) => setFilterDraft((d) => ({ ...d, [f.key]: v }))} />
+      ))}
     </>
   );
 
@@ -84,12 +105,12 @@ export default function WorkStatusReport() {
       <ProTable
         title="Work Status Report"
         columns={columns}
-        data={rows}
+        data={visibleRows}
         multiSelect={false}
         filterComponents={dateFilters}
-        onApplyFilters={() => run()}
-        onResetFilters={() => { const f = defaultFrom(), t = defaultTo(); setFrom(f); setTo(t); run(f, t); }}
-        externalFilters={[{ label: "Period", value: from || to ? `${from ? fmtDate(from) : "…"} to ${to ? fmtDate(to) : "…"}` : "" }]}
+        onApplyFilters={() => { setFilters(filterDraft); run(); }}
+        onResetFilters={() => { const f = defaultFrom(), t = defaultTo(); setFrom(f); setTo(t); setFilterDraft(EMPTY_FILTER); setFilters(EMPTY_FILTER); run(f, t); }}
+        externalFilters={[{ label: "Period", value: from || to ? `${from ? fmtDate(from) : "…"} to ${to ? fmtDate(to) : "…"}` : "" }, ...FILTERS.map((f) => ({ label: f.label, value: filters[f.key].join(", ") }))]}
       />
     </div>
   );

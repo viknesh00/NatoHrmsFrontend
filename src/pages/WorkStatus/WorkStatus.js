@@ -8,30 +8,43 @@ import { ToastError, ToastSuccess } from "../../services/ToastMsg";
 import LoadingMask from "../../services/LoadingMask";
 import Breadcrumb from "../../services/Breadcrumb";
 import ProTable from "../../components/ProTable";
-import { FormInput, FormSelect, FormDate, FormCombo, FormCreatableMultiSelect, FormTextarea } from "../../components/FormComponents";
+import { FormInput, FormSelect, FormDate, FormCombo, FormMultiSelect, FormCreatableMultiSelect, FormTextarea } from "../../components/FormComponents";
 import { getCookie } from "../../services/Cookies";
 
 const STATUS_OPTIONS = [{ label: "Active", value: "Active" }, { label: "Deactive", value: "Deactive" }];
 const fmtDate = (d) => (d ? dayjs(d).format("DD-MM-YYYY") : "—");
-const EMPTY = { workStatusId: null, submissionId: "", salCode: "", pmName: "", startDate: "", endDate: "", workStatus: "Active", asset: "", comments: "", activities: [] };
+const EMPTY = { workStatusId: null, submissionId: "", salCode: "", pmName: "", startDate: "", endDate: "", workStatus: "Active", assets: [], comments: "", activities: [] };
 const splitActivities = (v) => (v ? String(v).split(";").map((x) => x.trim()).filter(Boolean) : []);   // a record keeps several activities as "A; B"
+// filters of the table: several values per column, combined across columns (same as the Onboarding page)
+const FILTERS = [
+  { key: "salCodes", label: "SAL Code", get: (r) => [r.salCode] },
+  { key: "pmNames", label: "PM Name", get: (r) => [r.pmName] },
+  { key: "statuses", label: "Work Status", get: (r) => [r.workStatus] },
+  { key: "assets", label: "Asset", get: (r) => splitActivities(r.asset) },
+  { key: "activities", label: "Activity", get: (r) => splitActivities(r.activity) },
+];
+const EMPTY_FILTER = Object.fromEntries(FILTERS.map((f) => [f.key, []]));
+const splitAssets = splitActivities;                                                                      // assets are stored the same way
 
 export default function WorkStatus() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const employeeFilter = params.get("employee");        // opened from the Onboarding list for one employee
   const role = getCookie("role");
-  const canEdit = role === "Admin" || role === "Manager";     // modify / delete
-  const canWrite = canEdit || role === "TeamLead";            // add new
+  const canEdit = role === "Admin" || role === "Manager";     // delete, and add / delete Asset & Activity options
+  const canWrite = canEdit || role === "TeamLead";            // add and edit records
 
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState([]);
+  const [filterDraft, setFilterDraft] = useState(EMPTY_FILTER);   // filters being edited in the Filters panel
+  const [filters, setFilters] = useState(EMPTY_FILTER);           // applied filters
   const [employees, setEmployees] = useState([]);
   const [pms, setPms] = useState([]);
   const [form, setForm] = useState(null);                // record being added / edited
   const [errors, setErrors] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [activityDelete, setActivityDelete] = useState(null);  // activity waiting for the delete confirmation
+  const [optionDelete, setOptionDelete] = useState(null);      // { kind: "Activity" | "Asset", name } waiting for the delete confirmation
+  const [assets, setAssets] = useState([]);                   // Asset master values for the dropdown
   const [activities, setActivities] = useState([]);       // Activity master values for the dropdown
 
   const load = () => {
@@ -42,7 +55,7 @@ export default function WorkStatus() {
         employeeName: `${r.firstName} ${r.lastName}`.trim(),
         startDateText: fmtDate(r.startDate),
         endDateText: r.endDate ? fmtDate(r.endDate) : "—",
-        assetText: r.asset || "—",           // "—" is only for the table, the edit form uses the real values
+        assetText: splitAssets(r.asset).join(", ") || "—",           // "—" is only for the table, the edit form uses the real values
         commentsText: r.comments || "—",
         activityText: splitActivities(r.activity).join(", ") || "—",
       }))))
@@ -53,6 +66,7 @@ export default function WorkStatus() {
   useEffect(() => {
     load();
     getRequest("EmployeeOnboarding/GetAll").then((res) => setEmployees(res.data || [])).catch(() => {});
+    getRequest("WorkStatus/Assets").then((res) => setAssets((res.data || []).map((a) => a.assetName))).catch(() => {});
     getRequest("WorkStatus/Activities").then((res) => setActivities((res.data || []).map((a) => a.activityName))).catch(() => {});
     getRequest("WorkStatus/PmList").then((res) => setPms(res.data || [])).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -73,35 +87,42 @@ export default function WorkStatus() {
     setForm({
       workStatusId: r.workStatusId, submissionId: String(r.submissionId), salCode: r.salCode, pmName: r.pmName,
       startDate: r.startDate ? r.startDate.split("T")[0] : "", endDate: r.endDate ? r.endDate.split("T")[0] : "", workStatus: r.workStatus,
-      asset: r.asset || "", comments: r.comments || "", activities: splitActivities(r.activity),
+      assets: splitAssets(r.asset), comments: r.comments || "", activities: splitActivities(r.activity),
     });
   };
 
-  // "+ Add" in the Activity dropdown: the new value is saved in the master table and is offered from now on
-  const createActivity = async (name) => {
+  // "+ Add" in the Activity / Asset dropdowns (Admin / Manager): the new value is saved in the master table and is offered from now on
+  const makeCreate = (kind, setList, nameKey) => async (name) => {
     try {
-      const res = await postRequest("WorkStatus/Activity", { name });
-      const saved = res.data?.activityName || name;
-      setActivities((prev) => (prev.some((a) => a.toLowerCase() === saved.toLowerCase()) ? prev : [...prev, saved].sort((a, b) => a.localeCompare(b))));
+      const res = await postRequest(`WorkStatus/${kind}`, { name });
+      const saved = res.data?.[nameKey] || name;
+      setList((prev) => (prev.some((a) => a.toLowerCase() === saved.toLowerCase()) ? prev : [...prev, saved].sort((a, b) => a.localeCompare(b))));
       return saved;
     } catch (err) {
-      ToastError(err.response?.data?.message || "Could not add the activity");
-      throw err;
+      ToastError(err.response?.data?.message || `Could not add the ${kind.toLowerCase()}`);
+      return null;
     }
   };
+  const createActivity = makeCreate("Activity", setActivities, "activityName");
+  const createAsset = makeCreate("Asset", setAssets, "assetName");
 
-  // removes a saved value from the dropdown (soft delete in the master). Records that already use it keep the text.
-  const confirmDeleteActivity = () => {
-    const name = activityDelete;
+  // trash icon in a dropdown -> confirmation -> soft delete in the master (records that already use the value keep it)
+  const confirmDeleteOption = () => {
+    const { kind, name } = optionDelete;
     setLoading(true);
-    postRequest("WorkStatus/Activity/Delete", { name })
+    postRequest(`WorkStatus/${kind}/Delete`, { name })
       .then(() => {
-        setActivities((prev) => prev.filter((a) => a !== name));
-        setForm((p) => (p ? { ...p, activities: p.activities.filter((a) => a !== name) } : p));
-        setActivityDelete(null);
-        ToastSuccess("Activity removed from the list");
+        if (kind === "Asset") {
+          setAssets((prev) => prev.filter((a) => a !== name));
+          setForm((p) => (p ? { ...p, assets: p.assets.filter((a) => a !== name) } : p));
+        } else {
+          setActivities((prev) => prev.filter((a) => a !== name));
+          setForm((p) => (p ? { ...p, activities: p.activities.filter((a) => a !== name) } : p));
+        }
+        setOptionDelete(null);
+        ToastSuccess(`${kind} removed from the list`);
       })
-      .catch((err) => ToastError(err.response?.data?.message || "Could not remove the activity"))
+      .catch((err) => ToastError(err.response?.data?.message || `Could not remove the ${kind.toLowerCase()}`))
       .finally(() => setLoading(false));
   };
 
@@ -131,7 +152,7 @@ export default function WorkStatus() {
       workStatusId: form.workStatusId, submissionId: Number(form.submissionId), salCode: form.salCode.trim(),
       pmName, pmEmail: pm?.email || null,
       startDate: form.startDate, endDate: form.endDate || null, workStatus: form.workStatus,
-      asset: form.asset.trim() || null, comments: form.comments.trim() || null, activities: form.activities,
+      assets: form.assets, comments: form.comments.trim() || null, activities: form.activities,
     })
       .then(() => { ToastSuccess("Work status saved"); setForm(null); load(); })
       .catch((err) => {
@@ -153,24 +174,35 @@ export default function WorkStatus() {
   const columns = [
     { field: "employeeName", label: "Employee" },
     { field: "passportNo", label: "Passport No." },
-    { field: "salCode", label: "SAL Code", filterable: true },
-    { field: "pmName", label: "PM Name", filterable: true },
+    { field: "salCode", label: "SAL Code" },
+    { field: "pmName", label: "PM Name" },
     { field: "startDateText", label: "Start Date" },
     { field: "endDateText", label: "End Date" },
-    { field: "workStatus", label: "Work Status", filterable: true },
-    { field: "assetText", label: "Asset", filterable: true },
-    { field: "commentsText", label: "Comments" },
-    { field: "activityText", label: "Activity" },
-    ...(canEdit ? [{
+    { field: "workStatus", label: "Work Status" },
+    { field: "assetText", label: "Asset", maxWidth: 160 },
+    { field: "commentsText", label: "Comments", maxWidth: 200 },
+    { field: "activityText", label: "Activity", maxWidth: 160 },
+    ...(canWrite ? [{
       field: "actions", label: "Actions",
       renderCell: (row) => (
         <div style={{ display: "flex", gap: 4 }}>
           <button className="icon-btn" title="Edit" onClick={() => openEdit(row)}><Pencil size={15} /></button>
-          <button className="icon-btn" title="Delete" onClick={() => setDeleteTarget(row)}><Trash2 size={15} /></button>
+          {canEdit && <button className="icon-btn" title="Delete" onClick={() => setDeleteTarget(row)}><Trash2 size={15} /></button>}
         </div>
       ),
     }] : []),
   ];
+
+  const visibleRows = rows.filter((r) => FILTERS.every((f) => !filters[f.key].length || f.get(r).some((v) => filters[f.key].includes(v))));
+  const filterOptions = useMemo(() => Object.fromEntries(FILTERS.map((f) => [f.key, [...new Set(rows.flatMap(f.get).filter(Boolean))].sort((a, b) => a.localeCompare(b))])), [rows]);
+  const filterFields = (
+    <>
+      {FILTERS.map((f) => (
+        <FormMultiSelect key={f.key} label={f.label} options={filterOptions[f.key]} value={filterDraft[f.key]} placeholder="All"
+          onChange={(v) => setFilterDraft((d) => ({ ...d, [f.key]: v }))} />
+      ))}
+    </>
+  );
 
   const overlay = { position: "fixed", inset: 0, background: "rgba(16,24,20,0.46)", backdropFilter: "blur(5px)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 };
   const card = { background: "white", borderRadius: 20, boxShadow: "0 20px 60px rgba(0,0,0,0.25)", width: "100%", overflow: "hidden" };
@@ -190,7 +222,11 @@ export default function WorkStatus() {
         </div>
       </div>
 
-      <ProTable title="Work Status" columns={columns} data={rows} multiSelect={false} />
+      <ProTable title="Work Status" columns={columns} data={visibleRows} multiSelect={false}
+        filterComponents={filterFields}
+        onApplyFilters={() => setFilters(filterDraft)}
+        onResetFilters={() => { setFilterDraft(EMPTY_FILTER); setFilters(EMPTY_FILTER); }}
+        externalFilters={FILTERS.map((f) => ({ label: f.label, value: filters[f.key].join(", ") }))} />
 
       {form && createPortal(
         <div style={overlay}>
@@ -213,11 +249,16 @@ export default function WorkStatus() {
               <div className="fc-row fc-row-2">
                 <FormSelect label="Work Status" required options={STATUS_OPTIONS} value={form.workStatus} onChange={set("workStatus")} error={errors.workStatus} />
                 <FormCreatableMultiSelect label="Activity" options={activities} value={form.activities} error={errors.activity}
-                  placeholder="Select or add activities" onCreate={createActivity}
-                  onDeleteOption={canEdit ? (name) => setActivityDelete(name) : undefined}
+                  placeholder={canEdit ? "Select or add activities" : "Select activities"}
+                  onCreate={canEdit ? createActivity : undefined}
+                  onDeleteOption={canEdit ? (name) => setOptionDelete({ kind: "Activity", name }) : undefined}
                   onChange={(v) => { setForm((p) => ({ ...p, activities: v })); setErrors((p) => ({ ...p, activity: undefined })); }} />
               </div>
-              <FormInput label="Asset" value={form.asset} onChange={set("asset")} error={errors.asset} maxLength={200} placeholder="e.g. Laptop, Access card" />
+              <FormCreatableMultiSelect label="Asset" options={assets} value={form.assets} error={errors.asset}
+                placeholder={canEdit ? "Select or add assets" : "Select assets"}
+                onCreate={canEdit ? createAsset : undefined}
+                onDeleteOption={canEdit ? (name) => setOptionDelete({ kind: "Asset", name }) : undefined}
+                onChange={(v) => { setForm((p) => ({ ...p, assets: v })); setErrors((p) => ({ ...p, asset: undefined })); }} />
               <FormTextarea label="Comments" value={form.comments} onChange={set("comments")} error={errors.comments} maxLength={1000} rows={3} placeholder="Any notes for this work status" />
             </div>
             <div style={{ padding: "12px 24px 20px", display: "flex", gap: 10, justifyContent: "flex-end", borderTop: "1px solid var(--border)" }}>
@@ -229,16 +270,16 @@ export default function WorkStatus() {
         document.body
       )}
 
-      {activityDelete && createPortal(
+      {optionDelete && createPortal(
         <div style={{ ...overlay, zIndex: 10100 }}>
           <div style={{ ...card, maxWidth: 420, padding: 24 }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, color: "#e11d48", fontWeight: 800, fontSize: 16 }}><AlertTriangle size={20} /> Remove activity?</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, color: "#e11d48", fontWeight: 800, fontSize: 16 }}><AlertTriangle size={20} /> Remove {optionDelete.kind.toLowerCase()}?</div>
             <p style={{ fontSize: 13.5, color: "var(--text-secondary)", marginBottom: 18 }}>
-              "{activityDelete}" will no longer be offered in the Activity list. Work status records that already use it keep the value.
+              "{optionDelete.name}" will no longer be offered in the {optionDelete.kind} list. Work status records that already use it keep the value.
             </p>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button className="btn btn-outline" onClick={() => setActivityDelete(null)}>Cancel</button>
-              <button className="btn btn-primary" style={{ background: "#e11d48" }} onClick={confirmDeleteActivity}>Remove</button>
+              <button className="btn btn-outline" onClick={() => setOptionDelete(null)}>Cancel</button>
+              <button className="btn btn-primary" style={{ background: "#e11d48" }} onClick={confirmDeleteOption}>Remove</button>
             </div>
           </div>
         </div>,

@@ -644,7 +644,7 @@ export default function ProTable({
                     label={meta.label}
                     placeholder="All"
                     value={draft[field] || ""}
-                    options={meta.options.map(v => typeof v === "object" ? v : { value: v, label: v })}
+                    options={meta.options.map(v => { const o = typeof v === "object" ? v : { value: v, label: v }; const t = String(o.label ?? ""); return t.length > 40 ? { ...o, label: t.slice(0, 40) + "..." } : o; })}   /* long values are cut so the list stays narrow */
                     onChange={e => setDraft(d => ({ ...d, [field]: e.target.value }))}
                   />
                 );

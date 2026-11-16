@@ -6,7 +6,7 @@ import { ChevronDown, X, Calendar, Clock, Eye, EyeOff, Check, Trash2 } from "luc
 
 /* ── CSS injected once ── */
 const FORM_STYLES = `
-.fc-group { margin-bottom: 18px; }
+.fc-group { margin-bottom: 18px; min-width: 0; }
 .fc-label {
   display: block; font-family: var(--ui-font-heading);
   font-size: 11.5px; font-weight: 700; color: var(--text-secondary);
@@ -31,8 +31,8 @@ textarea.fc-input { resize: vertical; min-height: 80px; line-height: 1.6; }
 .fc-error { font-size: 12px; color: var(--coral); margin-top: 5px; display: flex; align-items: center; gap: 4px; }
 .fc-hint { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
 .fc-row { display: grid; gap: 16px; }
-.fc-row-2 { grid-template-columns: 1fr 1fr; }
-.fc-row-3 { grid-template-columns: 1fr 1fr 1fr; }
+.fc-row-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.fc-row-3 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); }
 .fc-section { margin-bottom: 28px; }
 .fc-section-title {
   font-family: var(--ui-font-heading); font-size: 13px; font-weight: 800;
@@ -280,24 +280,24 @@ export function FormMultiSelect({ label, required, hint, error, options = [], va
           disabled={disabled}
           onClick={() => !disabled && setOpen(o => !o)}
           className={`fc-dd-trigger${open ? " open" : ""}${disabled ? " disabled" : ""}`}
-          style={{ flexWrap: "wrap", height: "auto", minHeight: 42, gap: 4, alignItems: "center" }}
+          style={{ flexWrap: "wrap", height: "auto", minHeight: 42, gap: 4, alignItems: "center", minWidth: 0, overflow: "hidden" }}
         >
           {selected.length === 0 ? (
             <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>{placeholder}</span>
           ) : (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, flex: 1 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, flex: 1, minWidth: 0 }}>
               {selected.map(o => {
                 const val = o.value ?? o; const lbl = o.label ?? o;
                 return (
-                  <span key={val} style={{
-                    display: "inline-flex", alignItems: "center", gap: 4,
+                  <span key={val} title={String(lbl)} style={{
+                    display: "inline-flex", alignItems: "center", gap: 4, maxWidth: "100%", minWidth: 0, boxSizing: "border-box",
                     background: "var(--primary-ghost)", color: "var(--primary)",
                     borderRadius: 6, padding: "2px 8px", fontSize: 12, fontWeight: 600,
                     border: "1px solid var(--primary)", lineHeight: 1.6
                   }}>
-                    {lbl}
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{lbl}</span>
                     {!disabled && (
-                      <span onClick={(e) => remove(val, e)} style={{ cursor: "pointer", display: "flex", alignItems: "center", marginLeft: 2 }}>
+                      <span onClick={(e) => remove(val, e)} style={{ cursor: "pointer", display: "flex", alignItems: "center", marginLeft: 2, flexShrink: 0 }}>
                         <X size={11} />
                       </span>
                     )}
@@ -310,16 +310,16 @@ export function FormMultiSelect({ label, required, hint, error, options = [], va
         </button>
 
         {open && (
-          <div className="fc-dd-menu">
+          <div className="fc-dd-menu" style={{ overflowX: "hidden" }}>
             {options.length === 0
               ? <div className="fc-dd-empty">No options</div>
               : options.map(o => {
                   const val = o.value ?? o; const lbl = o.label ?? o;
                   const isSel = value.includes(val);
                   return (
-                    <div key={val} className={`fc-dd-item${isSel ? " selected" : ""}`} onClick={() => toggle(o)}>
-                      <span>{lbl}</span>
-                      {isSel && <Check size={14} />}
+                    <div key={val} title={String(lbl)} className={`fc-dd-item${isSel ? " selected" : ""}`} onClick={() => toggle(o)} style={{ minWidth: 0, gap: 8 }}>
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{lbl}</span>
+                      {isSel && <Check size={14} style={{ flexShrink: 0 }} />}
                     </div>
                   );
                 })
@@ -329,7 +329,7 @@ export function FormMultiSelect({ label, required, hint, error, options = [], va
       </div>
       {selected.length > 0 && (
         <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 5 }}>
-          {selected.length} project{selected.length > 1 ? "s" : ""} selected
+          {selected.length} selected
         </div>
       )}
       {error && <div className="fc-error">{error}</div>}
@@ -380,16 +380,16 @@ export function FormCreatableMultiSelect({ label, required, hint, error, options
       <div className="fc-dd">
         <button type="button" disabled={disabled} onClick={() => !disabled && setOpen(o => !o)}
           className={`fc-dd-trigger${open ? " open" : ""}${disabled ? " disabled" : ""}`}
-          style={{ flexWrap: "wrap", height: "auto", minHeight: 42, gap: 4, alignItems: "center" }}>
+          style={{ flexWrap: "wrap", height: "auto", minHeight: 42, gap: 4, alignItems: "center", minWidth: 0, overflow: "hidden" }}>
           {value.length === 0 ? (
             <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>{placeholder}</span>
           ) : (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, flex: 1 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, flex: 1, minWidth: 0 }}>
               {value.map(v => (
-                <span key={v} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "var(--primary-ghost)", color: "var(--primary)", borderRadius: 6, padding: "2px 8px", fontSize: 12, fontWeight: 600, border: "1px solid var(--primary)", lineHeight: 1.6 }}>
-                  {v}
+                <span key={v} title={v} style={{ display: "inline-flex", alignItems: "center", gap: 4, maxWidth: "100%", minWidth: 0, boxSizing: "border-box", background: "var(--primary-ghost)", color: "var(--primary)", borderRadius: 6, padding: "2px 8px", fontSize: 12, fontWeight: 600, border: "1px solid var(--primary)", lineHeight: 1.6 }}>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{v}</span>
                   {!disabled && (
-                    <span onClick={e => { e.stopPropagation(); onChange(value.filter(x => x !== v)); }} style={{ cursor: "pointer", display: "flex", alignItems: "center", marginLeft: 2 }}>
+                    <span onClick={e => { e.stopPropagation(); onChange(value.filter(x => x !== v)); }} style={{ cursor: "pointer", display: "flex", alignItems: "center", marginLeft: 2, flexShrink: 0 }}>
                       <X size={11} />
                     </span>
                   )}
@@ -401,7 +401,7 @@ export function FormCreatableMultiSelect({ label, required, hint, error, options
         </button>
 
         {open && (
-          <div className="fc-dd-menu">
+          <div className="fc-dd-menu" style={{ overflowX: "hidden" }}>
             <div style={{ padding: "8px 8px 4px" }}>
               <input className="fc-input" style={{ padding: "7px 10px", fontSize: 13 }} autoFocus autoComplete="off" maxLength={maxLength}
                 placeholder={onCreate ? "Search or type a new value" : "Search"} value={text}
@@ -411,12 +411,12 @@ export function FormCreatableMultiSelect({ label, required, hint, error, options
             {shown.map(o => {
               const isSel = value.includes(o);
               return (
-                <div key={o} className={`fc-dd-item${isSel ? " selected" : ""}`} onClick={() => toggle(o)}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                <div key={o} title={o} className={`fc-dd-item${isSel ? " selected" : ""}`} onClick={() => toggle(o)} style={{ minWidth: 0 }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
                     <span style={{ width: 16, height: 16, borderRadius: 4, border: "1.5px solid " + (isSel ? "var(--primary)" : "var(--border)"), background: isSel ? "var(--primary)" : "transparent", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                       {isSel && <Check size={11} color="white" />}
                     </span>
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{o}</span>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{o}</span>
                   </span>
                   {onDeleteOption && (
                     <button type="button" title="Remove from the list" onClick={e => { e.stopPropagation(); onDeleteOption(o); }}
@@ -430,9 +430,9 @@ export function FormCreatableMultiSelect({ label, required, hint, error, options
             {shown.length === 0 && !canAdd && <div className="fc-dd-empty">No options</div>}
             {canAdd && (
               <div className="fc-dd-item" style={{ color: "var(--primary)", fontWeight: 700, borderTop: shown.length ? "1px solid var(--border)" : "none" }} onClick={addNew}>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ width: 16, height: 16, borderRadius: "50%", border: "1.5px solid currentColor", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13, lineHeight: 1 }}>+</span>
-                  "{typed}"
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                  <span style={{ flexShrink: 0, width: 16, height: 16, borderRadius: "50%", border: "1.5px solid currentColor", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13, lineHeight: 1 }}>+</span>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>"{typed}"</span>
                 </span>
               </div>
             )}

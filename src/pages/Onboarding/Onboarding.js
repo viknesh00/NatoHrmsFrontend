@@ -14,9 +14,19 @@ import { FormDate, FormInput, FormMultiSelect } from "../../components/FormCompo
 // Name, the selection box and Actions can never be hidden
 const ALWAYS_VISIBLE = ["select", "fullName", "actions"];
 
-const EMPTY_FILTER = { from: "", to: "", assets: [], activities: [], comment: "" };
+// columns that can be filtered by several values at once (the filters of different columns are combined)
+const MULTI_FILTERS = [
+  { key: "salCodes", field: "salCode", label: "SAL Code" },
+  { key: "employeeStatuses", field: "employeeStatus", label: "Employee Status" },
+  { key: "workStatuses", field: "workStatus", label: "Work Status" },
+  { key: "cities", field: "city", label: "City" },
+  { key: "countries", field: "country", label: "Country" },
+  { key: "nConsStatuses", field: "nConsEmailStatus", label: "N-Cons Status" },
+  { key: "idCardStatuses", field: "hasSiemensIdCard", label: "ID Card Status" },
+];
+const EMPTY_FILTER = { from: "", to: "", assets: [], activities: [], comment: "", ...Object.fromEntries(MULTI_FILTERS.map((f) => [f.key, []])) };
 const NOT_ASSIGNED = "Not assigned";
-const splitActivities = (v) => (v ? String(v).split(";").map((x) => x.trim()).filter(Boolean) : []);   // activities are stored as "A; B"
+const splitActivities = (v) => (v ? String(v).split(";").map((x) => x.trim()).filter(Boolean) : []);   // activities / assets are stored as "A; B"
 const dayOf = (v) => (v ? String(v).split("T")[0] : "");
 
 const fmtDate = (d) => (d ? dayjs(d).format("DD-MM-YYYY") : "—");
@@ -45,6 +55,7 @@ export default function Onboarding() {
   const canEdit = isAdminOrManager;                        // only Admin / Manager can edit or delete
   const [hiddenCols, setHiddenCols] = useState([]);        // column keys hidden for everybody (set by Admin / Manager)
   const [workRecords, setWorkRecords] = useState([]);     // every work status record (used to show the status "as of" the Work Date filter)
+  const [assetMaster, setAssetMaster] = useState([]);       // Asset master values (options of the Asset filter)
   const [activityMaster, setActivityMaster] = useState([]); // Activity master values (options of the Activity filter)
   const [filterDraft, setFilterDraft] = useState(EMPTY_FILTER);   // extra filters being edited in the Filters panel
   const [filters, setFilters] = useState(EMPTY_FILTER);           // applied extra filters
@@ -55,6 +66,7 @@ export default function Onboarding() {
       .then((res) => setHiddenCols(res.data?.hiddenColumns || []))
       .catch(() => {});
     getRequest("WorkStatus/GetAll").then((res) => setWorkRecords(res.data || [])).catch(() => {});
+    getRequest("WorkStatus/Assets").then((res) => setAssetMaster((res.data || []).map((a) => a.assetName))).catch(() => {});
     getRequest("WorkStatus/Activities").then((res) => setActivityMaster((res.data || []).map((a) => a.activityName))).catch(() => {});
     fetchList();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -74,7 +86,8 @@ export default function Onboarding() {
           workPmName: d.workPmName || "—",
           workStartText: fmtDate(d.workStartDate),
           workEndText: d.workStartDate ? (d.workEndDate ? fmtDate(d.workEndDate) : "Ongoing") : "—",
-          workAsset: d.workAsset || "—",
+          workAssets: splitActivities(d.workAsset),
+          workAsset: splitActivities(d.workAsset).join(", ") || "—",
           workComments: d.workComments || "—",
           workActivities: splitActivities(d.workActivity),
           workActivity: splitActivities(d.workActivity).join(", ") || "—",
@@ -206,23 +219,23 @@ export default function Onboarding() {
     { field: "dobText", label: "Date of Birth" },
     { field: "mobileNumber", label: "Mobile" },
     { field: "passportNo", label: "Passport No." },
-    { field: "salCode", label: "SAL Code", filterable: true },
-    { field: "employeeStatus", label: "Employee Status", filterable: true },
-    { field: "workStatus", label: "Work Status", filterable: true },
+    { field: "salCode", label: "SAL Code" },
+    { field: "employeeStatus", label: "Employee Status" },
+    { field: "workStatus", label: "Work Status" },
     { field: "workPmName", label: "PM Name" },
     { field: "workStartText", label: "Work Start Date" },
     { field: "workEndText", label: "Work End Date" },
-    { field: "workAsset", label: "Asset" },
+    { field: "workAsset", label: "Asset", maxWidth: 160 },       // long values end with "..." and show in full on hover
     { field: "workComments", label: "Comments" },
-    { field: "workActivity", label: "Activity" },
-    { field: "city", label: "City", filterable: true },
-    { field: "country", label: "Country", filterable: true },
+    { field: "workActivity", label: "Activity", maxWidth: 160 },
+    { field: "city", label: "City" },
+    { field: "country", label: "Country" },
     { field: "nConsEmail", label: "N-Cons Email" },
-    { field: "nConsEmailStatus", label: "N-Cons Status", filterable: true },
+    { field: "nConsEmailStatus", label: "N-Cons Status" },
     { field: "personalEmail", label: "Personal Email" },
     { field: "visaType", label: "Visa / Permit" },
     { field: "visaExpiryText", label: "Visa Expiry" },
-    { field: "hasSiemensIdCard", label: "ID Card Status", filterable: true },
+    { field: "hasSiemensIdCard", label: "ID Card Status" },
     { field: "certificateCount", label: "Certificates" },
     { field: "siemensMonthText", label: "Siemens ID Received" },
     { field: "whatsAppNumber", label: "WhatsApp" },
@@ -281,7 +294,8 @@ export default function Onboarding() {
       workEndDate: rec?.endDate || null,
       workStartText: rec ? fmtDate(rec.startDate) : "—",
       workEndText: rec ? (rec.endDate ? fmtDate(rec.endDate) : "Ongoing") : "—",
-      workAsset: rec?.asset || "—",
+      workAssets: splitActivities(rec?.asset),
+      workAsset: splitActivities(rec?.asset).join(", ") || "—",
       workComments: rec?.comments || "—",
       workActivities: splitActivities(rec?.activity),
       workActivity: splitActivities(rec?.activity).join(", ") || "—",
@@ -289,21 +303,33 @@ export default function Onboarding() {
   };
 
   const visibleRows = list.map((r) => (dateActive ? asOfPeriod(r) : r)).filter((r) => {
-    if (filters.assets.length && !filters.assets.includes(r.workAsset)) return false;
+    for (const f of MULTI_FILTERS) {
+      if (filters[f.key].length && !filters[f.key].includes(String(r[f.field] ?? ""))) return false;
+    }
+    if (filters.assets.length && !(r.workAssets || []).some((a) => filters.assets.includes(a))) return false;
     if (filters.activities.length && !(r.workActivities || []).some((a) => filters.activities.includes(a))) return false;
     if (filters.comment.trim() && !(r.workComments || "").toLowerCase().includes(filters.comment.trim().toLowerCase())) return false;
     return true;
   });
 
   // options of the Asset / Activity multi-selects
-  const assetOptions = useMemo(() => [...new Set([...workRecords.map((w) => w.asset), ...list.map((r) => r.workAsset)].filter((v) => v && v !== "—"))].sort((a, b) => a.localeCompare(b)), [workRecords, list]);
-  const activityOptions = useMemo(() => [...new Set([...activityMaster, ...workRecords.flatMap((w) => splitActivities(w.activity))].filter((v) => v && v !== "—"))].sort((a, b) => a.localeCompare(b)), [activityMaster, workRecords]);
+  const assetOptions = useMemo(() => [...new Set([...assetMaster, ...workRecords.flatMap((w) => splitActivities(w.asset))].filter(Boolean))].sort((a, b) => a.localeCompare(b)), [assetMaster, workRecords]);
+  const activityOptions = useMemo(() => [...new Set([...activityMaster, ...workRecords.flatMap((w) => splitActivities(w.activity))].filter(Boolean))].sort((a, b) => a.localeCompare(b)), [activityMaster, workRecords]);
+  // options of the column filters come from the data itself ("Not assigned" is always offered for Work Status)
+  const multiOptions = useMemo(() => Object.fromEntries(MULTI_FILTERS.map((f) => {
+    const vals = new Set(list.map((r) => String(r[f.field] ?? "")).filter((v) => v && v !== "—"));
+    if (f.field === "workStatus") vals.add(NOT_ASSIGNED);
+    return [f.key, [...vals].sort((a, b) => a.localeCompare(b))];
+  })), [list]);
 
   const setDraft = (patch) => setFilterDraft((d) => ({ ...d, ...patch }));
   const extraFilterFields = (
     <>
       <FormDate label="Work Date From" value={filterDraft.from} onChange={(e) => setDraft({ from: e.target.value })} />
       <FormDate label="Work Date To" value={filterDraft.to} min={filterDraft.from || undefined} onChange={(e) => setDraft({ to: e.target.value })} />
+      {MULTI_FILTERS.map((f) => (
+        <FormMultiSelect key={f.key} label={f.label} options={multiOptions[f.key]} value={filterDraft[f.key]} onChange={(v) => setDraft({ [f.key]: v })} placeholder="All" />
+      ))}
       <FormMultiSelect label="Asset" options={assetOptions} value={filterDraft.assets} onChange={(v) => setDraft({ assets: v })} placeholder="All" />
       <FormMultiSelect label="Activity" options={activityOptions} value={filterDraft.activities} onChange={(v) => setDraft({ activities: v })} placeholder="All" />
       <FormInput label="Comments" placeholder="Search in comments" value={filterDraft.comment} onChange={(e) => setDraft({ comment: e.target.value })} maxLength={200} />
@@ -312,6 +338,7 @@ export default function Onboarding() {
   const dateChip = dateActive
     ? `${filters.from ? fmtDate(filters.from) : "…"} to ${filters.to ? fmtDate(filters.to) : "…"}` : "";
   const externalChips = [
+    ...MULTI_FILTERS.map((f) => ({ label: f.label, value: filters[f.key].join(", ") })),
     { label: "Work Date", value: dateChip },
     { label: "Asset", value: filters.assets.join(", ") },
     { label: "Activity", value: filters.activities.join(", ") },
