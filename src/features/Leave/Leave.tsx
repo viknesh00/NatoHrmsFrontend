@@ -13,7 +13,7 @@ import { getCookie } from "../../auth/Cookies";
 import Breadcrumb from "../../shared/services/Breadcrumb";
 import ProTable, { StatusChip } from "../../components/ProTable";
 
-const fmt = (d) => d ? dayjs(d).format("DD-MM-YYYY") : "—";
+const fmt = (d) => d ? dayjs(d).format("DD-MM-YYYY") : "N/A";
 
 export default function Leave() {
   const navigate = useNavigate();
@@ -34,8 +34,8 @@ export default function Leave() {
       if (res.data) {
         setLeaveList(res.data.leaves.map(d => ({
           ...d,
-          fromDate: d.fromDate ? fmt(d.fromDate) : "—",
-          toDate:   d.toDate   ? fmt(d.toDate)   : "—",
+          fromDate: d.fromDate ? fmt(d.fromDate) : "N/A",
+          toDate:   d.toDate   ? fmt(d.toDate)   : "N/A",
         })));
       }
     }).catch(console.error).finally(() => setLoading(false));
@@ -146,7 +146,7 @@ export default function Leave() {
                 ].map(([k,v]) => (
                   <div key={k} className="flex gap-[12px] mb-[8px]" >
                     <span className="text-[12px] text-[var(--text-muted)] font-semibold min-w-[60px]" >{k}</span>
-                    <span className="text-[12px] text-[var(--text-primary)] font-medium" >{v || "—"}</span>
+                    <span className="text-[12px] text-[var(--text-primary)] font-medium" >{v || "N/A"}</span>
                   </div>
                 ))}
               </div>

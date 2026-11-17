@@ -25,7 +25,7 @@ const numberToWords = (num) => {
   return cvt(Math.round(num))+" Rupees Only";
 };
 
-const numFmt=(v)=>{ const n=parseFloat(v)||0; return n===0?"—":n.toLocaleString("en-IN",{minimumFractionDigits:0,maximumFractionDigits:0}); };
+const numFmt=(v)=>{ const n=parseFloat(v)||0; return n===0?"N/A":n.toLocaleString("en-IN",{minimumFractionDigits:0,maximumFractionDigits:0}); };
 const inr=(v)=>{ const n=parseFloat(v)||0; return n===0?"-":n.toLocaleString("en-IN",{minimumFractionDigits:0}); };
 
 function ENum({value,onChange}: Record<string, any>){
@@ -40,7 +40,7 @@ export default function PayslipPreview(){
   const mDate=new Date(monthYear);
   const totalDays=new Date(mDate.getFullYear(),mDate.getMonth()+1,0).getDate();
   const payMonthStr=dayjs(monthYear).format("MMMM YYYY");
-  const doj=employee.doj?dayjs(employee.doj).format("DD-MM-YYYY"):"—";
+  const doj=employee.doj?dayjs(employee.doj).format("DD-MM-YYYY"):"N/A";
 
   const [p,setP]=useState({
     employeeName: employee.fullName||`${employee.firstName||""} ${employee.lastName||""}`.trim(),
@@ -173,17 +173,17 @@ export default function PayslipPreview(){
               ["Emp ID",        p.employeeId,       "LOP / Extra Pay Days", `${p.lopDays} / ${p.extraPayDays}`],
               ["Designation",   p.designation,      "Bank Details",    p.bankDetails],
               ["Location",      p.location,         "PF Number",       p.pfNumber],
-              ["Date of Joining",p.doj,             "CTC",             p.ctc?`₹${numFmt(p.ctc)}`:"—"],
-              ["ESI Number",    p.esiNumber||"—",   "PAN",             p.panNumber||"—"],
+              ["Date of Joining",p.doj,             "CTC",             p.ctc?`₹${numFmt(p.ctc)}`:"N/A"],
+              ["ESI Number",    p.esiNumber||"N/A",   "PAN",             p.panNumber||"N/A"],
             ].map(([l1,v1,l2,v2],i)=>(
               <React.Fragment key={i}>
                 <div className="grid" style={{gridTemplateColumns:"140px 1fr", borderBottom:"1px solid var(--border)", borderRight:"1px solid var(--border-strong)"}}>
                   <span className="p-[8px_12px] font-semibold text-[12px] text-muted-foreground bg-muted" style={{borderRight:"1px solid var(--border)"}}>{l1}</span>
-                  <span className="p-[8px_12px] text-[12px] font-semibold" >{v1||"—"}</span>
+                  <span className="p-[8px_12px] text-[12px] font-semibold" >{v1||"N/A"}</span>
                 </div>
                 <div className="grid" style={{gridTemplateColumns:"150px 1fr", borderBottom:"1px solid var(--border)"}}>
                   <span className="p-[8px_12px] font-semibold text-[12px] text-muted-foreground bg-muted" style={{borderRight:"1px solid var(--border)"}}>{l2}</span>
-                  <span className="p-[8px_12px] text-[12px] font-semibold" >{v2||"—"}</span>
+                  <span className="p-[8px_12px] text-[12px] font-semibold" >{v2||"N/A"}</span>
                 </div>
               </React.Fragment>
             ))}

@@ -12,7 +12,7 @@ import { FormInput, FormSelect, FormDate, FormCombo, FormMultiSelect, FormCreata
 import { getCookie } from "../../services/Cookies";
 
 const STATUS_OPTIONS = [{ label: "Active", value: "Active" }, { label: "Deactive", value: "Deactive" }];
-const fmtDate = (d) => (d ? dayjs(d).format("DD-MM-YYYY") : "—");
+const fmtDate = (d) => (d ? dayjs(d).format("DD-MM-YYYY") : "N/A");
 const EMPTY = { workStatusId: null, submissionId: "", salCode: "", pmName: "", startDate: "", endDate: "", workStatus: "Active", assets: [], comments: "", activities: [] };
 const splitActivities = (v) => (v ? String(v).split(";").map((x) => x.trim()).filter(Boolean) : []);   // a record keeps several activities as "A; B"
 // filters of the table: several values per column, combined across columns (same as the Onboarding page)
@@ -54,10 +54,10 @@ export default function WorkStatus() {
         ...r,
         employeeName: `${r.firstName} ${r.lastName}`.trim(),
         startDateText: fmtDate(r.startDate),
-        endDateText: r.endDate ? fmtDate(r.endDate) : "—",
-        assetText: splitAssets(r.asset).join(", ") || "—",           // "—" is only for the table, the edit form uses the real values
-        commentsText: r.comments || "—",
-        activityText: splitActivities(r.activity).join(", ") || "—",
+        endDateText: r.endDate ? fmtDate(r.endDate) : "N/A",
+        assetText: splitAssets(r.asset).join(", ") || "N/A",           // "N/A" is only for the table, the edit form uses the real values
+        commentsText: r.comments || "N/A",
+        activityText: splitActivities(r.activity).join(", ") || "N/A",
       }))))
       .catch((err) => ToastError(err.response?.data?.message || "Failed to load the work status records"))
       .finally(() => setLoading(false));

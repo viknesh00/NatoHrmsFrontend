@@ -12,3 +12,6 @@ test('retains employee department restrictions', () => {
   expect(paths('Employee', 'deizeisau')).not.toContain('/attendance');
   expect(paths('Employee', 'Engineering')).not.toContain('/employees');
 });
+test('keeps the assistant in the floating widget instead of sidebar navigation', () => {
+  expect(paths('Employee', 'Engineering')).not.toContain('/chat');
+});

@@ -2,7 +2,7 @@ import WorkflowDialog from "../../components/WorkflowDialog";
 import { cn } from "cn";
 import { Checkbox } from "../../components/ui/checkbox";
 import { Button } from "../../components/ui/button";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Pencil, Download, Link2, UserCheck, FileText, Image as ImageIcon, X, Trash2, AlertTriangle, Award, Eye, SlidersHorizontal, Briefcase } from "lucide-react";
 import dayjs from "dayjs";
@@ -12,13 +12,26 @@ import LoadingMask from "../../shared/services/LoadingMask";
 import Breadcrumb from "../../shared/services/Breadcrumb";
 import ProTable from "../../components/ProTable";
 import { getCookie } from "../../auth/Cookies";
-import { FormDate } from "../../components/FormComponents";
+import { FormDate, FormInput, FormMultiSelect } from "../../components/FormComponents";
 
 // Name, the selection box and Actions can never be hidden
 const ALWAYS_VISIBLE = ["select", "fullName", "actions"];
+const MULTI_FILTERS = [
+  { key: "salCodes", field: "salCode", label: "SAL Code" },
+  { key: "employeeStatuses", field: "employeeStatus", label: "Employee Status" },
+  { key: "workStatuses", field: "workStatus", label: "Work Status" },
+  { key: "cities", field: "city", label: "City" },
+  { key: "countries", field: "country", label: "Country" },
+  { key: "nConsStatuses", field: "nConsEmailStatus", label: "N-Cons Status" },
+  { key: "idCardStatuses", field: "hasSiemensIdCard", label: "ID Card Status" },
+];
+const EMPTY_FILTER = { from: "", to: "", assets: [], activities: [], comment: "", ...Object.fromEntries(MULTI_FILTERS.map((f) => [f.key, []])) };
+const NOT_ASSIGNED = "Not assigned";
+const splitValues = (v) => (v ? String(v).split(";").map((x) => x.trim()).filter(Boolean) : []);
+const dayOf = (v) => (v ? String(v).split("T")[0] : "");
 
-const fmtDate = (d) => (d ? dayjs(d).format("DD-MM-YYYY") : "—");
-const fmtDateTime = (d) => (d ? dayjs(d).format("DD-MM-YYYY HH:mm") : "—");
+const fmtDate = (d) => (d ? dayjs(d).format("DD-MM-YYYY") : "N/A");
+const fmtDateTime = (d) => (d ? dayjs(d).format("DD-MM-YYYY HH:mm") : "N/A");
 
 const saveBlob = (blob, fileName) => {
   const url = window.URL.createObjectURL(blob);
@@ -42,8 +55,11 @@ export default function Onboarding() {
   const isAdminOrManager = role === "Admin" || role === "Manager";
   const canEdit = isAdminOrManager;                        // only Admin / Manager can edit or delete
   const [hiddenCols, setHiddenCols] = useState([]);        // column keys hidden for everybody (set by Admin / Manager)
-  const [dateDraft, setDateDraft] = useState({ from: "", to: "" });    // work-period filter being edited in the Filters panel
-  const [dateFilter, setDateFilter] = useState({ from: "", to: "" });  // applied work-period filter
+  const [workRecords, setWorkRecords] = useState([]);
+  const [assetMaster, setAssetMaster] = useState([]);
+  const [activityMaster, setActivityMaster] = useState([]);
+  const [filterDraft, setFilterDraft] = useState(EMPTY_FILTER);
+  const [filters, setFilters] = useState(EMPTY_FILTER);
   const [colDraft, setColDraft] = useState(null);          // hidden list being edited in the Columns popup
 
   useEffect(() => {
@@ -51,6 +67,9 @@ export default function Onboarding() {
       .then((res) => setHiddenCols(res.data?.hiddenColumns || []))
       .catch(() => {});
     fetchList();
+    getRequest("WorkStatus/GetAll").then((res) => setWorkRecords(res.data || [])).catch(() => {});
+    getRequest("WorkStatus/Assets").then((res) => setAssetMaster((res.data || []).map((a) => a.assetName))).catch(() => {});
+    getRequest("WorkStatus/Activities").then((res) => setActivityMaster((res.data || []).map((a) => a.activityName))).catch(() => {});
      
   }, []);
 
@@ -63,12 +82,14 @@ export default function Onboarding() {
           employeeStatus: d.employeeStatus || "Active",
           fullName: `${d.firstName} ${d.lastName}`,
           dobText: fmtDate(d.dateOfBirth),
-          siemensMonthText: d.siemensIdReceivedMonth ? dayjs(d.siemensIdReceivedMonth).format("MMM YYYY") : "—",
+          siemensMonthText: d.siemensIdReceivedMonth ? dayjs(d.siemensIdReceivedMonth).format("MMM YYYY") : "N/A",
           workStatus: d.workStatus || "Not assigned",
-          workPmName: d.workPmName || "—",
+          workPmName: d.workPmName || "N/A",
           workStartText: fmtDate(d.workStartDate),
-          workEndText: d.workStartDate ? (d.workEndDate ? fmtDate(d.workEndDate) : "Ongoing") : "—",
-          consentText: d.consentGiven ? "Yes" : "—",
+          workEndText: d.workStartDate ? (d.workEndDate ? fmtDate(d.workEndDate) : "Ongoing") : "N/A",
+          workAssets: splitValues(d.workAsset), workAsset: splitValues(d.workAsset).join(", ") || "N/A",
+          workComments: d.workComments || "N/A", workActivities: splitValues(d.workActivity), workActivity: splitValues(d.workActivity).join(", ") || "N/A",
+          consentText: d.consentGiven ? "Yes" : "N/A",
           visaExpiryText: fmtDate(d.workVisaExpiryDate),
           submittedText: fmtDateTime(d.submittedAt),
         })));
@@ -192,29 +213,32 @@ export default function Onboarding() {
         <Checkbox  checked={selectedIds.includes(row.submissionId)} onCheckedChange={() => toggleOne(row.submissionId)} className="cursor-pointer"  />
       ),
     },
-    { field: "fullName", label: "Name" },
-    { field: "dobText", label: "Date of Birth" },
+    { field: "fullName", label: "Name", accessorFn: (row) => `${row.firstName || ""} ${row.lastName || ""}`.trim() },
+    { field: "dobText", label: "Date of Birth", accessorFn: (row) => row.dateOfBirth, valueFormatter: fmtDate },
     { field: "mobileNumber", label: "Mobile" },
     { field: "passportNo", label: "Passport No." },
     { field: "salCode", label: "SAL Code", filterable: true },
     { field: "employeeStatus", label: "Employee Status", filterable: true },
     { field: "workStatus", label: "Work Status", filterable: true },
     { field: "workPmName", label: "PM Name" },
-    { field: "workStartText", label: "Work Start Date" },
-    { field: "workEndText", label: "Work End Date" },
+    { field: "workStartText", label: "Work Start Date", accessorFn: (row) => row.workStartDate, valueFormatter: fmtDate },
+    { field: "workEndText", label: "Work End Date", accessorFn: (row) => row.workStartDate ? (row.workEndDate ? fmtDate(row.workEndDate) : "Ongoing") : "N/A" },
+    { field: "workAsset", label: "Asset", maxWidth: 160 },
+    { field: "workComments", label: "Comments" },
+    { field: "workActivity", label: "Activity", maxWidth: 160 },
     { field: "city", label: "City", filterable: true },
     { field: "country", label: "Country", filterable: true },
     { field: "nConsEmail", label: "N-Cons Email" },
     { field: "nConsEmailStatus", label: "N-Cons Status", filterable: true },
     { field: "personalEmail", label: "Personal Email" },
     { field: "visaType", label: "Visa / Permit" },
-    { field: "visaExpiryText", label: "Visa Expiry" },
+    { field: "visaExpiryText", label: "Visa Expiry", accessorFn: (row) => row.workVisaExpiryDate, valueFormatter: fmtDate },
     { field: "hasSiemensIdCard", label: "ID Card Status", filterable: true },
     { field: "certificateCount", label: "Certificates" },
-    { field: "siemensMonthText", label: "Siemens ID Received" },
+    { field: "siemensMonthText", label: "Siemens ID Received", accessorFn: (row) => row.siemensIdReceivedMonth, valueFormatter: (value) => value ? dayjs(value).format("MMM YYYY") : "N/A" },
     { field: "whatsAppNumber", label: "WhatsApp" },
     { field: "consentText", label: "Consent" },
-    { field: "submittedText", label: "Submitted" },
+    { field: "submittedText", label: "Submitted", accessorFn: (row) => row.submittedAt, valueFormatter: fmtDateTime },
     {
       field: "documents", label: "Documents",
       renderCell: (row) => (
@@ -242,25 +266,46 @@ export default function Onboarding() {
     },
   ];
 
-  // work period filter: keeps employees whose latest work period overlaps the chosen dates (no end date = still running)
-  const day = (v) => (v ? String(v).split("T")[0] : "");
-  const visibleRows = list.filter((r) => {
-    if (!dateFilter.from && !dateFilter.to) return true;
-    const start = day(r.workStartDate);
-    if (!start) return false;
-    const end = day(r.workEndDate);
-    if (dateFilter.to && start > dateFilter.to) return false;
-    if (dateFilter.from && end && end < dateFilter.from) return false;
+  const dateActive = Boolean(filters.from || filters.to);
+  const recordsByEmployee = useMemo(() => {
+    const map = {};
+    workRecords.forEach((record) => { (map[record.submissionId] = map[record.submissionId] || []).push(record); });
+    return map;
+  }, [workRecords]);
+  const asOfPeriod = (row) => {
+    const record = (recordsByEmployee[row.submissionId] || []).find((item) => {
+      const start = dayOf(item.startDate), end = dayOf(item.endDate);
+      return !(filters.to && start > filters.to) && !(filters.from && end && end < filters.from);
+    });
+    if (!record) return { ...row, workStatus: NOT_ASSIGNED, workPmName: "N/A", workStartDate: null, workEndDate: null, workStartText: "N/A", workEndText: "N/A", workAssets: [], workAsset: "N/A", workComments: "N/A", workActivities: [], workActivity: "N/A" };
+    const assetsForPeriod = splitValues(record.asset), activitiesForPeriod = splitValues(record.activity);
+    return { ...row, workStatus: record.workStatus, workPmName: record.pmName || "N/A", workStartDate: record.startDate, workEndDate: record.endDate, workStartText: fmtDate(record.startDate), workEndText: record.endDate ? fmtDate(record.endDate) : "Ongoing", workAssets: assetsForPeriod, workAsset: assetsForPeriod.join(", ") || "N/A", workComments: record.comments || "N/A", workActivities: activitiesForPeriod, workActivity: activitiesForPeriod.join(", ") || "N/A" };
+  };
+  const visibleRows = list.map((row) => dateActive ? asOfPeriod(row) : row).filter((row) => {
+    if (MULTI_FILTERS.some((filter) => filters[filter.key].length && !filters[filter.key].includes(String(row[filter.field] ?? "")))) return false;
+    if (filters.assets.length && !(row.workAssets || []).some((asset) => filters.assets.includes(asset))) return false;
+    if (filters.activities.length && !(row.workActivities || []).some((activity) => filters.activities.includes(activity))) return false;
+    if (filters.comment.trim() && !(row.workComments || "").toLowerCase().includes(filters.comment.trim().toLowerCase())) return false;
     return true;
   });
-  const dateFilterFields = (
-    <>
-      <FormDate label="Work Date From" value={dateDraft.from} onChange={(e) => setDateDraft((d) => ({ ...d, from: e.target.value }))} />
-      <FormDate label="Work Date To" value={dateDraft.to} min={dateDraft.from || undefined} onChange={(e) => setDateDraft((d) => ({ ...d, to: e.target.value }))} />
-    </>
-  );
-  const dateChip = dateFilter.from || dateFilter.to
-    ? `${dateFilter.from ? fmtDate(dateFilter.from) : "…"} to ${dateFilter.to ? fmtDate(dateFilter.to) : "…"}` : "";
+  const assetOptions = useMemo(() => [...new Set([...assetMaster, ...workRecords.flatMap((record) => splitValues(record.asset))].filter(Boolean))].sort(), [assetMaster, workRecords]);
+  const activityOptions = useMemo(() => [...new Set([...activityMaster, ...workRecords.flatMap((record) => splitValues(record.activity))].filter(Boolean))].sort(), [activityMaster, workRecords]);
+  const multiOptions = useMemo(() => Object.fromEntries(MULTI_FILTERS.map((filter) => {
+    const values = new Set(list.map((row) => String(row[filter.field] ?? "")).filter(Boolean));
+    if (filter.field === "workStatus") values.add(NOT_ASSIGNED);
+    return [filter.key, [...values].sort()];
+  })), [list]);
+  const updateFilterDraft = (patch) => setFilterDraft((prev) => ({ ...prev, ...patch }));
+  const filterFields = <>
+    <FormDate label="Work Date From" value={filterDraft.from} onChange={(e) => updateFilterDraft({ from: e.target.value })} />
+    <FormDate label="Work Date To" value={filterDraft.to} min={filterDraft.from || undefined} onChange={(e) => updateFilterDraft({ to: e.target.value })} />
+    {MULTI_FILTERS.map((filter) => <FormMultiSelect key={filter.key} label={filter.label} options={multiOptions[filter.key]} value={filterDraft[filter.key]} onChange={(value) => updateFilterDraft({ [filter.key]: value })} placeholder="All" />)}
+    <FormMultiSelect label="Asset" options={assetOptions} value={filterDraft.assets} onChange={(value) => updateFilterDraft({ assets: value })} placeholder="All" />
+    <FormMultiSelect label="Activity" options={activityOptions} value={filterDraft.activities} onChange={(value) => updateFilterDraft({ activities: value })} placeholder="All" />
+    <FormInput label="Comments" placeholder="Search in comments" value={filterDraft.comment} onChange={(e) => updateFilterDraft({ comment: e.target.value })} maxLength={200} />
+  </>;
+  const dateChip = dateActive ? `${filters.from ? fmtDate(filters.from) : "…"} to ${filters.to ? fmtDate(filters.to) : "…"}` : "";
+  const externalChips = [...MULTI_FILTERS.map((filter) => ({ label: filter.label, value: filters[filter.key].join(", ") })), { label: "Work Date", value: dateChip }, { label: "Asset", value: filters.assets.join(", ") }, { label: "Activity", value: filters.activities.join(", ") }, { label: "Comments", value: filters.comment.trim() }];
 
   const columns = allColumns.filter((c) => ALWAYS_VISIBLE.includes(c.field) || !hiddenCols.includes(c.field));
   const toggleableColumns = allColumns.filter((c) => !ALWAYS_VISIBLE.includes(c.field));
@@ -294,13 +339,13 @@ export default function Onboarding() {
 
       <ProTable
         title="Employee Details" columns={columns} data={visibleRows} multiSelect={false}
-        filterComponents={dateFilterFields}
+        filterComponents={filterFields}
         onApplyFilters={() => {
-          if (dateDraft.from && dateDraft.to && dateDraft.to < dateDraft.from) { ToastError("'Work Date To' cannot be before 'Work Date From'"); return; }
-          setDateFilter(dateDraft);
+          if (filterDraft.from && filterDraft.to && filterDraft.to < filterDraft.from) { ToastError("'Work Date To' cannot be before 'Work Date From'"); return; }
+          setFilters(filterDraft);
         }}
-        onResetFilters={() => { setDateDraft({ from: "", to: "" }); setDateFilter({ from: "", to: "" }); }}
-        externalFilters={[{ label: "Work Date", value: dateChip }]}
+        onResetFilters={() => { setFilterDraft(EMPTY_FILTER); setFilters(EMPTY_FILTER); }}
+        externalFilters={externalChips}
       />
 
       {/* ── Columns popup (Admin / Manager) ── */}

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { User, Key, LogOut, ChevronDown, AlertTriangle, Menu, } from "lucide-react";
+import { LogOut, AlertTriangle, Menu, Clock, MapPin, Search, ArrowRight, CircleHelp, Bell, Moon, Sun } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { getCookie, setCookie } from "../../auth/Cookies";
 import { clearSession } from "../../auth/Auth";
 import PasswordChange from "../../shared/services/PasswordChange";
@@ -9,8 +10,13 @@ import { getRequest, postRequest } from "../../shared/services/Apiservice";
 import LoadingMask from "../../shared/services/LoadingMask";
 import { ToastError, ToastSuccess } from "../../shared/services/ToastMsg";
 import { Button } from "../../components/ui/button";
-import { Avatar, AvatarFallback } from "../../components/ui/avatar";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, } from "../../components/ui/dialog";
+import ProfileAvatar from "../../components/ProfileAvatar";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "../../components/ui/input-group";
+import { getVisibleMenuItems } from "../../auth/navigation";
+import { fetchHRMSNotifications, getReadNotificationIds, type HRMSNotification } from "../../features/Notifications/notificationService";
+import { useTheme } from "../../theme/ThemeProvider";
+import { ChatWidgetLauncher } from "../../features/Chat/ChatWidget";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -172,82 +178,96 @@ const resolveLocalityFromCoords = async (lat, lon) => {
   return fetchLocalityFromCoordsNominatim(lat, lon);
 };
 
-/**
- * Get high-accuracy GPS coordinates.
- *
- * Returns:
- * {
- *   lat,
- *   lon,
- *   accuracy
- * }
- */
-const getAccurateCoords = () =>
-  new Promise<{ lat: number; lon: number; accuracy: number } | null>((resolve) => {
-    if (!navigator.geolocation) {
-      return resolve(null);
-    }
-
-    const geoTimeout = setTimeout(() => {
-      resolve(null);
-    }, 10000);
-
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }: Record<string, any>) => {
-        clearTimeout(geoTimeout);
-
-        resolve({
-          lat: coords.latitude,
-          lon: coords.longitude,
-          accuracy: coords.accuracy,
-        });
-      },
-
-      () => {
-        clearTimeout(geoTimeout);
-        resolve(null);
-      },
-
-      {
-        enableHighAccuracy: true,
-        timeout: 9000,
-        maximumAge: 0,
-      }
-    );
-  });
-
-/**
- * Fetch city/location via IP.
- *
- * This is only used as a fallback when GPS is unavailable.
- */
+/** Approximate cache-only fallback; never used to authorize or submit a clock action. */
 const fetchCityFromIp = async () => {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
-
-    const r = await fetch("https://ipapi.co/json/", {
-      signal: controller.signal,
-    });
-
+    const response = await fetch("https://ipapi.co/json/", { signal: controller.signal });
     clearTimeout(timeout);
-
-    if (r.ok) {
-      const d = await r.json();
-
-      return d.city || "Unknown";
+    if (response.ok) {
+      const data = await response.json();
+      return data.city || "Unknown";
     }
   } catch {
-    // Ignore fallback error
+    // Leave the cached location unknown when IP lookup is unavailable.
   }
-
   return "Unknown";
 };
 
+const MAX_CLOCK_LOCATION_ACCURACY_METERS = 50;
+
+/** Read a fresh high-accuracy fix, then briefly refine coarse readings via watchPosition. */
+const getAccurateCoords = () =>
+  new Promise<{ lat: number; lon: number; accuracy: number } | null>((resolve) => {
+    if (!navigator.geolocation?.getCurrentPosition) return resolve(null);
+
+    let watchId: number | null = null;
+    let settled = false;
+    let bestFix: { lat: number; lon: number; accuracy: number } | null = null;
+    let refinementTimeoutId: ReturnType<typeof setTimeout> | null = null;
+    const finish = (fix: typeof bestFix) => {
+      if (settled) return;
+      settled = true;
+      if (refinementTimeoutId) clearTimeout(refinementTimeoutId);
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      resolve(fix);
+    };
+    const acceptFix = ({ coords }: GeolocationPosition) => {
+      const fix = { lat: coords.latitude, lon: coords.longitude, accuracy: coords.accuracy };
+      if (!Number.isFinite(fix.lat) || !Number.isFinite(fix.lon) || !Number.isFinite(fix.accuracy)) return;
+      if (!bestFix || fix.accuracy < bestFix.accuracy) bestFix = fix;
+      if (bestFix.accuracy <= MAX_CLOCK_LOCATION_ACCURACY_METERS) {
+        finish(bestFix);
+        return;
+      }
+      if (watchId === null && navigator.geolocation.watchPosition) {
+        watchId = navigator.geolocation.watchPosition(
+          acceptFix,
+          () => finish(null),
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 },
+        );
+        refinementTimeoutId = setTimeout(() => finish(null), 6000);
+      }
+    };
+
+    try {
+      navigator.geolocation.getCurrentPosition(acceptFix, () => finish(null), {
+        enableHighAccuracy: true,
+        timeout: 12000,
+        maximumAge: 0,
+      });
+    } catch {
+      finish(null);
+    }
+  });
+
+/** A short, non-blocking confirmation tone for successful clock actions. */
+const playClockConfirmation = () => {
+  try {
+    const AudioContextConstructor = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextConstructor) return;
+    const context = new AudioContextConstructor();
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.value = 880;
+    gain.gain.setValueAtTime(0.0001, context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.08, context.currentTime + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.16);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start();
+    oscillator.stop(context.currentTime + 0.17);
+    oscillator.onended = () => { void context.close(); };
+  } catch {
+    // Audio is optional; clock actions must work when audio is unavailable.
+  }
+};
+
 /**
- * Fetch the best available location.
- *
- * GPS is always preferred.
+ * Resolve a fresh browser GPS fix and reverse geocode its locality.
+ * IP location is intentionally excluded from clock actions because it is not a precise fix.
  *
  * Returns:
  * {
@@ -261,30 +281,15 @@ const fetchCityFromIp = async () => {
 const fetchLocation = async () => {
   const coords = await getAccurateCoords();
 
-  if (coords) {
-    const locality = await resolveLocalityFromCoords(
-      coords.lat,
-      coords.lon
-    );
-
-    return {
-      location: locality,
-      lat: coords.lat,
-      lon: coords.lon,
-      accuracy: coords.accuracy,
-      source: "GPS",
-    };
-  }
-
-  // GPS unavailable → IP fallback
-  const ipLocation = await fetchCityFromIp();
+  if (!coords) return null;
+  const locality = await resolveLocalityFromCoords(coords.lat, coords.lon);
 
   return {
-    location: ipLocation,
-    lat: null,
-    lon: null,
-    accuracy: null,
-    source: "IP",
+    location: locality,
+    lat: coords.lat,
+    lon: coords.lon,
+    accuracy: coords.accuracy,
+    source: "GPS",
   };
 };
 
@@ -382,8 +387,14 @@ const formatDate = (d) =>
 // Component
 // ---------------------------------------------------------------------------
 
-const Header = ({ onMenuClick = () => {}, navOpen = false }: Record<string, any>) => {
+const Header = ({ onMenuClick = () => { }, navOpen = false }: Record<string, any>) => {
   const navigate = useNavigate();
+  const prefersReducedMotion = useReducedMotion();
+  const { theme, toggleTheme } = useTheme();
+  const [showGlobalSearch, setShowGlobalSearch] = useState(false);
+  const [globalSearchQuery, setGlobalSearchQuery] = useState("");
+  const [notificationItems, setNotificationItems] = useState<HRMSNotification[]>([]);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 
   // Clock state
   const [clockedIn, setClockedIn] = useState(false);
@@ -392,18 +403,11 @@ const Header = ({ onMenuClick = () => {}, navOpen = false }: Record<string, any>
 
   const intervalRef = useRef(null);
 
-  // UI state
-  const menuRef = useRef(null);
-
-  const [menuOpen, setMenuOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const [showPassword, setShowPassword] = useState(
     getCookie("isDefaultPasswordChanged") === "false"
   );
-
-  const [isManualChange, setIsManualChange] =
-    useState(false);
 
   const [
     showLogoutConfirm,
@@ -417,11 +421,9 @@ const Header = ({ onMenuClick = () => {}, navOpen = false }: Record<string, any>
   const lastName =
     getCookie("lastName") || "";
 
-  const employeeId =
-    getCookie("employeeId") || "";
-
   const employeeRole =
     getCookie("role") || "";
+  const userEmail = getCookie("email") || "";
 
   const isDeizeisau =
     (getCookie("department") || "")
@@ -430,6 +432,62 @@ const Header = ({ onMenuClick = () => {}, navOpen = false }: Record<string, any>
 
   const initials =
     `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+
+  const searchItems = [
+    ...getVisibleMenuItems(employeeRole, getCookie("department") || ""),
+    { to: "/help-center", label: "Help Center", icon: <CircleHelp size={18} />, roles: [employeeRole] },
+    { to: "/notifications", label: "Notifications", icon: <Bell size={18} />, roles: [employeeRole] },
+    { to: "/view-employee", label: "My Profile", icon: <ProfileAvatar seed={getCookie("email")} initials={initials} className="global-search-profile-icon" />, roles: [employeeRole] },
+  ].filter((item, index, items) => items.findIndex((candidate) => candidate.to === item.to) === index);
+  const matchingSearchItems = searchItems
+    .filter((item) => item.label.toLocaleLowerCase().includes(globalSearchQuery.trim().toLocaleLowerCase()))
+    .slice(0, 8);
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setShowGlobalSearch(true);
+      }
+    };
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const refreshNotifications = () => {
+      fetchHRMSNotifications().then((items) => {
+        if (!active) return;
+        setNotificationItems(items);
+        const read = getReadNotificationIds(userEmail);
+        setUnreadNotificationCount(items.filter((item) => !read.has(item.id)).length);
+      }).catch(() => {});
+    };
+    refreshNotifications();
+    const intervalId = window.setInterval(refreshNotifications, 5 * 60 * 1000);
+    window.addEventListener("focus", refreshNotifications);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refreshNotifications);
+    };
+  }, [userEmail]);
+
+  useEffect(() => {
+    const refreshUnreadCount = () => {
+      const read = getReadNotificationIds(userEmail);
+      setUnreadNotificationCount(notificationItems.filter((item) => !read.has(item.id)).length);
+    };
+    window.addEventListener("hrms:notifications-read", refreshUnreadCount);
+    return () => window.removeEventListener("hrms:notifications-read", refreshUnreadCount);
+  }, [notificationItems, userEmail]);
+
+  const openSearchResult = (path: string) => {
+    setShowGlobalSearch(false);
+    setGlobalSearchQuery("");
+    navigate(path);
+  };
 
   const geoFenceEnabled =
     getCookie("geoFenceEnabled") === "true";
@@ -540,7 +598,7 @@ const Header = ({ onMenuClick = () => {}, navOpen = false }: Record<string, any>
           Math.floor(
             (Date.now() -
               clockInTime.getTime()) /
-              1000
+            1000
           )
         );
       }
@@ -559,32 +617,6 @@ const Header = ({ onMenuClick = () => {}, navOpen = false }: Record<string, any>
   }, [clockInTime]);
 
   // -------------------------------------------------------------------------
-  // Close dropdown outside click
-  // -------------------------------------------------------------------------
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(e.target)
-      ) {
-        setMenuOpen(false);
-      }
-    };
-
-    document.addEventListener(
-      "mousedown",
-      handler
-    );
-
-    return () =>
-      document.removeEventListener(
-        "mousedown",
-        handler
-      );
-  }, []);
-
-  // -------------------------------------------------------------------------
   // Clock In / Clock Out
   // -------------------------------------------------------------------------
 
@@ -592,12 +624,21 @@ const Header = ({ onMenuClick = () => {}, navOpen = false }: Record<string, any>
     setLoading(true);
 
     try {
-      // Fetch public IP and GPS location in parallel
-      const [ip, locationData] =
-        await Promise.all([
-          fetchIp(),
-          fetchLocation(),
-        ]);
+      // Resolve the device GPS fix before any non-location network request.
+      const locationData = await fetchLocation();
+
+      if (
+        !locationData ||
+        locationData.source !== "GPS" ||
+        locationData.accuracy > MAX_CLOCK_LOCATION_ACCURACY_METERS ||
+        typeof locationData.lat !== "number" ||
+        typeof locationData.lon !== "number"
+      ) {
+        ToastError(`Allow precise location access (within ${MAX_CLOCK_LOCATION_ACCURACY_METERS} m) to clock in or out.`);
+        return;
+      }
+
+      const ip = await fetchIp();
 
       const location =
         locationData.location;
@@ -651,7 +692,7 @@ const Header = ({ onMenuClick = () => {}, navOpen = false }: Record<string, any>
       // Local ISO without UTC suffix
       const localISO = new Date(
         now.getTime() -
-          now.getTimezoneOffset() * 60000
+        now.getTimezoneOffset() * 60000
       )
         .toISOString()
         .slice(0, -1);
@@ -688,6 +729,7 @@ const Header = ({ onMenuClick = () => {}, navOpen = false }: Record<string, any>
       );
 
       if (res.status === 200) {
+        playClockConfirmation();
         if (!clockedIn) {
           // Clock IN
           setClockedIn(true);
@@ -758,8 +800,6 @@ const Header = ({ onMenuClick = () => {}, navOpen = false }: Record<string, any>
 
     navigate("/login", { replace: true });
 
-    setMenuOpen(false);
-
     setShowLogoutConfirm(false);
   };
 
@@ -785,14 +825,12 @@ const Header = ({ onMenuClick = () => {}, navOpen = false }: Record<string, any>
       {/* Password change modal */}
       {showPassword && (
         <PasswordChange
-          isManualChange={isManualChange}
+          isManualChange={false}
           onSuccess={() => {
             setShowPassword(false);
-            setIsManualChange(false);
           }}
           onClose={() => {
             setShowPassword(false);
-            setIsManualChange(false);
           }}
         />
       )}
@@ -822,6 +860,30 @@ const Header = ({ onMenuClick = () => {}, navOpen = false }: Record<string, any>
         </DialogContent>
       </Dialog>
 
+      <Dialog open={showGlobalSearch} onOpenChange={(open) => { setShowGlobalSearch(open); if (!open) setGlobalSearchQuery(""); }}>
+        <DialogContent className="global-search-dialog" aria-describedby="global-search-description">
+          <DialogHeader>
+            <DialogTitle>Search Natobotics HRMS</DialogTitle>
+            <DialogDescription id="global-search-description">Find a page available to your role. Press Ctrl+K or ⌘K to open search.</DialogDescription>
+          </DialogHeader>
+          <InputGroup className="global-search-input">
+            <InputGroupInput autoFocus aria-label="Search pages" placeholder="Search pages…" value={globalSearchQuery} onChange={(event) => setGlobalSearchQuery(event.target.value)} />
+            <InputGroupAddon align="inline-start"><Search size={17} aria-hidden="true" /></InputGroupAddon>
+            <InputGroupAddon align="inline-end"><kbd>ESC</kbd></InputGroupAddon>
+          </InputGroup>
+          <div className="global-search-results" role="group" aria-label="Search results">
+            {matchingSearchItems.length ? matchingSearchItems.map((item) => (
+              <button key={item.to} type="button" className="global-search-result" onClick={() => openSearchResult(item.to)}>
+                <span className="global-search-result-icon" aria-hidden="true">{item.icon}</span>
+                <span>{item.label}</span>
+                <ArrowRight size={14} className="global-search-result-arrow" aria-hidden="true" />
+              </button>
+            )) : <p className="global-search-empty" role="status">No matching pages found.</p>}
+          </div>
+          <div className="global-search-footer"><span>Search pages and sections</span><kbd>Ctrl K</kbd></div>
+        </DialogContent>
+      </Dialog>
+
       {/* Brand */}
       <div className="header-brand">
         <img
@@ -837,42 +899,67 @@ const Header = ({ onMenuClick = () => {}, navOpen = false }: Record<string, any>
 
       <div className="header-right">
 
+        <Button variant="outline" type="button" className="header-search-trigger" onClick={() => setShowGlobalSearch(true)} aria-label="Search pages">
+          <Search size={16} aria-hidden="true" /><span>Search pages and sections</span><kbd>⌘K</kbd>
+        </Button>
         {/* Clock button */}
         {!isDeizeisau && (
-          <Button
-            type="button"
-            variant={clockedIn ? "secondary" : "default"}
-            size="lg"
-            className={`clock-btn ${
-              clockedIn
-                ? "clock-btn-active"
-                : "clock-btn-idle"
-            }`}
-            onClick={handleClock}
-            disabled={loading}
-            aria-label={clockedIn ? "Clock out" : "Clock in"}
-          >
-            {clockedIn ? (
-              <>
-                <span
-                  className="text-[12px] opacity-[0.85]" 
-                >
-                  {formatDate(
-                    clockInTime
-                  )}
-                </span>
-
-                <span
-                  className="text-[13px] tracking-[0.05em]" 
-                >
-                  {formatTime(timer)}
-                </span>
-              </>
-            ) : (
-              "Clock In"
-            )}
+          <Button asChild type="button" variant={clockedIn ? "destructive" : "default"} size="lg">
+            <motion.button
+              type="button"
+              layout
+              whileHover={prefersReducedMotion || loading ? undefined : { scale: 1.005 }}
+              whileTap={prefersReducedMotion || loading ? undefined : { scale: 0.98 }}
+              transition={{ layout: { duration: prefersReducedMotion ? 0 : 0.2 }, scale: { duration: 0.14 } }}
+              className={`clock-btn ${clockedIn ? "clock-btn-active" : "clock-btn-idle"}`}
+              onClick={handleClock}
+              disabled={loading}
+              title={clockedIn && clockInTime ? `Clocked in ${formatDate(clockInTime)}` : undefined}
+              aria-label={clockedIn ? `Clock out. Elapsed time ${formatTime(timer)}` : "Clock in"}
+            >
+              <span className="clock-btn-icon" aria-hidden="true">
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={clockedIn ? "clock-out-icon" : "clock-in-icon"}
+                    initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.7, rotate: -12 }}
+                    animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                    exit={prefersReducedMotion ? undefined : { opacity: 0, scale: 0.7, rotate: 12 }}
+                    transition={{ duration: prefersReducedMotion ? 0 : 0.18 }}
+                  >
+                    {clockedIn ? <MapPin size={18} strokeWidth={2.2} /> : <MapPin size={18} strokeWidth={2.2} />}
+                  </motion.span>
+                </AnimatePresence>
+              </span>
+              <span className="clock-btn-copy">
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={clockedIn ? "clock-out-copy" : "clock-in-copy"}
+                    className="clock-btn-content"
+                    initial={prefersReducedMotion ? false : { opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={prefersReducedMotion ? undefined : { opacity: 0, y: -4 }}
+                    transition={{ duration: prefersReducedMotion ? 0 : 0.16 }}
+                  >
+                    <span className="clock-btn-title">{clockedIn ? "Clock Out" : "Clock In"}</span>
+                    {clockedIn && <span className="clock-btn-meta"><Clock size={11} aria-hidden="true" />{formatTime(timer)}</span>}
+                  </motion.span>
+                </AnimatePresence>
+              </span>
+            </motion.button>
           </Button>
         )}
+
+        <ChatWidgetLauncher />
+        <Button variant="ghost" size="icon" type="button" className="header-notifications-trigger" aria-label={`Notifications${unreadNotificationCount ? `, ${unreadNotificationCount} unread` : ""}`} title="Notifications" onClick={() => navigate("/notifications")}>
+          <Bell size={18} aria-hidden="true" />
+          {unreadNotificationCount > 0 && <span className="header-notifications-count" aria-hidden="true">{unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}</span>}
+        </Button>
+        <Button variant="ghost" size="icon" type="button" className="header-help-trigger" aria-label="Open Help Center" title="Help Center" onClick={() => navigate("/help-center")}>
+          <CircleHelp size={19} aria-hidden="true" />
+        </Button>
+        <Button variant="ghost" size="icon" type="button" className="header-theme-toggle" aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`} title={`Switch to ${theme === "dark" ? "light" : "dark"} theme`} onClick={toggleTheme}>
+          {theme === "dark" ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
+        </Button>
 
         {/* User info */}
         <div className="header-user-info">
@@ -885,112 +972,16 @@ const Header = ({ onMenuClick = () => {}, navOpen = false }: Record<string, any>
           </div>
         </div>
 
-        {/* Avatar + dropdown */}
-        <div className="profile-menu-anchor" ref={menuRef}>
+        {/* Avatar links directly to the current user's profile. */}
+        <div className="profile-menu-anchor">
           <Button variant="ghost"
             type="button"
             className="profile-menu-trigger"
-            aria-label="Open profile menu"
-            aria-haspopup="menu"
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen(o => !o)}
+            aria-label="View profile"
+            onClick={() => navigate("/view-employee")}
           >
-            <Avatar className="header-avatar">
-              <AvatarFallback>{initials}</AvatarFallback>
-            </Avatar>
-
-            <ChevronDown
-              size={13}
-              color="var(--text-muted)"
-              style={{
-                transition:
-                  "transform 0.2s",
-                transform: menuOpen
-                  ? "rotate(180deg)"
-                  : "",
-              }}
-            />
+            <ProfileAvatar seed={getCookie("email")} initials={initials} className="header-avatar" />
           </Button>
-
-          {menuOpen && (
-            <div className="profile-menu" role="menu">
-              {/* User header */}
-              <div className="profile-menu-header">
-                <div
-                  className="flex items-center gap-[12px]" 
-                >
-                  <div className="profile-menu-avatar" aria-hidden="true">
-                    {initials}
-                  </div>
-
-                  <div>
-                    <div className="profile-menu-name">
-                      {firstName} {lastName}
-                    </div>
-
-                    <div className="profile-menu-meta">
-                      {employeeId} · {employeeRole}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Menu items */}
-              {[
-                {
-                  icon: <User size={15} />,
-                  label: "View Profile",
-                  action: () => {
-                    navigate("/view-employee");
-                    setMenuOpen(false);
-                  },
-                },
-                {
-                  icon: <Key size={15} />,
-                  label: "Change Password",
-                  action: () => {
-                    setIsManualChange(true);
-                    setShowPassword(true);
-                    setMenuOpen(false);
-                  },
-                },
-              ].map((item, i) => (
-                <Button variant="ghost"
-                  key={i}
-                  type="button"
-                  role="menuitem"
-                  className="profile-menu-item"
-                  onClick={item.action}
-                >
-                  <span className="profile-menu-item-icon">
-                    {item.icon}
-                  </span>
-
-                  {item.label}
-                </Button>
-              ))}
-
-              <div
-                style={{
-                  borderTop:
-                    "1px solid var(--border)",
-                }}
-              >
-                <Button variant="ghost"
-                  type="button"
-                  role="menuitem"
-                  className="profile-menu-item profile-menu-item-danger"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setShowLogoutConfirm(true);
-                  }}
-                >
-                  <LogOut size={15} />
-                  Logout
-                </Button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </header>

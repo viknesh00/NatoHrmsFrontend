@@ -1,4 +1,3 @@
-import { cn } from "cn";
 import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
 import React, { useEffect, useState, useRef } from "react";
@@ -6,15 +5,14 @@ import { useNavigate, useParams } from "react-router-dom";
 import { getRequest, postRequest } from "../../shared/services/Apiservice";
 import { ToastError, ToastSuccess } from "../../shared/services/ToastMsg";
 import LoadingMask from "../../shared/services/LoadingMask";
-import Breadcrumb from "../../shared/services/Breadcrumb";
-import { Users, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { getCookie } from "../../auth/Cookies";
 import { FormInput, FormSelect, FormRow, FormSection, FormDate } from "../../components/FormComponents";
 
 /* ── Input styles (same as DocumentUploadForm) ── */
 const IS = {
-  label: { display:"block", fontFamily:"var(--ui-font-heading)", fontSize:12, fontWeight:600, color:"var(--text-secondary)", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:7 },
-  input: { width:"100%", padding:"10px 13px", borderRadius:"var(--radius)", border:"1px solid var(--border)", background:"var(--bg)", fontFamily:"var(--ui-font-sans)", fontSize:14, color:"var(--text-primary)", outline:"none", transition:"all 0.2s", boxSizing:"border-box" },
+  label: { display:"block", fontFamily:"var(--ui-font-sans)", fontSize:13, fontWeight:500, color:"var(--foreground)", letterSpacing:"0", marginBottom:8 },
+  input: { width:"100%", minHeight:40, padding:"9px 12px", borderRadius:"var(--radius)", border:"1px solid var(--border)", background:"var(--card)", fontFamily:"var(--ui-font-sans)", fontSize:14, color:"var(--foreground)", outline:"none", transition:"all 0.2s", boxSizing:"border-box" },
   error: { fontSize:13, color:"var(--coral)", marginTop:4 },
 };
 
@@ -87,12 +85,6 @@ export default function AddEmployee() {
   const userRole         = getCookie("role");
   const isEditMode       = !!email;
   const canManageEmployeeFields  = userRole === "Admin" || userRole === "Manager" || userRole === "TeamLead";
-
-  const breadCrumb = !canManageEmployeeFields 
-    ? [{ label: "View Profile", link: "/view-employee" }, { label: "Edit-Employee" }]
-    : !isEditMode
-      ? [{ label: "Employee", link: "/employees" }, { label: "Add-Employee" }]
-      : [{ label: "Employee", link: "/employees" }, { label: "Edit-Employee" }];
 
   /* ── form state ── */
   const [formvalues, setFormvalues] = useState({
@@ -555,80 +547,47 @@ export default function AddEmployee() {
       <LoadingMask loading={loading} />
 
       {/* Page Header */}
-      <div className="page-header">
+      <div className="page-header employee-wizard-page-header">
         <div>
-          <Breadcrumb icon={<Users size={13} />} items={breadCrumb} />
+          <Button type="button" variant="ghost" className="wizard-return-link" onClick={handleCancel}><ArrowLeft size={14} aria-hidden="true" /> {canManageEmployeeFields ? "Back to employees" : "Back to profile"}</Button>
           <h1 className="page-title">{isEditMode ? "Update Employee" : "Add Employee"}</h1>
           <p className="page-subtitle">
             Fill in all sections to {isEditMode ? "update" : "create"} the employee profile
           </p>
         </div>
-        <Button variant="ghost" type="button" className={cn("icon-btn", "text-[var(--coral)]")} onClick={handleCancel} >
-          <X size={20} />
-        </Button>
       </div>
 
-      <div className="form-centered-wrap">
-        <div className="card">
-
-          {/* Gradient bar */}
-          <div className="h-[5px] bg-primary"  />
-
-          {/* Card Header */}
-          <div className="p-[20px_24px_16px] flex items-center gap-[12px]" style={{borderBottom:"1px solid var(--border)"}}>
-            <div className="w-[40px] h-[40px] bg-primary flex items-center justify-center shrink-[0]" style={{borderRadius:"var(--radius)"}}>
-              <Users size={20} color="var(--primary-foreground)" />
-            </div>
-            <div>
-              <div className="text-[18px] font-semibold text-[var(--text-primary)]" style={{fontFamily:"var(--ui-font-heading)"}}>
-                {isEditMode ? "Edit Employee" : "Add New Employee"}
-              </div>
-              <div className="text-[12px] text-[var(--text-muted)] mt-[4px]" >
-                Fill in all sections to {isEditMode ? "update" : "create"} the employee profile
-              </div>
-            </div>
-          </div>
-
+      <div className="form-centered-wrap employee-wizard-wrap">
+        <div className="card employee-wizard-card">
           {/* Stepper */}
-          <div className="p-[20px_24px_0]" style={{borderBottom:"1px solid var(--border)"}}>
-            <div className="flex items-center" >
-              {steps.map((label, index) => (
-                <React.Fragment key={index}>
-                  <div className="flex flex-col items-center gap-[4px]" style={{flex: index < steps.length - 1 ? 0 : undefined}}>
-                    <div className="w-[36px] h-[36px] flex items-center justify-center text-[14px] font-semibold shrink-[0]" style={{borderRadius:"50%", background: activeStep > index ? "var(--teal)" : activeStep === index ? "var(--primary)" : "var(--bg)", color: activeStep >= index ? "var(--card)" : "var(--text-muted)", fontFamily:"var(--ui-font-heading)", border:`2px solid ${activeStep > index ? "var(--teal)" : activeStep === index ? "var(--primary)" : "var(--border)"}`, transition:"all 0.3s"}}>
-                      {activeStep > index ? "✓" : (index + 1)}
-                    </div>
-                    <span className="text-[12px] font-semibold uppercase tracking-[0.04em] whitespace-nowrap" style={{color: activeStep >= index ? "var(--primary)" : "var(--text-muted)"}}>
-                      {label}
-                    </span>
-                  </div>
-                  {index < steps.length - 1 && (
-                    <div className="h-[2px] m-[0_8px] mb-[20px]" style={{flex:1, background: activeStep > index ? "var(--teal)" : "var(--border)", transition:"background 0.3s"}} />
-                  )}
-                </React.Fragment>
-              ))}
+          <div className="wizard-progress-shell">
+            <div className="wizard-stepper-list" role="list" aria-label="Employee form steps">
+              {steps.map((label, index) => <div key={label} className={`wizard-stepper-item${activeStep === index ? " is-current" : activeStep > index ? " is-complete" : ""}`} role="listitem" aria-current={activeStep === index ? "step" : undefined} aria-label={`Step ${index + 1}: ${label}${activeStep > index ? ", completed" : activeStep === index ? ", current step" : ""}`}>
+                <span className="wizard-stepper-index">{activeStep > index ? <Check size={14} aria-hidden="true" /> : index + 1}</span>
+                <span className="wizard-stepper-label">{label}</span>
+              </div>)}
             </div>
           </div>
 
           {/* Step Content */}
-          <div className="p-[24px] max-h-[60vh] overflow-y-auto" >
+          <div className="employee-wizard-content">
             {getStepContent(activeStep)}
           </div>
 
           {/* Footer */}
-          <div className="p-[16px_24px] flex justify-between bg-muted" style={{borderTop:"1px solid var(--border)"}}>
+          <div className="employee-wizard-footer">
             <Button variant="ghost" type="button"
               disabled={activeStep === 0}
               onClick={handleBack}
-              className={`btn btn-ghost ${activeStep === 0 ? "" : "btn-outline"}`}
+              className={`wizard-back-button ${activeStep === 0 ? "is-disabled" : ""}`}
               style={{ opacity: activeStep === 0 ? 0.4 : 1 }}
             >
-              ← Previous
+              <ArrowLeft size={15} aria-hidden="true" /> Previous
             </Button>
-            <Button variant="default" type="button" onClick={handleNext} className="btn btn-primary">
+            <Button variant="default" type="button" onClick={handleNext} className="wizard-next-button">
               {activeStep === steps.length - 1
                 ? (isEditMode ? "Update Employee" : "Save Employee")
-                : "Next →"}
+                : <>Continue <ArrowRight size={15} aria-hidden="true" /></>}
             </Button>
           </div>
 

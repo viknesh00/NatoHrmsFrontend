@@ -35,7 +35,7 @@ export default function Payslip() {
     getRequest("User/GetGeneratedPayslips").then(res => {
       if (res.data) setGenerated(res.data.map(p => ({
         ...p,
-        generatedOn: p.generatedOn ? dayjs(p.generatedOn).format("DD-MM-YYYY") : "—",
+        generatedOn: p.generatedOn ? dayjs(p.generatedOn).format("DD-MM-YYYY") : "N/A",
       })));
     }).catch(() => {}); // API may not exist yet
   };
@@ -146,7 +146,7 @@ export default function Payslip() {
                     <div className="text-[14px] font-semibold text-[var(--text-primary)]" >{selectedEmp.fullName}</div>
                     <div className="text-[12px] text-[var(--text-muted)] mt-[4px]" >{selectedEmp.employeeId} · {selectedEmp.department}</div>
                     <div className="text-[13px] font-semibold text-primary mt-[8px]" >
-                      CTC: ₹{selectedEmp.ctc ? Number(selectedEmp.ctc).toLocaleString() : "—"}
+                      CTC: ₹{selectedEmp.ctc ? Number(selectedEmp.ctc).toLocaleString() : "N/A"}
                     </div>
                   </>
                 ) : (

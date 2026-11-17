@@ -1,16 +1,13 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
-import { getCookie } from "./Cookies";
 
-// Landing page after login / for unknown URLs.
-// Onboarding department users (non-admin) have no Dashboard menu, so they land on Onboarding.
+// Dashboard is the landing page for every signed-in role; module visibility is
+// controlled by the role-aware navigation and dashboard views.
 export const getHomePath = () => {
-  const role = getCookie("role");
-  const dept = (getCookie("department") || "").trim().toLowerCase();
-  return role !== "Admin" && dept === "onboarding" ? "/onboarding" : "/dashboard";
+  return "/dashboard";
 };
 
-// Wrap the Dashboard route so Onboarding users typing /dashboard are sent to their own landing page.
+// Keep direct dashboard access consistent with the post-login landing route.
 export const DashboardGuard = ({ children }: Record<string, any>) => {
   const home = getHomePath();
   return home === "/dashboard" ? children : <Navigate to={home} replace />;

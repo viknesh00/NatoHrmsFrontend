@@ -7,9 +7,10 @@ import LoadingMask from "../../shared/services/LoadingMask";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import { Edit, User, Briefcase, DollarSign, GraduationCap, MapPin, FileText, Shield, Heart, IdCard, Users } from "lucide-react";
+import ProfileAvatar from "../../components/ProfileAvatar";
 
 const fmt = (v) => {
-  if (!v || v === "-") return "—";
+  if (!v || v === "-") return "N/A";
   if (v instanceof Date || (typeof v === "string" && v.match(/^\d{4}-/))) {
     return dayjs(v).format("DD-MM-YYYY");
   }
@@ -38,7 +39,7 @@ function Field({ label, value }: Record<string, any>) {
   return (
     <div>
       <div className="text-[12px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em] mb-[4px]" >{label}</div>
-      <div className="text-[14px] font-semibold text-[var(--text-primary)]" >{value || "—"}</div>
+      <div className="text-[14px] font-semibold text-[var(--text-primary)]" >{value || "N/A"}</div>
     </div>
   );
 }
@@ -56,7 +57,7 @@ export default function ViewEmployee() {
       .finally(() => setLoading(false));
   }, [email]);
 
-  const fmtGender = (g) => g === "M" ? "Male" : g === "F" ? "Female" : g || "—";
+  const fmtGender = (g) => g === "M" ? "Male" : g === "F" ? "Female" : g || "N/A";
 
   if (loading) return <LoadingMask loading />;
   if (!data) return <div className="text-center p-[60px] text-[var(--text-muted)]" >No profile data found</div>;
@@ -78,9 +79,7 @@ export default function ViewEmployee() {
 
       {/* Profile Hero Card */}
       <div className="profile-hero-card">
-        <div className="profile-hero-avatar">
-          {initials}
-        </div>
+        <ProfileAvatar seed={data.email || email} initials={initials} className="profile-hero-avatar" />
         <div className="profile-hero-copy">
           <div className="profile-hero-title">
             {data.firstName} {data.lastName}
@@ -90,11 +89,12 @@ export default function ViewEmployee() {
           </div>
           <div className="profile-hero-meta">
             {[
-              { label: data.employeeId, icon: IdCard },
-              { label: data.workLocation, icon: MapPin },
-              { label: data.accessRole, icon: Shield },
-            ].filter(b => b.label).map((b, i) => (
-              <span key={i} className="profile-hero-chip">
+              { label: data.employeeId, icon: IdCard, tone: "id" },
+              { label: data.workLocation, icon: MapPin, tone: "location" },
+              { label: data.employeeType, icon: Briefcase, tone: "type" },
+              { label: data.accessRole, icon: Shield, tone: "role" },
+            ].filter(b => b.label).map((b) => (
+              <span key={b.tone} className={`profile-hero-chip profile-hero-chip--${b.tone}`}>
                 <b.icon size={13} aria-hidden="true" /> {b.label}
               </span>
             ))}
@@ -138,13 +138,13 @@ export default function ViewEmployee() {
       </Section>
 
       <Section icon={<DollarSign />} title="Salary & Compensation">
-        <Field label="CTC (Annual)" value={data.ctc ? `₹ ${Number(data.ctc).toLocaleString()}` : "—"} />
-        <Field label="Basic Salary" value={data.basicSalary ? `₹ ${Number(data.basicSalary).toLocaleString()}` : "—"} />
-        <Field label="HRA" value={data.hra ? `₹ ${Number(data.hra).toLocaleString()}` : "—"} />
-        <Field label="Medical Allowance" value={data.medicalAllowance ? `₹ ${Number(data.medicalAllowance).toLocaleString()}` : "—"} />
-        <Field label="Conveyance Allowance" value={data.conveyanceAllowance ? `₹ ${Number(data.conveyanceAllowance).toLocaleString()}` : "—"} />
-        <Field label="Special Allowance" value={data.specialAllowance ? `₹ ${Number(data.specialAllowance).toLocaleString()}` : "—"} />
-        <Field label="Employee PF" value={data.employeePF ? `₹ ${Number(data.employeePF).toLocaleString()}` : "—"} />
+        <Field label="CTC (Annual)" value={data.ctc ? `₹ ${Number(data.ctc).toLocaleString()}` : "N/A"} />
+        <Field label="Basic Salary" value={data.basicSalary ? `₹ ${Number(data.basicSalary).toLocaleString()}` : "N/A"} />
+        <Field label="HRA" value={data.hra ? `₹ ${Number(data.hra).toLocaleString()}` : "N/A"} />
+        <Field label="Medical Allowance" value={data.medicalAllowance ? `₹ ${Number(data.medicalAllowance).toLocaleString()}` : "N/A"} />
+        <Field label="Conveyance Allowance" value={data.conveyanceAllowance ? `₹ ${Number(data.conveyanceAllowance).toLocaleString()}` : "N/A"} />
+        <Field label="Special Allowance" value={data.specialAllowance ? `₹ ${Number(data.specialAllowance).toLocaleString()}` : "N/A"} />
+        <Field label="Employee PF" value={data.employeePF ? `₹ ${Number(data.employeePF).toLocaleString()}` : "N/A"} />
         <Field label="PF Account Number" value={data.pfAccountNumber} />
         <Field label="ESI Number" value={data.esiNumber} />
       </Section>

@@ -4,13 +4,24 @@
     <meta charset="utf-8" />
     <link rel="icon" href="/assets/images/natobotics-logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#EA580C" />
+    <meta name="theme-color" content="#fcfcfd" />
     <meta
       name="description"
       content="Natobotics HRMS — people operations, employee management, and workforce insights."
     />
     <link rel="apple-touch-icon" href="/logo192.png" />
     <title>Natobotics | HRMS</title>
+    <script>
+      try {
+        const savedTheme = localStorage.getItem("hrms-theme");
+        const initialTheme = savedTheme === "light" || savedTheme === "dark"
+          ? savedTheme
+          : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.classList.toggle("dark", initialTheme === "dark");
+        document.documentElement.dataset.theme = initialTheme;
+        document.documentElement.style.colorScheme = initialTheme;
+      } catch { /* React applies the default theme if storage is unavailable. */ }
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

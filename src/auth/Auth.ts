@@ -9,6 +9,7 @@ export const isAuthenticated = () =>
 export const clearSession = () => {
   useAppStore.getState().reset();
   cookieKeys(cookieObj, new Date(0));
+  if (typeof document !== "undefined") document.documentElement.removeAttribute("data-role");
 };
 
 // Only resume internal application URLs, never auth pages or external URLs.

@@ -11,7 +11,7 @@ import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import customParseFormat from "dayjs/plugin/customParseFormat"; // FIX: needed so dayjs(str, format) parses deterministically instead of falling back to the native Date constructor (which is browser/engine-dependent and returned "Invalid Date" on Safari/iOS for "Aug-2026" while working fine on desktop Chrome)
  // FIX: needed so dayjs(str, format) parses deterministically instead of falling back to the native Date constructor (which is browser/engine-dependent and returned "Invalid Date" on Safari/iOS for "Aug-2026" while working fine on desktop Chrome)
-import { ChevronLeft, ChevronRight, X, Save, Clock, Copy, FileSpreadsheet, Trash2, AlertCircle, ClipboardList, Plus, CheckCircle2, Zap, LockKeyhole, Palmtree, CalendarDays } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, Save, Clock, Copy, FileSpreadsheet, Trash2, AlertCircle, ClipboardList, Plus, CheckCircle2, Zap, LockKeyhole, Palmtree, CalendarDays, Pencil, BarChart3 } from "lucide-react";
 import { getRequest, postRequest } from "../../shared/services/Apiservice";
 import { useLocation } from "react-router-dom";
 import LoadingMask from "../../shared/services/LoadingMask";
@@ -25,7 +25,7 @@ const MAX_REGULAR = 8;
 
 const roundH = (n) => Math.round((Number(n) || 0) * 100) / 100;
 
-const STATUS = {
+const STATUS: Record<string, any> = {
   filled:   { bg: "var(--success-subtle)", border: "var(--success-border)", text: "var(--success)",  label: "8 hrs" },
   overtime: { bg: "var(--primary-ghost)", border: "var(--border-strong)", text: "var(--primary-dark)",  label: "Overtime" },
   partial:  { bg: "var(--warning-subtle)", border: "var(--warning-border)", text: "var(--warning)",  label: "< 8 hrs" },
@@ -38,6 +38,37 @@ const STATUS = {
   pastlock: { bg: "var(--muted)", border: "var(--border-strong)", text: "var(--muted-foreground)",  label: "Locked" },
   outside:  { bg: "transparent", border: "transparent", text: "var(--border)", label: "" },
 };
+
+const STATUS_ICONS: Record<string, typeof CheckCircle2> = {
+  filled: CheckCircle2,
+  overtime: Zap,
+  partial: Clock,
+  empty: AlertCircle,
+  leave: Palmtree,
+  approved: CheckCircle2,
+  holiday: CalendarDays,
+  weekend: CalendarDays,
+  future: CalendarDays,
+  pastlock: LockKeyhole,
+};
+
+// Heatmap intensity is derived from saved working hours. Special calendar
+// states keep their semantic colors, so holidays and leave remain distinct.
+const getHeatmapColor = (status: string, hours: number) => {
+  if (["holiday", "leave", "approved", "weekend", "future", "pastlock", "outside"].includes(status)) {
+    return STATUS[status]?.bg || STATUS.outside.bg;
+  }
+  if (hours <= 0) return "var(--card)";
+  if (hours < 4) return "color-mix(in srgb, var(--warning) 13%, var(--card))";
+  if (hours < MAX_REGULAR) return "color-mix(in srgb, var(--primary) 16%, var(--card))";
+  if (hours === MAX_REGULAR) return "color-mix(in srgb, var(--success) 20%, var(--card))";
+  return "color-mix(in srgb, var(--primary) 30%, var(--card))";
+};
+
+function StatusIconForDay({ status }: { status: string }) {
+  const Icon = STATUS_ICONS[status];
+  return Icon ? <Icon size={13} aria-hidden="true" style={{ color: STATUS[status]?.text }} /> : null;
+}
 
 // True-decimal (h + m/60) -> total minutes. Used to work out how much of the
 // 8h regular budget is left once other rows' hours are subtracted out, and
@@ -564,7 +595,7 @@ const includeSunday   = getCookie("includeSunday")   === "true";
     ToastSuccess("Exported to Excel");
   };
 
-  const legend = [
+  const statusLegend = [
     { key:"filled",   label:"8 hrs" },
     { key:"overtime", label:"Overtime" },
     { key:"partial",  label:"<8 hrs" },
@@ -573,6 +604,16 @@ const includeSunday   = getCookie("includeSunday")   === "true";
     { key:"holiday",  label:"Holiday" },
     { key:"pastlock", label:"Locked" },
   ];
+  const heatmapLegend = [
+    { id: "no-hours", key: "empty", label: "No hours", bg: "var(--card)", border: "var(--border)" },
+    { id: "short-hours", key: "partial", label: "Under 4 hrs", bg: "color-mix(in srgb, var(--warning) 13%, var(--card))", border: "var(--warning-border)" },
+    { id: "regular-hours", key: "partial", label: "4–8 hrs", bg: "color-mix(in srgb, var(--primary) 16%, var(--card))", border: "var(--border)" },
+    { id: "complete-hours", key: "filled", label: "8 hrs", bg: "color-mix(in srgb, var(--success) 20%, var(--card))", border: "var(--success-border)" },
+    { id: "overtime-hours", key: "overtime", label: "Over 8 hrs", bg: "color-mix(in srgb, var(--primary) 30%, var(--card))", border: "var(--border-strong)" },
+    { id: "leave-days", key: "leave", label: "Leave", bg: STATUS.leave.bg, border: STATUS.leave.border },
+    { id: "holiday-days", key: "holiday", label: "Holiday", bg: STATUS.holiday.bg, border: STATUS.holiday.border },
+  ];
+  const legend = calendarView === "heatmap" ? heatmapLegend : statusLegend;
 
   const breadItems = viewData
     ? [{ label:"Timesheet", link:"/timesheet" }, { label:`${viewData.employeeName} – ${viewMonth||""}` }]
@@ -600,7 +641,7 @@ const includeSunday   = getCookie("includeSunday")   === "true";
   const hasOvertimeTasks = overtimeTasks.length > 0;
 
   return (
-    <div>
+    <div className="timesheet-calendar-page">
       <LoadingMask loading={loading} />
 
       {/* Page header */}
@@ -625,12 +666,12 @@ const includeSunday   = getCookie("includeSunday")   === "true";
       </div>
 
       {/* Calendar */}
-      <div className="card">
-        <div className={cn("card-header", "flex-wrap gap-[12px]")} >
-          <div className="flex items-center gap-[12px]" >
+      <div className="card timesheet-calendar-card">
+        <div className={cn("card-header", "timesheet-calendar-header flex-wrap gap-[12px]")} >
+          <div className="timesheet-month-controls flex items-center gap-[12px]" >
             {!isViewMode && <Button variant="outline" type="button" aria-label="Previous month" className="calendar-nav-btn" onClick={()=>setCurrentMonth(c=>c.subtract(1,"month"))}><ChevronLeft size={16}/></Button>}
             {isViewMode && <div className="w-[30px]" />}
-            <span className="text-[18px] font-semibold text-[var(--text-primary)] min-w-[160px] text-center" style={{fontFamily:"var(--ui-font-heading)"}}>
+            <span className="timesheet-month-label text-[18px] font-semibold text-[var(--text-primary)] min-w-[160px] text-center" style={{fontFamily:"var(--ui-font-heading)"}}>
               {currentMonth.format("MMMM YYYY")}
             </span>
             {!isViewMode && (
@@ -658,20 +699,22 @@ const includeSunday   = getCookie("includeSunday")   === "true";
             )}
           </div>
           <div className="calendar-toolbar">
-            {!isViewMode && <Button variant="outline" onClick={() => setCurrentMonth(dayjs())}>Today</Button>}
+            {!isViewMode && <Button variant="outline" className="timesheet-today-action" onClick={() => setCurrentMonth(dayjs())}><CalendarDays size={15} aria-hidden="true" /> Today</Button>}
             <Tabs value={calendarView} onValueChange={setCalendarView}>
               <TabsList className="calendar-view-switch" aria-label="Calendar view">
                 <TabsTrigger value="month">Month</TabsTrigger>
                 <TabsTrigger value="week">Week</TabsTrigger>
+                <TabsTrigger value="heatmap"><BarChart3 size={14} aria-hidden="true" /> Hours</TabsTrigger>
                 <TabsTrigger value="agenda">Agenda</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
-          <div className="flex gap-[12px] flex-wrap w-[100%]" >
-            {legend.map(({ key, label }: Record<string, any>) => (
-              <div key={key} className="flex items-center gap-[4px]" >
-                <div className="w-[10px] h-[10px]" style={{borderRadius:"var(--radius)", background:STATUS[key].bg, border:`1px solid ${STATUS[key].border}`}}/>
-                <span className="text-[12px] font-semibold text-[var(--text-secondary)]" >{label}</span>
+          <div className="timesheet-status-legend flex gap-[12px] flex-wrap w-[100%]" aria-label="Timesheet status legend">
+            {legend.map(({ id, key, label, bg, border }: Record<string, any>, index: number) => (
+              <div key={id || `${key}-${index}`} className="timesheet-status-legend-item">
+                {calendarView === "heatmap" && <span className="timesheet-legend-swatch" style={{ background: bg || STATUS[key].bg, borderColor: border || STATUS[key].border }} aria-hidden="true" />}
+                {(() => { const Icon = STATUS_ICONS[key]; return Icon ? <Icon size={14} aria-hidden="true" style={{ color: STATUS[key].text }} /> : null; })()}
+                <span>{label}</span>
               </div>
             ))}
           </div>
@@ -692,14 +735,16 @@ const includeSunday   = getCookie("includeSunday")   === "true";
               const tasks = parseAllTasks(entry?.task, entry?.hours);
               const taskSummary = [...tasks.regularTasks, ...tasks.overtimeTasks].map(task => task.name).filter(Boolean).join(", ");
               const editable = canEdit && !locationMismatch && !["outside", "future", "approved", "pastlock"].includes(status) && !holiday && !(leave && !leave.approverReason);
-              return <div className="calendar-agenda-row" key={iso}>
+              const StatusIcon = STATUS_ICONS[status];
+              const statusColor = STATUS[status];
+              return <div className="calendar-agenda-row timesheet-agenda-row" key={iso}>
                 <div className="calendar-agenda-date">{day.format("ddd, DD")} {day.isSame(today, "day") && <Badge variant="secondary">Today</Badge>}</div>
-                <div><Badge variant="outline">{STATUS[status]?.label || status}</Badge><div className="calendar-agenda-detail">{holiday?.eventName || leave?.leaveType || taskSummary || entry?.leaveType || (day.isAfter(today, "day") ? "Upcoming" : "No hours logged")}</div></div>
-                <div className="flex items-center gap-[12px]" ><span className="calendar-agenda-hours">{fmtHM(entry?.hours || 0)}</span>{editable && <Button variant="outline" size="sm" aria-label={`Log hours for ${day.format("DD MMMM YYYY")}`} onClick={() => handleCellClick(day)}>{entry ? "Edit" : "Log hours"}</Button>}</div>
+                <div className="timesheet-agenda-description"><Badge variant="outline" className="timesheet-status-badge" style={{ background: statusColor?.bg, borderColor: statusColor?.border, color: statusColor?.text }}>{StatusIcon && <StatusIcon size={13} aria-hidden="true" />}{STATUS[status]?.label || status}</Badge><div className="calendar-agenda-detail">{holiday?.eventName || leave?.leaveType || taskSummary || entry?.leaveType || (day.isAfter(today, "day") ? "Upcoming" : "No hours logged")}</div></div>
+                <div className="flex items-center gap-[12px]" ><span className="calendar-agenda-hours">{fmtHM(entry?.hours || 0)}</span>{editable && <Button variant="outline" size="sm" aria-label={`${entry ? "Edit" : "Log hours for"} ${day.format("DD MMMM YYYY")}`} onClick={() => handleCellClick(day)}>{entry ? <><Pencil size={13} /> Edit</> : <><Plus size={14} /> Log hours</>}</Button>}</div>
               </div>;
             })}
           </div> : <div className={cn("timesheet-calendar-scroll", "overflow-x-auto p-[4px_8px_8px]")} >
-          <table className={cn("timesheet-calendar-grid", "w-[100%] max-w-[880px] m-[0_auto]")} style={{borderCollapse: "separate", borderSpacing: 0, tableLayout: "fixed"}}>
+          <table className={cn("timesheet-calendar-grid", calendarView === "heatmap" && "is-heatmap", "w-[100%] max-w-[880px] m-[0_auto]")} style={{borderCollapse: "separate", borderSpacing: 0, tableLayout: "fixed"}}>
             <colgroup>
               {/* 7 equal day columns + 1 slightly wider total column */}
               {Array.from({ length: 7 }).map((_, i) => (
@@ -747,13 +792,14 @@ const includeSunday   = getCookie("includeSunday")   === "true";
                         onClick={() => clickable && handleCellClick(day)}
                         onMouseEnter={e => { if (clickable) e.currentTarget.style.filter = "brightness(0.96)"; if (hasTooltip && inCurrentMonth) handleCellMouseEnter(e, day); }}
                         onMouseLeave={e => { e.currentTarget.style.filter = ""; handleCellMouseLeave(); }}
-                        className="p-[0px] relative overflow-hidden h-[84px]" style={{border: "1px solid var(--border)", background: status === "outside" ? "transparent" : s.bg, cursor: clickable ? "pointer" : "default", verticalAlign: "middle", transition: "filter 0.15s", boxShadow: isToday2 ? "inset 0 0 0 2px var(--primary)" : "none"}}
+                        className="p-[0px] relative overflow-hidden h-[84px]" style={{border: `1px solid ${calendarView === "heatmap" ? s.border : "var(--border)"}`, background: calendarView === "heatmap" ? getHeatmapColor(status, rawTotal) : status === "outside" ? "transparent" : s.bg, cursor: clickable ? "pointer" : "default", verticalAlign: "middle", transition: "filter 0.15s", boxShadow: isToday2 ? "inset 0 0 0 2px var(--primary)" : "none"}}
                       >
                         <div className="relative w-[100%] h-[100%]" >
                           <div className="absolute" style={{inset: 0}}>
                             {inCurrentMonth && (
                               <div className="flex flex-col items-center justify-center h-[100%] p-[8px] gap-[4px]" >
-                                <div className="absolute top-[5px] left-[7px] text-[12px]" style={{fontWeight: isToday2 ? 600 : 600, color: isToday2 ? "var(--primary)" : s.text, fontFamily: "var(--ui-font-heading)"}}>{day.format("D")}</div>
+                                <div className="timesheet-day-date absolute top-[5px] left-[7px] text-[12px]" style={{fontWeight: 600, color: isToday2 ? "var(--primary)" : s.text, fontFamily: "var(--ui-font-heading)"}}>{day.format("D")}</div>
+                                {STATUS_ICONS[status] && <span className="timesheet-day-status-icon" title={STATUS[status]?.label} aria-hidden="true"><StatusIconForDay status={status} /></span>}
                                 {rawTotal > 0 && !holiday && !leave && (
                                   <div className="flex flex-col items-center gap-[4px] mt-[4px]" >
                                     <span className="text-[16px] font-semibold leading-[1]" style={{color: s.text, fontFamily: "var(--ui-font-heading)"}}>

@@ -5,6 +5,36 @@ let items = [];
 let nextId = 1;
 const listeners = new Set<() => void>();
 const timers = new Map();
+let audioContext;
+
+function playNotificationSound(type) {
+  if (type === "loading" || typeof window === "undefined") return;
+  try {
+    const AudioContextConstructor = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextConstructor) return;
+    audioContext ||= new AudioContextConstructor();
+    const context = audioContext;
+    if (context.state === "suspended") void context.resume().catch(() => {});
+    const notes = type === "success" ? [740, 988] : type === "error" ? [392, 294] : type === "warning" ? [587] : [784];
+    const start = context.currentTime;
+    notes.forEach((frequency, index) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      const at = start + index * 0.085;
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(frequency, at);
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.exponentialRampToValueAtTime(0.035, at + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.075);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(at);
+      oscillator.stop(at + 0.08);
+    });
+  } catch {
+    // Browser autoplay policy or unavailable audio must never block an action.
+  }
+}
 
 function subscribe(listener) {
   listeners.add(listener);
@@ -44,6 +74,7 @@ function addToast(messageOrOptions, type = "info") {
 
   items = [...items, item].slice(-5);
   notify();
+  playNotificationSound(item.type);
 
   const timeout = options.timeout ?? 5000;
   if (timeout > 0) timers.set(id, setTimeout(() => closeToast(id), timeout));
@@ -68,6 +99,8 @@ function updateToast(id, messageOrOptions, type) {
     : item
   );
   notify();
+  const updated = items.find((item) => item.id === id);
+  if (updated && updated.type !== "loading") playNotificationSound(updated.type || type);
   const timeout = options.timeout ?? 5000;
   if (timeout > 0 && items.some((item) => item.id === id)) {
     timers.set(id, setTimeout(() => closeToast(id), timeout));
@@ -115,7 +148,7 @@ function ToastViewport() {
   const toasts = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
   return (
-    <div className="hrms-toast-viewport" aria-label="Notifications">
+    <div className="hrms-toast-viewport" role="region" aria-label="Notifications">
       {toasts.map((item) => (
         <div
           key={item.id}

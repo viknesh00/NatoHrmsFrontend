@@ -33,7 +33,7 @@ export default function JobPosted() {
           ...j,
           id:    j.jobId,
           title: j.jobTitle,
-          date:  j.postedDate ? dayjs(j.postedDate).format("DD-MM-YYYY") : "—",
+          date:  j.postedDate ? dayjs(j.postedDate).format("DD-MM-YYYY") : "N/A",
           responsibilities: j.responsibilities
             ? j.responsibilities.split(",").map(s => s.trim()).filter(Boolean)
             : [],

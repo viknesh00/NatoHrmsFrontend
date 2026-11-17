@@ -1,14 +1,16 @@
 import { expect, test, type Page } from '@playwright/test';
 
 const employee = { employeeId: 'E001', firstName: 'Asha', lastName: 'Rao', email: 'asha@example.test', userName: 'asha@example.test', department: 'Engineering', accessRole: 'Employee', isActive: true, projectAssigned: '', isDefaultPasswordChanged: true };
-async function workspace(page: Page, records = false) {
+async function workspace(page: Page, records = false, profile = employee) {
   await page.context().addCookies(Object.entries({ token: 'ui-test-token', isLoggedIn: 'true', role: 'Admin', department: 'Engineering', isDefaultPasswordChanged: 'true' }).map(([name, value]) => ({ name, value, url: 'http://127.0.0.1:4173' })));
   await page.route('**/*', async route => {
     if (!['xhr', 'fetch'].includes(route.request().resourceType())) return route.continue();
     const url = route.request().url();
     const data = url.includes('Permissions/Mine') ? { role: 'Admin', isAdminOrManager: true, onboarding: { read: true, write: true, edit: true }, workStatus: { read: true, write: true, edit: true } }
       : url.includes('GetEmployeeLeave') || url.includes('Leave?') ? { leaves: [], holidays: [] }
-      : url.includes('GetUser/') ? [employee]
+      : url.includes('GetUser/') ? [profile]
+      : url.includes('WorkStatus/GetAll') ? [{ workStatusId: 3, submissionId: 7, salCode: 'FFM GG', pmName: 'Abitha Krishnan', pmEmail: null, startDate: '2026-11-11T00:00:00', endDate: '2026-11-13T00:00:00', workStatus: 'Active', asset: 'ipad; Mac', comments: 'FE is working good in activity with no issue\\nTest FE is working good in activity with no issue', activity: 'Build; Cutover', firstName: 'suvasish', lastName: 'paul', passportNo: 'B00136032', city: 'Offenach', country: 'Germany', employeeStatus: 'Active', hasSiemensIdCard: 'Yes' }]
+      : url.includes('WorkStatus/Report') ? [{ ...employee, passportNo: 'P-100', city: 'Chennai', country: 'India', employeeStatus: 'Active', salCode: 'SAL-1', pmName: 'Manager One', startDate: '2026-01-01', endDate: null, workStatus: 'Active', asset: 'Laptop; Badge', comments: 'Laptop handover completed', activity: 'Orientation; Setup' }]
       : url.includes('EmployeeOnboarding/Get/') ? { ...employee, submissionId: 1, submittedAt: '2026-11-01T09:00:00' }
       : records && url.endsWith('/User/All') ? Array.from({ length: 23 }, (_, i) => ({ ...employee, employeeId: `E${String(i + 1).padStart(3, '0')}`, firstName: i === 0 ? 'Asha' : `Employee ${i + 1}`, email: `employee${i + 1}@example.test` }))
       : [];
@@ -108,6 +110,36 @@ test('uses approved tokens and accessible action text', async ({ page }, testInf
   await expect(button).toHaveCSS('border-radius', '4px');
   await expect(page.getByLabel('Email address')).toHaveCSS('height', '44px');
   await page.screenshot({ path: testInfo.outputPath('login.png'), fullPage: true, animations: 'disabled', scale: 'css' });
+});
+
+test('shows work status report comments, assets and activity columns', async ({ page }) => {
+  await workspace(page, false, { ...employee, accessRole: 'Admin' });
+  await page.goto('/work-status-report');
+  await expect(page.getByRole('columnheader', { name: 'Comments' })).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'Laptop handover completed' })).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'Laptop, Badge' })).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'Orientation, Setup' })).toBeVisible();
+});
+
+test('shows and filters all Work Status fields from the API response', async ({ page }) => {
+  await workspace(page, false, { ...employee, accessRole: 'Admin' });
+  await page.goto('/work-status');
+  for (const column of ['Record ID', 'Submission ID', 'Employee', 'Passport No.', 'SAL Code', 'PM Name', 'PM Email', 'Start Date', 'End Date', 'Work Status', 'Assets', 'Comments', 'Activities', 'City', 'Country', 'Employee Status', 'Siemens ID Card']) {
+    await expect(page.getByRole('columnheader', { name: column, exact: true })).toBeVisible();
+  }
+  const row = page.getByRole('row').filter({ hasText: 'FFM GG' });
+  await expect(row).toContainText('ipad, Mac');
+  await expect(row).toContainText('Build, Cutover');
+  await expect(row.locator('.work-status-report-comment')).toHaveAttribute('title', /Test FE is working good in activity with no issue/);
+
+  await page.getByRole('button', { name: /^Filters/ }).click();
+  await page.getByLabel('Work Status', { exact: true }).selectOption('Active');
+  await page.getByRole('button', { name: 'Apply Filters' }).click();
+  await expect(row).toBeVisible();
+  await page.getByLabel('Search records').fill('Build; Cutover');
+  await expect(row).toBeVisible();
+  await page.getByLabel('Search records').fill('not in this response');
+  await expect(page.getByText('No records found')).toBeVisible();
 });
 
 

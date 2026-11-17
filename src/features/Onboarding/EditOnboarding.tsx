@@ -234,7 +234,7 @@ export default function EditOnboarding() {
       {icon}
       <div className="min-w-[160px]" style={{flex: 1}}>
         <div className="text-[14px] font-semibold text-[var(--text-primary)]" >{label}</div>
-        <div className="text-[12px] text-[var(--text-muted)]" style={{wordBreak: "break-all"}}>{name || "—"}</div>
+        <div className="text-[12px] text-[var(--text-muted)]" style={{wordBreak: "break-all"}}>{name || "N/A"}</div>
       </div>
       <Button variant="outline" type="button" className={cn("btn btn-outline", "p-[8px_12px]")}  onClick={() => viewFile(type)}><Eye size={14} /> View</Button>
       <Button variant="outline" type="button" className={cn("btn btn-outline", "p-[8px_12px]")}  onClick={() => downloadFile(type, name)}><Download size={14} /> Download</Button>

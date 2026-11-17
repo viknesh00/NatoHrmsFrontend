@@ -10,8 +10,8 @@ import { ToastSuccess, ToastError } from "../../shared/services/ToastMsg";
 import ProTable, { StatusChip } from "../../components/ProTable";
 import { FormDate } from "../../components/FormComponents";
 
-const fmt = (d) => d ? dayjs(d).format("DD-MM-YYYY") : "—";
-const fmtTime = (d) => d ? dayjs(d).format("hh:mm A") : "—";
+const fmt = (d) => d ? dayjs(d).format("DD-MM-YYYY") : "N/A";
+const fmtTime = (d) => d ? dayjs(d).format("hh:mm A") : "N/A";
 const isValidDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value)
   && dayjs(value).isValid() && dayjs(value).format("YYYY-MM-DD") === value;
 
@@ -46,9 +46,9 @@ export default function Attendance() {
         if (!Array.isArray(records)) throw new Error("Invalid attendance response");
         setFilteredData(logType === "daily" ? records : records.map(d => ({
           ...d,
-          attendanceDate: d.attendanceDate ? fmt(d.attendanceDate) : "—",
-          firstClockIn: d.firstClockIn ? fmtTime(d.firstClockIn) : "—",
-          latestClockOut: d.latestClockOut ? fmtTime(d.latestClockOut) : "—",
+          attendanceDate: d.attendanceDate ? fmt(d.attendanceDate) : "N/A",
+          firstClockIn: d.firstClockIn ? fmtTime(d.firstClockIn) : "N/A",
+          latestClockOut: d.latestClockOut ? fmtTime(d.latestClockOut) : "N/A",
         })));
       } catch (err) {
         if (cancelled) return;

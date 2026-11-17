@@ -50,3 +50,20 @@ test("confirm clears the session and opens sign in", async () => {
   expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
   expect(isAuthenticated()).toBe(false);
 });
+
+test("settings drawer exposes profile and password actions", async () => {
+  render(
+    <MemoryRouter initialEntries={["/dashboard"]}>
+      <Routes>
+        <Route path="/dashboard" element={<Sidebar />} />
+        <Route path="/view-employee" element={<h1>My Profile</h1>} />
+      </Routes>
+    </MemoryRouter>
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+  expect(await screen.findByRole("heading", { name: "Profile & settings" })).toBeVisible();
+  expect(screen.getByRole("button", { name: "Change Password" })).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "View Profile" }));
+  expect(await screen.findByRole("heading", { name: "My Profile" })).toBeVisible();
+});

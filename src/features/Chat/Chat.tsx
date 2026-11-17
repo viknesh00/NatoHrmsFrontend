@@ -1,11 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Bot,
+  Check,
   CircleHelp,
+  Copy,
+  ThumbsDown,
+  ThumbsUp,
+  Pencil,
+  RefreshCcw,
   LoaderCircle,
   MessageCircleMore,
   Send,
-  ShieldCheck,
   Sparkles,
   UserRound,
   X,
@@ -22,7 +27,9 @@ import {
   Message,
   MessageAvatar,
   MessageContent,
+  MessageFooter,
 } from "../../components/ui/message";
+import { Streamdown } from "streamdown";
 import {
   MessageScroller,
   MessageScrollerButton,
@@ -48,9 +55,9 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [modelState, setModelState] = useState("idle");
-  const [modelMode, setModelMode] = useState("");
-  const [modelProgress, setModelProgress] = useState(null);
   const [workerError, setWorkerError] = useState(false);
+  const [copiedId, setCopiedId] = useState(null);
+  const [feedback, setFeedback] = useState({});
   const workerRef = useRef(null);
   const requestIdRef = useRef(null);
   const inputRef = useRef(null);
@@ -83,17 +90,10 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
 
         if (data?.type === "loading") {
           setModelState("loading");
-          setModelMode(data.mode || "");
-          setModelProgress(null);
           return;
         }
         if (data?.type === "progress") {
           setModelState("loading");
-          setModelProgress(data.progress);
-          return;
-        }
-        if (data?.type === "fallback") {
-          setModelMode("wasm");
           return;
         }
         if (data?.type === "token") {
@@ -113,7 +113,6 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
               : message
           ));
           setModelState("ready");
-          setModelProgress(null);
           setBusy(false);
           return;
         }
@@ -125,12 +124,11 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
                   ...message,
                   failed: true,
                   streaming: false,
-                  content: "The local model couldn’t start. Check your connection and try again; the model files download from Hugging Face the first time you use chat.",
+                  content: "I couldn’t respond just now. Please try again.",
                 }
               : message
           ));
           setModelState("error");
-          setModelProgress(null);
           setBusy(false);
         }
       };
@@ -141,7 +139,7 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
         const assistantId = requestIdRef.current;
         setMessages((current) => current.map((message) =>
           message.id === assistantId && message.streaming
-            ? { ...message, streaming: false, failed: true, content: "The local model worker couldn’t start. Reload the page and try again." }
+            ? { ...message, streaming: false, failed: true, content: "I couldn’t respond just now. Please try again." }
             : message
         ));
       };
@@ -177,7 +175,6 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
     setInput("");
     setBusy(true);
     setModelState("loading");
-    setModelProgress(null);
     workerRef.current.postMessage({
       type: "generate",
       requestId: assistantId,
@@ -190,6 +187,43 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
       },
     });
   }, [accessibleModules, busy, input, messages, userDepartment, userRole, workerError]);
+
+  const retryMessage = (assistantId) => {
+    if (busy || workerError || !workerRef.current) return;
+    const assistantIndex = messages.findIndex((message) => message.id === assistantId);
+    const userMessage = messages.slice(0, assistantIndex).reverse().find((message) => message.role === "user");
+    if (!userMessage) return;
+    const history = messages.slice(0, messages.findIndex((message) => message.id === userMessage.id))
+      .filter((message) => !message.failed && message.content)
+      .slice(-12)
+      .map(({ role, content }) => ({ role, content }));
+    const nextId = `assistant-${Date.now()}`;
+    requestIdRef.current = nextId;
+    setMessages((current) => current.map((message) => message.id === assistantId
+      ? { ...message, id: nextId, content: "", streaming: true, failed: false, createdAt: Date.now() }
+      : message));
+    setBusy(true);
+    setModelState("loading");
+    workerRef.current.postMessage({
+      type: "generate", requestId: nextId, input: userMessage.content, history,
+      userContext: { role: userRole, department: userDepartment, allowedModules: accessibleModules },
+    });
+  };
+
+  const editMessage = (message) => {
+    if (busy) return;
+    setInput(message.content);
+    setMessages((current) => current.slice(0, current.findIndex((item) => item.id === message.id)));
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
+  const copyMessage = async (message) => {
+    try {
+      await navigator.clipboard.writeText(message.content);
+      setCopiedId(message.id);
+      window.setTimeout(() => setCopiedId((current) => current === message.id ? null : current), 2000);
+    } catch { /* Clipboard access can be unavailable outside secure contexts. */ }
+  };
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -204,12 +238,12 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
   };
 
   const statusText = modelState === "ready"
-    ? "Local model ready"
+    ? "Ready"
     : modelState === "loading"
-      ? "Loading local model"
+      ? "Thinking"
       : modelState === "error"
-        ? "Model unavailable"
-        : "Runs in your browser";
+        ? "Unavailable"
+        : "Here to help";
 
   return (
     <div className={`chat-page ${embedded ? "chat-embedded" : ""}`}>
@@ -230,8 +264,8 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
           <div className="chat-model-label">
             <span className="chat-model-icon"><Bot size={17} /></span>
             <div>
-              <strong>People Assistant</strong>
-              <span>Hugging Face · Qwen2.5 0.5B</span>
+              <strong>HR Assistant</strong>
+              <span>Help with common HRMS tasks</span>
             </div>
           </div>
           <div className={`chat-model-status ${modelState}`} aria-live="polite">
@@ -240,9 +274,7 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
           </div>
         </div>
 
-        <div className="chat-privacy-note">
-          <ShieldCheck size={14} /> Local browser replies · {userRole}{userDepartment ? ` · ${userDepartment}` : ""} access guidance
-        </div>
+        <div className="chat-privacy-note">I can help you find pages and understand common workflows.</div>
 
         <MessageScrollerProvider autoScroll>
           <MessageScroller className="chat-scroller">
@@ -288,16 +320,32 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
                           </MessageAvatar>
                           <MessageContent className="chat-message-body">
                             <MessageTime value={message.createdAt} />
-                            <Bubble
-                              align={isUser ? "end" : "start"}
-                              variant={isUser ? "default" : "muted"}
-                              className="chat-bubble-group"
-                            >
-                              <BubbleContent className={`chat-bubble ${message.role} ${message.failed ? "failed" : ""}`}>
-                                {message.content || (message.streaming ? <span className="chat-thinking">Thinking<LoaderCircle size={13} className="chat-spin" /></span> : null)}
+                            {isUser ? (
+                              <Bubble align="end" variant="muted" className="chat-bubble-group">
+                                <BubbleContent className="chat-bubble user">{message.content}</BubbleContent>
+                              </Bubble>
+                            ) : (
+                              <div className={`chat-assistant-response${message.failed ? " failed" : ""}`}>
+                                {message.content
+                                  ? <Streamdown className="chat-markdown" isAnimating={message.streaming}>{message.content}</Streamdown>
+                                  : message.streaming && <span className="chat-thinking">Thinking<LoaderCircle size={13} className="chat-spin" /></span>}
                                 {message.streaming && message.content && <span className="chat-stream-cursor" aria-hidden="true" />}
-                              </BubbleContent>
-                            </Bubble>
+                              </div>
+                            )}
+                            {!message.streaming && !message.failed && (
+                              <MessageFooter className="chat-message-actions">
+                                {isUser ? (
+                                  <Button variant="ghost" size="icon-xs" aria-label="Edit message" title="Edit message" onClick={() => editMessage(message)} disabled={busy}><Pencil /></Button>
+                                ) : (
+                                  <>
+                                    <Button variant="ghost" size="icon-xs" aria-label={copiedId === message.id ? "Copied" : "Copy response"} title={copiedId === message.id ? "Copied" : "Copy"} onClick={() => copyMessage(message)}>{copiedId === message.id ? <Check /> : <Copy />}</Button>
+                                    <Button variant="ghost" size="icon-xs" aria-label="Good response" aria-pressed={feedback[message.id] === "good"} title="Good response" onClick={() => setFeedback((current) => ({ ...current, [message.id]: current[message.id] === "good" ? null : "good" }))}><ThumbsUp /></Button>
+                                    <Button variant="ghost" size="icon-xs" aria-label="Bad response" aria-pressed={feedback[message.id] === "bad"} title="Bad response" onClick={() => setFeedback((current) => ({ ...current, [message.id]: current[message.id] === "bad" ? null : "bad" }))}><ThumbsDown /></Button>
+                                    <Button variant="ghost" size="icon-xs" aria-label="Retry response" title="Retry" onClick={() => retryMessage(message.id)} disabled={busy}><RefreshCcw /></Button>
+                                  </>
+                                )}
+                              </MessageFooter>
+                            )}
                           </MessageContent>
                         </Message>
                       </article>
@@ -313,11 +361,7 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
         {modelState === "loading" && (
           <div className="chat-loading-note" role="status">
             <LoaderCircle size={14} className="chat-spin" />
-            {modelProgress !== null
-              ? `Preparing model · ${Math.round(modelProgress)}%`
-              : modelMode === "wasm"
-                ? "Starting the browser model…"
-                : "First use downloads and caches the model from Hugging Face…"}
+            Preparing a response…
           </div>
         )}
 
@@ -337,7 +381,7 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
               }}
               rows={2}
               maxLength={800}
-              placeholder={workerError ? "The local model worker is unavailable." : "Ask a question about HRMS…"}
+              placeholder={workerError ? "The assistant is temporarily unavailable." : "Ask a question about HRMS…"}
               disabled={busy || workerError}
               className="chat-input-textarea"
               aria-label="Ask the HRMS assistant"
@@ -349,8 +393,7 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
         </form>
 
         <div className="chat-footnote">
-          <span>Answers are generated by a compact on-device model and can be inaccurate.</span>
-          <span>Don’t include sensitive personal information.</span>
+          <span>Check important HR decisions with your HR team.</span>
         </div>
       </Card>
       </div>

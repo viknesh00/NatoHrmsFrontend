@@ -93,7 +93,7 @@ const ForgotPassword = () => {
   return (
     <div className={cn("auth-shell", "min-h-[100vh] bg-muted flex items-center justify-center relative overflow-hidden")} >
       <div className="w-[100%] max-w-[460px] m-[20px] relative z-[1]" >
-        <div className={cn("auth-card", "overflow-hidden")} style={{background:"color-mix(in srgb, var(--card) 97%, transparent)", borderRadius:"var(--radius)", boxShadow:"var(--shadow-md)"}}>
+        <div className={cn("auth-card", "forgot-password-card overflow-hidden")}>
           <div className="h-[5px] bg-primary"  />
 
           <div className="p-[32px_40px_36px]" >
@@ -108,18 +108,16 @@ const ForgotPassword = () => {
             </div>
 
             {/* Step progress */}
-            <div className="flex items-center justify-center mb-[28px] gap-[0px]" >
+            <div className="reset-stepper" role="list" aria-label="Password reset steps">
               {STEPS.map((s, i) => (
                 <React.Fragment key={s.id}>
-                  <div className="flex flex-col items-center gap-[8px]" >
-                    <div className="w-[38px] h-[38px] flex items-center justify-center font-semibold text-[13px]" style={{borderRadius:"var(--radius)", background: step > s.id ? "var(--teal)" : step === s.id ? "var(--primary)" : "var(--muted)", color: step >= s.id ? "var(--card)" : "var(--muted-foreground)", transition:"all 0.3s", boxShadow: step === s.id ? "0 2px 6px var(--primary-glow)" : "none"}}>
-                      {step > s.id ? <Check size={16} /> : s.icon}
+                  <div className={`reset-stepper-item${step > s.id ? " is-complete" : step === s.id ? " is-current" : ""}`} role="listitem" aria-current={step === s.id ? "step" : undefined}>
+                    <div className="reset-step-indicator" aria-hidden="true">
+                      {step > s.id ? <Check size={14} /> : s.id}
                     </div>
-                    <span className="text-[12px] font-semibold uppercase tracking-[0.05em]" style={{color: step >= s.id ? "var(--primary)" : "var(--muted-foreground)"}}>{s.label}</span>
+                    <span>{s.label}</span>
                   </div>
-                  {i < STEPS.length - 1 && (
-                    <div className="h-[2px] m-[0_8px] mb-[24px]" style={{flex:1, background: step > s.id ? "var(--teal)" : "var(--border)", transition:"background 0.3s"}} />
-                  )}
+                  {i < STEPS.length - 1 && <div className={`reset-step-connector${step > s.id ? " is-complete" : ""}`} aria-hidden="true" />}
                 </React.Fragment>
               ))}
             </div>

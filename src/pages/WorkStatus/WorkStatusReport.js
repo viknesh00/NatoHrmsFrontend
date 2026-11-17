@@ -9,7 +9,7 @@ import ProTable from "../../components/ProTable";
 import { FormMultiSelect, FormDate } from "../../components/FormComponents";
 import { getCookie } from "../../services/Cookies";
 
-const fmtDate = (d) => (d ? dayjs(d).format("DD-MM-YYYY") : "—");
+const fmtDate = (d) => (d ? dayjs(d).format("DD-MM-YYYY") : "N/A");
 
 // filters of the table: several values per column, combined across columns (same as the Onboarding page)
 const split = (v) => (v ? String(v).split(",").map((x) => x.trim()).filter(Boolean) : []);
@@ -18,8 +18,8 @@ const FILTERS = [
   { key: "salCodes", label: "SAL Code", get: (r) => [r.salCode] },
   { key: "pmNames", label: "PM Name", get: (r) => [r.pmName] },
   { key: "statuses", label: "Work Status", get: (r) => [r.workStatus] },
-  { key: "assets", label: "Asset", get: (r) => (r.asset === "—" ? [] : split(r.asset)) },
-  { key: "activities", label: "Activity", get: (r) => (r.activity === "—" ? [] : split(r.activity)) },
+  { key: "assets", label: "Asset", get: (r) => (r.asset === "N/A" ? [] : split(r.asset)) },
+  { key: "activities", label: "Activity", get: (r) => (r.activity === "N/A" ? [] : split(r.activity)) },
 ];
 const EMPTY_FILTER = Object.fromEntries(FILTERS.map((f) => [f.key, []]));
 
@@ -44,12 +44,12 @@ export default function WorkStatusReport() {
       .then((res) => setRows((res.data || []).map((r) => ({
         ...r,
         employeeName: `${r.firstName} ${r.lastName}`.trim(),
-        location: [r.city, r.country].filter(Boolean).join(", ") || "—",
+        location: [r.city, r.country].filter(Boolean).join(", ") || "N/A",
         startDateText: fmtDate(r.startDate),
-        endDateText: r.endDate ? fmtDate(r.endDate) : "—",
-        asset: (r.asset ? String(r.asset).split(";").map((x) => x.trim()).filter(Boolean).join(", ") : "") || "—",
-        comments: r.comments || "—",
-        activity: (r.activity || "").split(";").map((x) => x.trim()).filter(Boolean).join(", ") || "—",
+        endDateText: r.endDate ? fmtDate(r.endDate) : "N/A",
+        asset: (r.asset ? String(r.asset).split(";").map((x) => x.trim()).filter(Boolean).join(", ") : "") || "N/A",
+        comments: r.comments || "N/A",
+        activity: (r.activity || "").split(";").map((x) => x.trim()).filter(Boolean).join(", ") || "N/A",
       }))))
       .catch((err) => ToastError(err.response?.data?.message || "Failed to load the report"))
       .finally(() => setLoading(false));

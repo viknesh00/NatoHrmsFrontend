@@ -3,8 +3,8 @@ import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { Badge } from "../../components/ui/badge";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import { Button } from "../../components/ui/button";
-import { useEffect, useState } from "react";
-import { Plus, ChevronLeft, ChevronRight, Calendar, CalendarDays } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Plus, ChevronLeft, ChevronRight, Calendar, CalendarDays, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import LoadingMask from "../../shared/services/LoadingMask";
 import Breadcrumb from "../../shared/services/Breadcrumb";
@@ -12,30 +12,45 @@ import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import { getRequest } from "../../shared/services/Apiservice";
 import { getCookie } from "../../auth/Cookies";
+import { getEventPresentation } from "./eventPresentation";
 
 dayjs.extend(isoWeek);
 dayjs.extend(isSameOrBefore);
-
-const COLORS = {
-  Holiday: { bg: "var(--error-subtle)", text: "var(--error)", dot: "var(--error)", cellBg: "color-mix(in srgb, var(--foreground) 50%, transparent)" },
-  Event: { bg: "var(--primary-ghost)", text: "var(--primary)", dot: "var(--primary-light)", cellBg: "color-mix(in srgb, var(--foreground) 72%, transparent)" },
-};
 
 export default function Holiday() {
   const navigate = useNavigate();
   const [holidays, setHolidays] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
   const [view, setView] = useState("month");
   const [current, setCurrent] = useState(dayjs());
   const userRole = getCookie("role");
   const isAdminOrMgr = userRole === "Admin" || userRole === "Manager";
 
-  useEffect(() => {
-    setLoading(true);
-    getRequest("Holiday/GetHolidays").then(res => {
-      if (res.data?.length) setHolidays(res.data.map(h => ({ ...h, eventDate: dayjs(h.eventDate).format("YYYY-MM-DD") })));
-    }).catch(console.error).finally(() => setLoading(false));
+  const refreshEvents = useCallback(async (initial = false) => {
+    if (initial) setLoading(true);
+    else setRefreshing(true);
+    try {
+      const response = await getRequest("Holiday/GetHolidays");
+      const events = Array.isArray(response.data) ? response.data : [];
+      setHolidays(events.map((event) => ({ ...event, eventDate: dayjs(event.eventDate).format("YYYY-MM-DD") })));
+      setLastUpdated(dayjs());
+    } catch (error) {
+      console.error("Failed to refresh company calendar:", error);
+    } finally {
+      if (initial) setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
+
+  useEffect(() => {
+    refreshEvents(true);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") refreshEvents();
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, [refreshEvents]);
 
   // Build 6-row × 7-col grid
   const firstDay = current.startOf("month").startOf("isoWeek");
@@ -82,7 +97,13 @@ export default function Holiday() {
               </Button>
             </div>
             <div className="calendar-toolbar">
-              <Button variant="outline" onClick={() => setCurrent(dayjs())}>Today</Button>
+              <span className="calendar-live-status"><i /> Live updates{lastUpdated && <small>Updated {lastUpdated.format("HH:mm")}</small>}</span>
+              <Button variant="outline" size="icon" type="button" className="calendar-refresh-btn" aria-label="Refresh company events" title="Refresh events" onClick={() => refreshEvents()} disabled={refreshing}>
+                <RefreshCw size={15} className={refreshing ? "calendar-refreshing" : ""} aria-hidden="true" />
+              </Button>
+              <Button variant="outline" size="icon" type="button" className="calendar-today-btn" aria-label="Go to today" title="Today" onClick={() => setCurrent(dayjs())}>
+                <CalendarDays size={16} aria-hidden="true" />
+              </Button>
               <Tabs value={view} onValueChange={setView}><TabsList className="calendar-view-switch" aria-label="Company calendar view"><TabsTrigger value="month">Month</TabsTrigger><TabsTrigger value="agenda">Agenda</TabsTrigger></TabsList></Tabs>
             </div>
             <div className="flex gap-[16px] w-[100%]" >
@@ -97,11 +118,16 @@ export default function Holiday() {
 
           {/* Calendar grid - full width, equal columns */}
           {view === "agenda" ? <div className="calendar-agenda">
-            {monthHolidays.length === 0 ? <div className="table-empty"><CalendarDays size={28} className="m-[0_auto_12px]" /><div className="table-empty-text">No events this month</div><p>Use the month controls to browse holidays and events.</p></div> : monthHolidays.map((event, index) => <div className="calendar-agenda-row" key={`${event.eventDate}-${index}`}>
-              <div className="calendar-agenda-date">{dayjs(event.eventDate).format("ddd, DD MMM")}</div>
-              <div><div className="text-[13px] font-medium" >{event.eventName}</div><Badge variant="outline">{event.eventType}</Badge></div>
-              {isAdminOrMgr && <Button variant="outline" size="sm" aria-label={`Edit ${event.eventName}`} onClick={() => navigate("/calendar/edit-event", { state: { holiday: event } })}>Edit</Button>}
-            </div>)}
+            {monthHolidays.length === 0 ? <div className="table-empty"><CalendarDays size={28} className="m-[0_auto_12px]" /><div className="table-empty-text">No events this month</div><p>Use the month controls to browse holidays and events.</p></div> : monthHolidays.map((event, index) => {
+              const { colors: color, emoji, Icon } = getEventPresentation(event);
+              return (
+                <div className="calendar-agenda-row" key={`${event.eventDate}-${event.holidayId ?? index}`}>
+                  <div className="calendar-agenda-date">{dayjs(event.eventDate).format("ddd, DD MMM")}</div>
+                  <div className="min-w-0"><div className="flex items-center gap-2 text-[13px] font-medium"><Icon size={15} aria-hidden="true" style={{ color: color.text, flexShrink: 0 }} /><span aria-hidden="true">{emoji}</span><span className="truncate">{event.eventName}</span></div><Badge variant="outline" style={{ background: color.bg, color: color.text, borderColor: color.dot }}>{event.eventType}</Badge></div>
+                  {isAdminOrMgr && <Button variant="outline" size="sm" aria-label={`Edit ${event.eventName}`} onClick={() => navigate("/calendar/edit-event", { state: { holiday: event } })}>Edit</Button>}
+                </div>
+              );
+            })}
           </div> : <div className="company-calendar-scroll">
             <table className={cn("company-calendar-grid", "w-[100%]")} style={{borderCollapse: "collapse", tableLayout: "fixed"}}>
               <thead>
@@ -121,7 +147,8 @@ export default function Holiday() {
                       const today2 = isToday(day);
                       const isWknd = day.day() === 0 || day.day() === 6;
                       const h = getHoliday(day);
-                      const c = h ? (COLORS[h.eventType] || COLORS.Event) : null;
+                      const presentation = h ? getEventPresentation(h) : null;
+                      const c = presentation?.colors;
                       const clickable = isAdminOrMgr && h && inMonth;
 
                       return (
@@ -146,7 +173,7 @@ export default function Holiday() {
                             {h && inMonth && (
                               <div className="flex justify-center items-center" style={{flex: 1}}>
                                 <div className={cn("company-calendar-event-pill", "text-[12px] font-semibold p-[4px_8px] overflow-hidden whitespace-nowrap leading-[1.4] max-w-[90%] text-center")} style={{background: c.bg, color: c.text, textOverflow: "ellipsis"}} title={h.eventName}>
-                                  {h.eventName}
+                                  <span aria-hidden="true" className="mr-1">{presentation.emoji}</span>{h.eventName}
                                 </div>
                               </div>
                             )}
@@ -175,19 +202,19 @@ export default function Holiday() {
             {monthHolidays.length === 0 ? (
               <div className="p-[24px_16px] text-center text-[var(--text-muted)] text-[13px]" >No events</div>
             ) : monthHolidays.map((h, i) => {
-              const c = COLORS[h.eventType] || COLORS.Event;
+              const { colors: c, emoji, Icon } = getEventPresentation(h);
               const d = dayjs(h.eventDate);
               return (
                 <div key={i} className="flex items-center gap-[12px] p-[12px_16px]" style={{borderBottom: "1px solid var(--border)", cursor: isAdminOrMgr ? "pointer" : "default", transition: "background 0.15s"}}
                   onClick={() => isAdminOrMgr && navigate("/calendar/edit-event", { state: { holiday: h } })}
                   onMouseEnter={e => { if (isAdminOrMgr) e.currentTarget.style.background = "var(--bg)"; }}
                   onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
-                  <div className="w-[40px] h-[40px] flex flex-col items-center justify-center shrink-[0]" style={{borderRadius: "var(--radius)", background: c.bg}}>
+                  <div className="relative w-[40px] h-[40px] flex flex-col items-center justify-center shrink-[0]" style={{borderRadius: "var(--radius)", background: c.bg}}>
                     <span className="text-[14px] font-semibold leading-[1.1]" style={{color: c.text}}>{d.format("DD")}</span>
                     <span className="text-[12px] font-semibold uppercase" style={{color: c.text}}>{d.format("MMM")}</span>
                   </div>
                   <div className="min-w-[0px]" style={{flex: 1}}>
-                    <div className="text-[13px] font-semibold text-[var(--text-primary)] overflow-hidden whitespace-nowrap" style={{textOverflow: "ellipsis"}}>{h.eventName}</div>
+                    <div className="flex min-w-0 items-center gap-2 text-[13px] font-semibold text-foreground"><Icon size={15} aria-hidden="true" style={{ color: c.text, flexShrink: 0 }} /><span aria-hidden="true">{emoji}</span><span className="overflow-hidden whitespace-nowrap" style={{textOverflow: "ellipsis"}}>{h.eventName}</span></div>
                     <div className="flex gap-[8px] mt-[4px]" >
                       <span className="text-[12px] font-semibold p-[4px_8px]" style={{background: c.bg, color: c.text, borderRadius: "var(--radius)"}}>{h.eventType}</span>
                       {h.workLocation && <span className="text-[12px] text-[var(--text-muted)]" >{h.workLocation}</span>}

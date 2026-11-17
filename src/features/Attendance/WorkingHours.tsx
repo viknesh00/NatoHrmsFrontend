@@ -8,7 +8,7 @@ import Breadcrumb from "../../shared/services/Breadcrumb";
 import ProTable from "../../components/ProTable";
 
 const formatTime = (t) => {
-  if (!t) return "—";
+  if (!t) return "N/A";
   const [h, m] = t.split(":");
   const hour = parseInt(h, 10);
   const ampm = hour >= 12 ? "PM" : "AM";
@@ -17,11 +17,11 @@ const formatTime = (t) => {
 };
 
 const calcWorkHours = (start, end) => {
-  if (!start || !end) return "—";
+  if (!start || !end) return "N/A";
   const [sh, sm] = start.split(":").map(Number);
   const [eh, em] = end.split(":").map(Number);
   const diff = (eh * 60 + em) - (sh * 60 + sm);
-  if (diff <= 0) return "—";
+  if (diff <= 0) return "N/A";
   const h = Math.floor(diff / 60);
   const m = diff % 60;
   return m > 0 ? `${h}h ${m}m` : `${h}h`;

@@ -11,7 +11,7 @@ import { NativeSelect } from "./ui/native-select";
 
 // Shared form components - pure CSS, no MUI
 import React, { useState, useRef, useEffect } from "react";
-import { ChevronDown, X, Calendar, Eye, EyeOff, Check } from "lucide-react";
+import { ChevronDown, X, Calendar, Eye, EyeOff, Check, Trash2 } from "lucide-react";
 
 /* Shared presentation is loaded once from styles/forms.css. */
 
@@ -94,20 +94,20 @@ export function FormMultiSelect({ label, required, hint, error, options = [], va
           type="button"
           disabled={disabled}
           onClick={() => !disabled && setOpen(o => !o)}
-          className={cn(`fc-dd-trigger${open ? " open" : ""}${disabled ? " disabled" : ""}`, "flex-wrap h-[auto] min-h-[42px] gap-[4px] items-center")}
+          className={cn(`fc-dd-trigger${open ? " open" : ""}${disabled ? " disabled" : ""}`, "flex-wrap h-[auto] min-h-[42px] min-w-0 gap-[4px] items-center overflow-hidden")}
           
         >
           {selected.length === 0 ? (
             <span className="text-[var(--text-muted)] font-normal" >{placeholder}</span>
           ) : (
-            <div className="flex flex-wrap gap-[4px]" style={{flex: 1}}>
+            <div className="flex min-w-0 flex-1 flex-wrap gap-[4px]">
               {selected.map(o => {
                 const val = o.value ?? o; const lbl = o.label ?? o;
                 return (
-                  <span key={val} className="inline-flex items-center gap-[4px] bg-[var(--primary-ghost)] text-primary p-[4px_8px] text-[12px] font-semibold leading-[1.6]" style={{borderRadius: "var(--radius)", border: "1px solid var(--primary)"}}>
-                    {lbl}
+                  <span key={val} title={String(lbl)} className="inline-flex min-w-0 max-w-full box-border items-center gap-[4px] bg-[var(--primary-ghost)] text-primary p-[4px_8px] text-[12px] font-semibold leading-[1.6]" style={{borderRadius: "var(--radius)", border: "1px solid var(--primary)"}}>
+                    <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{lbl}</span>
                     {!disabled && (
-                      <span onClick={(e) => remove(val, e)} className="cursor-pointer flex items-center ml-[4px]" >
+                      <span role="button" tabIndex={0} aria-label={`Remove ${lbl}`} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); remove(val, e); } }} onClick={(e) => remove(val, e)} className="ml-[4px] flex shrink-0 cursor-pointer items-center" >
                         <X size={11} />
                       </span>
                     )}
@@ -120,16 +120,16 @@ export function FormMultiSelect({ label, required, hint, error, options = [], va
         </Button>
 
         {open && (
-          <div className="fc-dd-menu">
+          <div className="fc-dd-menu overflow-x-hidden">
             {options.length === 0
               ? <div className="fc-dd-empty">No options</div>
               : options.map(o => {
                   const val = o.value ?? o; const lbl = o.label ?? o;
                   const isSel = value.includes(val);
                   return (
-                    <div key={val} className={`fc-dd-item${isSel ? " selected" : ""}`} onClick={() => toggle(o)}>
-                      <span>{lbl}</span>
-                      {isSel && <Check size={14} />}
+                    <div key={val} title={String(lbl)} className={cn(`fc-dd-item${isSel ? " selected" : ""}`, "min-w-0 gap-[8px]")} onClick={() => toggle(o)}>
+                      <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{lbl}</span>
+                      {isSel && <Check size={14} className="shrink-0" />}
                     </div>
                   );
                 })
@@ -139,11 +139,146 @@ export function FormMultiSelect({ label, required, hint, error, options = [], va
       </div>
       {selected.length > 0 && (
         <div className="text-[12px] text-[var(--text-muted)] mt-[4px]" >
-          {selected.length} project{selected.length > 1 ? "s" : ""} selected
+          {selected.length} selected
         </div>
       )}
       {error && <div className="fc-error">{error}</div>}
       {hint && !error && <div className="fc-hint">{hint}</div>}
+    </div>
+  );
+}
+
+/* ── FormCreatableMultiSelect ── */
+export function FormCreatableMultiSelect({ label, required, hint, error, options = [], value = [], onChange, onCreate, onDeleteOption, placeholder = "Select or add...", disabled, maxLength = 100 }: Record<string, any>) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const ref = useRef(null);
+  const id = React.useId();
+  const typed = text.trim();
+  const query = typed.toLocaleLowerCase();
+  const shown = options.filter((option) => String(option).toLocaleLowerCase().includes(query));
+  const exists = options.some((option) => String(option).toLocaleLowerCase() === query)
+    || value.some((item) => String(item).toLocaleLowerCase() === query);
+  const canAdd = Boolean(onCreate && typed && !exists);
+
+  useEffect(() => {
+    const closeOutside = (event) => {
+      if (ref.current && !ref.current.contains(event.target)) {
+        setOpen(false);
+        setText("");
+      }
+    };
+    document.addEventListener("mousedown", closeOutside);
+    return () => document.removeEventListener("mousedown", closeOutside);
+  }, []);
+
+  const toggle = (option) => onChange?.(
+    value.includes(option) ? value.filter((item) => item !== option) : [...value, option]
+  );
+  const addNew = async () => {
+    if (busy || !canAdd) return;
+    setBusy(true);
+    try {
+      const saved = await onCreate(typed);
+      if (saved == null) return;
+      const option = typeof saved === "string" && saved ? saved : typed;
+      if (!value.some((item) => String(item).toLocaleLowerCase() === option.toLocaleLowerCase())) {
+        onChange?.([...value, option]);
+      }
+      setText("");
+    } catch {
+      // The caller owns API error feedback.
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="fc-group" ref={ref}>
+      {label && <label htmlFor={`${id}-trigger`} className="fc-label">{label}{required && <span className="req">*</span>}</label>}
+      <div className="fc-dd">
+        <Button
+          id={`${id}-trigger`}
+          variant="outline"
+          type="button"
+          disabled={disabled}
+          aria-expanded={open}
+          aria-haspopup="listbox"
+          aria-invalid={!!error}
+          aria-describedby={error || hint ? `${id}-help` : undefined}
+          onClick={() => !disabled && setOpen((current) => !current)}
+          className={cn(`fc-dd-trigger${open ? " open" : ""}${disabled ? " disabled" : ""}`, "h-auto min-h-[42px] min-w-0 flex-wrap items-center gap-[4px] overflow-hidden")}
+        >
+          {value.length === 0 ? (
+            <span className="font-normal text-muted-foreground">{placeholder}</span>
+          ) : (
+            <span className="flex min-w-0 flex-1 flex-wrap gap-[4px]">
+              {value.map((item) => (
+                <span key={item} title={item} className="inline-flex min-w-0 max-w-full box-border items-center gap-[4px] rounded-sm border border-primary bg-[var(--primary-ghost)] px-[8px] py-[2px] text-[12px] font-semibold leading-[1.6] text-primary">
+                  <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{item}</span>
+                  {!disabled && (
+                    <span role="button" tabIndex={0} aria-label={`Remove ${item}`} className="ml-[2px] flex shrink-0 cursor-pointer items-center" onClick={(event) => { event.stopPropagation(); onChange?.(value.filter((entry) => entry !== item)); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); onChange?.(value.filter((entry) => entry !== item)); } }}>
+                      <X size={11} />
+                    </span>
+                  )}
+                </span>
+              ))}
+            </span>
+          )}
+          <ChevronDown size={15} aria-hidden="true" className={cn("ml-auto shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
+        </Button>
+
+        {open && (
+          <div className="fc-dd-menu overflow-x-hidden" role="listbox" aria-label={label} aria-multiselectable="true">
+            <div className="p-[8px_8px_4px]">
+              <Input
+                autoFocus
+                autoComplete="off"
+                maxLength={maxLength}
+                aria-label={`Search ${label || "options"}`}
+                placeholder={onCreate ? "Search or type a new value" : "Search"}
+                value={text}
+                onChange={(event) => setText(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && canAdd) { event.preventDefault(); void addNew(); }
+                  if (event.key === "Escape") setOpen(false);
+                }}
+                className="fc-input px-[10px] py-[7px] text-[13px]"
+              />
+            </div>
+            {shown.map((option) => {
+              const selected = value.includes(option);
+              return (
+                <div key={option} title={option} role="option" aria-selected={selected} className={cn(`fc-dd-item${selected ? " selected" : ""}`, "min-w-0")} onClick={() => toggle(option)}>
+                  <span className="inline-flex min-w-0 flex-1 items-center gap-[8px]">
+                    <span aria-hidden="true" className={cn("inline-flex size-4 shrink-0 items-center justify-center rounded-sm border", selected ? "border-primary bg-primary text-primary-foreground" : "border-border bg-transparent")}>
+                      {selected && <Check size={11} />}
+                    </span>
+                    <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{option}</span>
+                  </span>
+                  {onDeleteOption && (
+                    <Button variant="ghost" size="icon-xs" type="button" aria-label={`Remove ${option} from options`} title="Remove from options" onClick={(event) => { event.stopPropagation(); onDeleteOption(option); }}>
+                      <Trash2 size={14} />
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+            {shown.length === 0 && !canAdd && <div className="fc-dd-empty">No options</div>}
+            {canAdd && (
+              <button type="button" disabled={busy} className="fc-dd-item w-full border-t border-border text-left font-semibold text-primary disabled:opacity-50" onClick={() => void addNew()}>
+                <span className="inline-flex min-w-0 items-center gap-[8px]">
+                  <span aria-hidden="true" className="inline-flex size-4 shrink-0 items-center justify-center rounded-full border border-current">+</span>
+                  <span className="overflow-hidden text-ellipsis whitespace-nowrap">Add “{typed}”</span>
+                </span>
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+      {error && <div id={`${id}-help`} className="fc-error">{error}</div>}
+      {hint && !error && <div id={`${id}-help`} className="fc-hint">{hint}</div>}
     </div>
   );
 }

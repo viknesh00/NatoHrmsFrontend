@@ -2,20 +2,30 @@
    Legacy aliases keep existing features on the semantic palette. */
 :root {
   color-scheme: light;
+  --role-primary: #2f7659;
+  --role-primary-hover: #27634b;
+  --role-primary-ghost: #edf7f2;
+  --role-primary-glow: rgb(47 118 89 / 0.12);
+  --role-accent: #51bc8f;
+  --role-dark-primary: #51bc8f;
+  --role-dark-hover: #6acfa0;
+  --role-dark-ghost: rgb(81 188 143 / 0.15);
+  --role-dark-glow: rgb(81 188 143 / 0.22);
+  --role-dark-accent: #71d1a6;
   --background: #fcfcfd;
   --foreground: #252a30;
   --card: #ffffff;
   --card-foreground: var(--foreground);
   --popover: #ffffff;
   --popover-foreground: var(--foreground);
-  --primary: #2f7659;
+  --primary: var(--role-primary);
   --primary-foreground: #ffffff;
-  --primary-hover: #27634b;
+  --primary-hover: var(--role-primary-hover);
   --secondary: #f3f4f6;
   --secondary-foreground: #676c73;
   --muted: #f3f4f6;
   --muted-foreground: #676c73;
-  --accent: #51bc8f;
+  --accent: var(--role-accent);
   --accent-foreground: #252a30;
   /* Decorative only: use muted-foreground for readable text. */
   --decoration: #aeb2b9;
@@ -61,8 +71,8 @@
 
   --primary-light: var(--accent);
   --primary-dark: var(--primary-hover);
-  --primary-ghost: #edf7f2;
-  --primary-glow: rgb(47 118 89 / 0.12);
+  --primary-ghost: var(--role-primary-ghost);
+  --primary-glow: var(--role-primary-glow);
   --teal: var(--primary);
   --teal-light: var(--accent);
   --teal-ghost: var(--primary-ghost);
@@ -84,8 +94,8 @@
   --danger: var(--error);
   --info: var(--information);
 
-  --ui-font-sans: "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --ui-font-heading: var(--ui-font-sans);
+  --ui-font-sans: "Albert Sans Variable", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ui-font-heading: "Aleo Variable", "Albert Sans Variable", "Inter Variable", sans-serif;
   --ui-font-mono: "SFMono-Regular", Consolas, monospace;
   --type-page: 24px;
   --type-section: 18px;
@@ -113,4 +123,128 @@
   --shadow-xl: var(--shadow-lg);
   --transition: 150ms ease;
   --transition-bounce: var(--transition);
+}
+
+/* Role accents change the shared semantic palette consistently. */
+:root[data-role="manager"] {
+  --role-primary: #315f7d;
+  --role-primary-hover: #274e67;
+  --role-primary-ghost: #edf4f8;
+  --role-primary-glow: rgb(49 95 125 / 0.14);
+  --role-accent: #5b9db4;
+  --role-dark-primary: #7eb9d7;
+  --role-dark-hover: #98cbe3;
+  --role-dark-ghost: rgb(126 185 215 / 0.16);
+  --role-dark-glow: rgb(126 185 215 / 0.22);
+  --role-dark-accent: #94cde2;
+}
+:root[data-role="teamlead"] {
+  --role-primary: #5c528c;
+  --role-primary-hover: #4d4477;
+  --role-primary-ghost: #f1eff8;
+  --role-primary-glow: rgb(92 82 140 / 0.14);
+  --role-accent: #897db9;
+  --role-dark-primary: #b4a7ed;
+  --role-dark-hover: #c7bdf5;
+  --role-dark-ghost: rgb(180 167 237 / 0.16);
+  --role-dark-glow: rgb(180 167 237 / 0.22);
+  --role-dark-accent: #c2b8f0;
+}
+:root[data-role="employee"] {
+  --role-primary: #287365;
+  --role-primary-hover: #205d52;
+  --role-primary-ghost: #edf7f5;
+  --role-primary-glow: rgb(40 115 101 / 0.14);
+  --role-accent: #50a997;
+  --role-dark-primary: #72cdbb;
+  --role-dark-hover: #8ad9ca;
+  --role-dark-ghost: rgb(114 205 187 / 0.16);
+  --role-dark-glow: rgb(114 205 187 / 0.22);
+  --role-dark-accent: #8bdecf;
+}
+
+/* Dark mode keeps semantic states distinct while using the active role accent. */
+:root.dark {
+  color-scheme: dark;
+  --background: #14181d;
+  --foreground: #eef1f4;
+  --card: #1d232a;
+  --card-foreground: var(--foreground);
+  --popover: #20272e;
+  --popover-foreground: var(--foreground);
+  --primary: var(--role-dark-primary);
+  --primary-foreground: #17211c;
+  --primary-hover: var(--role-dark-hover);
+  --secondary: #29313a;
+  --secondary-foreground: #c2c9d0;
+  --muted: #252c34;
+  --muted-foreground: #aeb7c0;
+  --accent: var(--role-dark-accent);
+  --accent-foreground: #17211c;
+  --decoration: #505963;
+  --neutral: #a0a6ad;
+  --border: #343d46;
+  --input: #39434d;
+  --ring: var(--primary);
+  --border-strong: #505963;
+  --overlay: rgb(0 0 0 / 0.68);
+  --success: #79c99b;
+  --success-foreground: #14241a;
+  --success-subtle: #1d3326;
+  --success-border: #426b50;
+  --warning: #edbd65;
+  --warning-foreground: #2a2111;
+  --warning-subtle: #392f1e;
+  --warning-border: #79623a;
+  --error: #ff929b;
+  --error-foreground: #2a1518;
+  --error-subtle: #3b2428;
+  --error-border: #78434b;
+  --information: #87b9e8;
+  --information-foreground: #142231;
+  --information-subtle: #202f3d;
+  --information-border: #425c74;
+  --destructive: var(--error);
+  --destructive-foreground: var(--error-foreground);
+  --sidebar: var(--card);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--role-dark-ghost);
+  --sidebar-accent-foreground: var(--primary);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+  --chart-1: var(--primary);
+  --chart-2: var(--accent);
+  --chart-3: var(--information);
+  --chart-4: var(--warning);
+  --chart-5: var(--neutral);
+  --primary-light: var(--accent);
+  --primary-dark: var(--primary-hover);
+  --primary-ghost: var(--role-dark-ghost);
+  --primary-glow: var(--role-dark-glow);
+  --teal: var(--primary);
+  --teal-light: var(--accent);
+  --teal-ghost: var(--primary-ghost);
+  --coral: var(--error);
+  --coral-ghost: var(--error-subtle);
+  --amber: var(--warning);
+  --amber-ghost: var(--warning-subtle);
+  --sky: var(--information);
+  --sky-ghost: var(--information-subtle);
+  --emerald: var(--success);
+  --emerald-ghost: var(--success-subtle);
+  --bg: var(--background);
+  --bg-card: var(--card);
+  --bg-sidebar: var(--sidebar);
+  --text-primary: var(--foreground);
+  --text-secondary: var(--muted-foreground);
+  --text-muted: var(--muted-foreground);
+  --text-inverse: var(--primary-foreground);
+  --danger: var(--error);
+  --info: var(--information);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.28);
+  --shadow-md: 0 8px 24px rgb(0 0 0 / 0.32);
+  --shadow-lg: 0 12px 32px rgb(0 0 0 / 0.4);
+  --shadow-xl: var(--shadow-lg);
 }

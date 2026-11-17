@@ -29,8 +29,8 @@ const NOT_ASSIGNED = "Not assigned";
 const splitActivities = (v) => (v ? String(v).split(";").map((x) => x.trim()).filter(Boolean) : []);   // activities / assets are stored as "A; B"
 const dayOf = (v) => (v ? String(v).split("T")[0] : "");
 
-const fmtDate = (d) => (d ? dayjs(d).format("DD-MM-YYYY") : "—");
-const fmtDateTime = (d) => (d ? dayjs(d).format("DD-MM-YYYY HH:mm") : "—");
+const fmtDate = (d) => (d ? dayjs(d).format("DD-MM-YYYY") : "N/A");
+const fmtDateTime = (d) => (d ? dayjs(d).format("DD-MM-YYYY HH:mm") : "N/A");
 
 const saveBlob = (blob, fileName) => {
   const url = window.URL.createObjectURL(blob);
@@ -81,17 +81,17 @@ export default function Onboarding() {
           employeeStatus: d.employeeStatus || "Active",
           fullName: `${d.firstName} ${d.lastName}`,
           dobText: fmtDate(d.dateOfBirth),
-          siemensMonthText: d.siemensIdReceivedMonth ? dayjs(d.siemensIdReceivedMonth).format("MMM YYYY") : "—",
+          siemensMonthText: d.siemensIdReceivedMonth ? dayjs(d.siemensIdReceivedMonth).format("MMM YYYY") : "N/A",
           workStatus: d.workStatus || "Not assigned",
-          workPmName: d.workPmName || "—",
+          workPmName: d.workPmName || "N/A",
           workStartText: fmtDate(d.workStartDate),
-          workEndText: d.workStartDate ? (d.workEndDate ? fmtDate(d.workEndDate) : "Ongoing") : "—",
+          workEndText: d.workStartDate ? (d.workEndDate ? fmtDate(d.workEndDate) : "Ongoing") : "N/A",
           workAssets: splitActivities(d.workAsset),
-          workAsset: splitActivities(d.workAsset).join(", ") || "—",
-          workComments: d.workComments || "—",
+          workAsset: splitActivities(d.workAsset).join(", ") || "N/A",
+          workComments: d.workComments || "N/A",
           workActivities: splitActivities(d.workActivity),
-          workActivity: splitActivities(d.workActivity).join(", ") || "—",
-          consentText: d.consentGiven ? "Yes" : "—",
+          workActivity: splitActivities(d.workActivity).join(", ") || "N/A",
+          consentText: d.consentGiven ? "Yes" : "N/A",
           visaExpiryText: fmtDate(d.workVisaExpiryDate),
           submittedText: fmtDateTime(d.submittedAt),
         })));
@@ -289,16 +289,16 @@ export default function Onboarding() {
     return {
       ...row,
       workStatus: rec ? rec.workStatus : NOT_ASSIGNED,
-      workPmName: rec?.pmName || "—",
+      workPmName: rec?.pmName || "N/A",
       workStartDate: rec?.startDate || null,
       workEndDate: rec?.endDate || null,
-      workStartText: rec ? fmtDate(rec.startDate) : "—",
-      workEndText: rec ? (rec.endDate ? fmtDate(rec.endDate) : "Ongoing") : "—",
+      workStartText: rec ? fmtDate(rec.startDate) : "N/A",
+      workEndText: rec ? (rec.endDate ? fmtDate(rec.endDate) : "Ongoing") : "N/A",
       workAssets: splitActivities(rec?.asset),
-      workAsset: splitActivities(rec?.asset).join(", ") || "—",
-      workComments: rec?.comments || "—",
+      workAsset: splitActivities(rec?.asset).join(", ") || "N/A",
+      workComments: rec?.comments || "N/A",
       workActivities: splitActivities(rec?.activity),
-      workActivity: splitActivities(rec?.activity).join(", ") || "—",
+      workActivity: splitActivities(rec?.activity).join(", ") || "N/A",
     };
   };
 
@@ -317,7 +317,7 @@ export default function Onboarding() {
   const activityOptions = useMemo(() => [...new Set([...activityMaster, ...workRecords.flatMap((w) => splitActivities(w.activity))].filter(Boolean))].sort((a, b) => a.localeCompare(b)), [activityMaster, workRecords]);
   // options of the column filters come from the data itself ("Not assigned" is always offered for Work Status)
   const multiOptions = useMemo(() => Object.fromEntries(MULTI_FILTERS.map((f) => {
-    const vals = new Set(list.map((r) => String(r[f.field] ?? "")).filter((v) => v && v !== "—"));
+    const vals = new Set(list.map((r) => String(r[f.field] ?? "")).filter((v) => v && v !== "N/A"));
     if (f.field === "workStatus") vals.add(NOT_ASSIGNED);
     return [f.key, [...vals].sort((a, b) => a.localeCompare(b))];
   })), [list]);

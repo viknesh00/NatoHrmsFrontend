@@ -1,4 +1,6 @@
 import React from 'react';
+import '@fontsource-variable/albert-sans';
+import '@fontsource-variable/aleo';
 import '@fontsource-variable/inter';
 import ReactDOM from 'react-dom/client';
 import "./index.css";

@@ -107,7 +107,7 @@ const chatChain = RunnableLambda.from(async ({ input, history, requestId, userCo
 });
 
 globalThis.onmessage = async ({ data }) => {
-  if (data?.type !== "generate") return;
+  if (data?.type !== "generate" && data?.type !== "motivation") return;
 
   const { requestId, input, history = [], userContext } = data;
   try {
@@ -117,9 +117,13 @@ globalThis.onmessage = async ({ data }) => {
         : new AIMessage(message.content)
     );
     const response = await chatChain.invoke({ input, history: langchainHistory, requestId, userContext });
-    globalThis.postMessage({ type: "done", requestId, response });
+    globalThis.postMessage({ type: data.type === "motivation" ? "motivation-done" : "done", requestId, response });
   } catch (error) {
     console.error("Local HRMS assistant failed.", error);
-    globalThis.postMessage({ type: "error", requestId, message: error?.message || "Local model could not start." });
+    globalThis.postMessage({
+      type: data.type === "motivation" ? "motivation-error" : "error",
+      requestId,
+      message: error?.message || "Local model could not start.",
+    });
   }
 };

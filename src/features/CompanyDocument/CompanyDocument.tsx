@@ -13,7 +13,7 @@ import { ToastSuccess, ToastError } from "../../shared/services/ToastMsg";
 import ProTable, { StatusChip } from "../../components/ProTable";
 
 
-const fmt = (d) => (d ? dayjs(d).format("DD-MM-YYYY") : "—");
+const fmt = (d) => (d ? dayjs(d).format("DD-MM-YYYY") : "N/A");
 
 export default function CompanyDocument() {
   const navigate = useNavigate();
@@ -126,8 +126,8 @@ export default function CompanyDocument() {
         Tags:            r.tags,
         "# Assigned":    r.assignedCount,
         "# Read":        r.readCount,
-        "Last Updated":  r.lastUpdated ? fmt(r.lastUpdated) : "—",
-        "Review Date":   r.reviewDate  ? fmt(r.reviewDate)  : "—",
+        "Last Updated":  r.lastUpdated ? fmt(r.lastUpdated) : "N/A",
+        "Review Date":   r.reviewDate  ? fmt(r.reviewDate)  : "N/A",
         Current:         r.isCurrent ? "Yes" : "No",
       }))
     );
@@ -145,19 +145,19 @@ export default function CompanyDocument() {
     {
       field: "lastUpdated",
       label: "Last Updated",
-      renderCell: (row) => (row.lastUpdated ? fmt(row.lastUpdated) : "—"),
+      renderCell: (row) => (row.lastUpdated ? fmt(row.lastUpdated) : "N/A"),
     },
     {
       field: "tags",
       label: "Tags",
-      renderCell: (row) => row.tags || "—",
+      renderCell: (row) => row.tags || "N/A",
     },
     { field: "assignedCount", label: "# Assigned" },
     { field: "readCount",     label: "# Read" },
     {
       field: "reviewDate",
       label: "Review Date",
-      renderCell: (row) => (row.reviewDate ? fmt(row.reviewDate) : "—"),
+      renderCell: (row) => (row.reviewDate ? fmt(row.reviewDate) : "N/A"),
     },
     {
       field: "isCurrent",

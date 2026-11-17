@@ -57,8 +57,8 @@ export default function JobApplied() {
           setApplications(
             res.data.map(d => ({
               ...d,
-              appliedOn: d.appliedOn ? dayjs(d.appliedOn).format("DD/MM/YYYY") : "—",
-              updatedAt: d.updatedAt ? dayjs(d.updatedAt).format("DD/MM/YYYY") : "—",
+              appliedOn: d.appliedOn ? dayjs(d.appliedOn).format("DD/MM/YYYY") : "N/A",
+              updatedAt: d.updatedAt ? dayjs(d.updatedAt).format("DD/MM/YYYY") : "N/A",
             }))
           );
         }
@@ -173,22 +173,22 @@ export default function JobApplied() {
     const XLSX = await import("xlsx");
     const ws = XLSX.utils.json_to_sheet(
       applications.map(r => ({
-        "Job Code":    r.jobCode   || "—",
-        "Job Title":   r.jobTitle  || "—",
-        "Role":        r.role      || "—",
-        "Location":    r.location  || "—",
-        "Job Type":    r.jobType   || "—",
-        "Salary":      r.salary    || "—",
-        "First Name":  r.firstName || "—",
-        "Last Name":   r.lastName  || "—",
-        "Email":       r.email     || "—",
-        "Phone":       r.phone     || "—",
-        "Skills":      r.skills    || "—",
-        "View Count":  r.readCount ?? "—",
+        "Job Code":    r.jobCode   || "N/A",
+        "Job Title":   r.jobTitle  || "N/A",
+        "Role":        r.role      || "N/A",
+        "Location":    r.location  || "N/A",
+        "Job Type":    r.jobType   || "N/A",
+        "Salary":      r.salary    || "N/A",
+        "First Name":  r.firstName || "N/A",
+        "Last Name":   r.lastName  || "N/A",
+        "Email":       r.email     || "N/A",
+        "Phone":       r.phone     || "N/A",
+        "Skills":      r.skills    || "N/A",
+        "View Count":  r.readCount ?? "N/A",
         "Applied On":  r.appliedOn,
         "Updated At":  r.updatedAt,
         "Status":      r.candidateStatus || "New",
-        "Assigned To": r.assignedTo || "—",
+        "Assigned To": r.assignedTo || "N/A",
       }))
     );
     const wb = XLSX.utils.book_new();
@@ -327,9 +327,9 @@ export default function JobApplied() {
             {/* Info strip */}
             <div className="p-[16px_24px_0] flex gap-[28px] flex-wrap" >
               {[
-                ["Job Code",   selApp.jobCode   || "—"],
-                ["Applied On", selApp.appliedOn  || "—"],
-                ["Email",      selApp.email      || "—"],
+                ["Job Code",   selApp.jobCode   || "N/A"],
+                ["Applied On", selApp.appliedOn  || "N/A"],
+                ["Email",      selApp.email      || "N/A"],
               ].map(([k, v]) => (
                 <div key={k}>
                   <div className="text-[12px] font-semibold text-muted-foreground uppercase tracking-[0.06em]" >{k}</div>

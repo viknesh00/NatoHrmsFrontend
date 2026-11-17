@@ -4,6 +4,8 @@ import "../App.css";
 import { BrowserRouter, useRoutes } from 'react-router-dom';
 import routes from "./routes";
 import { Toaster } from "../components/ui/toast";
+import { ThemeProvider } from "../theme/ThemeProvider";
+import LoadingMask from "../shared/services/LoadingMask";
 
 
 const AppRoutes = () => {
@@ -15,9 +17,11 @@ function App() {
   return (
     <React.Fragment>
       <ErrorBoundary><BrowserRouter>
-        <Toaster>
-          <Suspense fallback={<div role="status" className="flex min-h-48 items-center justify-center text-sm text-muted-foreground">Loading workspace…</div>}><AppRoutes /></Suspense>
-        </Toaster>
+        <ThemeProvider>
+          <Toaster>
+          <Suspense fallback={<div className="app-wrapper app-bootstrap-loading"><LoadingMask loading layout label="Loading your workspace" /></div>}><AppRoutes /></Suspense>
+          </Toaster>
+        </ThemeProvider>
       </BrowserRouter></ErrorBoundary>
     </React.Fragment>
   );

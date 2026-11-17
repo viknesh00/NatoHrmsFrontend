@@ -10,7 +10,7 @@ import Breadcrumb from "../../shared/services/Breadcrumb";
 import { getCookie } from "../../auth/Cookies";
 import ProTable, { StatusChip } from "../../components/ProTable";
 
-const fmt = (d) => d ? dayjs(d).format("DD-MM-YYYY") : "—";
+const fmt = (d) => d ? dayjs(d).format("DD-MM-YYYY") : "N/A";
 
 export default function Announcement() {
   const navigate = useNavigate();
@@ -27,8 +27,8 @@ export default function Announcement() {
       if (res.data) {
         const mapped = res.data.map(d => ({
           ...d,
-          announcementDate: d.announcementDate ? fmt(d.announcementDate) : "—",
-          createdDate:      d.createdDate      ? fmt(d.createdDate)      : "—",
+          announcementDate: d.announcementDate ? fmt(d.announcementDate) : "N/A",
+          createdDate:      d.createdDate      ? fmt(d.createdDate)      : "N/A",
         }));
         setList(isAdminOrManager ? mapped : mapped.filter(d => d.isActive));
       }

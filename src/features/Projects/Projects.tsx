@@ -9,7 +9,7 @@ import Breadcrumb from "../../shared/services/Breadcrumb";
 import ProTable, { StatusChip } from "../../components/ProTable";
 import { useNavigate } from "react-router-dom";
 
-const fmt = (d) => (d ? dayjs(d).format("DD-MM-YYYY") : "—");
+const fmt = (d) => (d ? dayjs(d).format("DD-MM-YYYY") : "N/A");
 
 export default function Projects() {
   const navigate = useNavigate();
@@ -49,7 +49,7 @@ export default function Projects() {
       field: "department",
       label: "Department",
       filterable: true,
-      renderCell: (row) => row.department || "—",
+      renderCell: (row) => row.department || "N/A",
     },
     { field: "startDate",   label: "Start Date" },
     { field: "endDate",     label: "End Date" },

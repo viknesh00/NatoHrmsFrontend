@@ -12,7 +12,7 @@ import { getCookie } from "../../auth/Cookies";
 import dayjs from "dayjs";
 import ProTable, { StatusChip } from "../../components/ProTable";
 
-const fmt = (d) => d ? dayjs(d).format("DD-MM-YYYY") : "—";
+const fmt = (d) => d ? dayjs(d).format("DD-MM-YYYY") : "N/A";
 
 export default function Employees() {
   const navigate = useNavigate();
@@ -29,7 +29,7 @@ export default function Employees() {
   const getUsers = () => {
     setLoading(true);
     getRequest("User/All").then(res => {
-      if (res.data) setEmployeeList(res.data.map(d => ({ ...d, lastLoginAt: d.lastLoginAt ? fmt(d.lastLoginAt) : "—" })));
+      if (res.data) setEmployeeList(res.data.map(d => ({ ...d, lastLoginAt: d.lastLoginAt ? fmt(d.lastLoginAt) : "N/A" })));
     }).catch(console.error).finally(() => setLoading(false));
   };
 

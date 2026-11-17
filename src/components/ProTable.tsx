@@ -1,12 +1,14 @@
 import { Checkbox } from "./ui/checkbox";
 import { Button } from "./ui/button";
 import { NativeSelect } from "./ui/native-select";
-import { useState, useMemo, useEffect } from "react";
-import { Search, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X, FileSpreadsheet, Check, SlidersHorizontal, RotateCcw, Inbox, SearchX, ChevronsUpDown, } from "lucide-react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
+import { Search, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X, FileSpreadsheet, Check, SlidersHorizontal, RotateCcw, Inbox, SearchX, ChevronsUpDown, Copy, FileText, } from "lucide-react";
 import { FormSelect, FormDate, FormInput } from "./FormComponents";
 import { Badge } from "./ui/badge";
 import { Card } from "./ui/card";
 import { Input } from "./ui/input";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "./ui/sheet";
 
 /* ─── inject panel styles once ─── */
 
@@ -19,9 +21,69 @@ function guessFieldType(values) {
   return "select";
 }
 
+function resolvePath(row, path) {
+  if (Array.isArray(path)) return path.reduce((value, key) => value?.[key], row);
+  if (typeof path !== "string" || !path) return undefined;
+  return path.replace(/\[(\d+)\]/g, ".$1").split(".").reduce((value, key) => value?.[key], row);
+}
+
+function getColumnValue(row, column) {
+  const accessor = column.accessorFn || column.accessor;
+  if (typeof accessor === "function") return accessor(row);
+  return resolvePath(row, column.field ?? column.accessorKey ?? column.key ?? column.id);
+}
+
+function getColumnKey(column) {
+  const key = column.field ?? column.accessorKey ?? column.key ?? column.id;
+  return Array.isArray(key) ? key.join(".") : key;
+}
+
+function toSearchText(value) {
+  if (value == null) return "";
+  if (typeof value !== "object") return String(value);
+  const label = value.label ?? value.name ?? value.title ?? value.value;
+  return label == null ? JSON.stringify(value) : String(label);
+}
+
+function toFilterValue(value) {
+  if (value == null) return "";
+  if (typeof value !== "object") return String(value);
+  const key = value.value ?? value.id ?? value.key ?? value.label ?? value.name ?? value.title;
+  return key == null ? JSON.stringify(value) : String(key);
+}
+
+function formatColumnValue(value, row, column) {
+  const formatted = typeof column.valueFormatter === "function"
+    ? column.valueFormatter(value, row)
+    : value;
+  if (formatted == null || formatted === "") return "N/A";
+  if (typeof formatted !== "object") return formatted;
+  return formatted.label ?? formatted.name ?? formatted.title ?? formatted.value ?? JSON.stringify(formatted);
+}
+
+function CellText({ value, maxWidth = 220 }: Record<string, any>) {
+  const ref = useRef<HTMLSpanElement | null>(null);
+  const [tip, setTip] = useState<{ left: number; top: number; below: boolean } | null>(null);
+  const text = String(value ?? "N/A");
+  const show = () => {
+    const el = ref.current;
+    if (!el || el.scrollWidth <= el.clientWidth) return;
+    const rect = el.getBoundingClientRect();
+    const tooltipWidth = Math.min(360, window.innerWidth - 24);
+    const halfWidth = tooltipWidth / 2;
+    const left = Math.min(Math.max(rect.left + rect.width / 2, halfWidth + 12), window.innerWidth - halfWidth - 12);
+    const below = window.innerHeight - rect.bottom > 150 || rect.top < 150;
+    setTip({ left, top: below ? rect.bottom + 8 : rect.top - 8, below });
+  };
+  return <>
+    <span ref={ref} tabIndex={0} onMouseEnter={show} onMouseLeave={() => setTip(null)} onFocus={show} onBlur={() => setTip(null)} className="block overflow-hidden whitespace-nowrap" style={{ maxWidth, textOverflow: "ellipsis" }}>{value ?? "N/A"}</span>
+    {tip && createPortal(<div role="tooltip" className="fixed z-[20000] whitespace-pre-wrap break-words rounded-[var(--radius)] border border-border bg-popover px-3 py-2 text-xs leading-5 text-popover-foreground shadow-md" style={{ left: tip.left, top: tip.top, transform: tip.below ? "translateX(-50%)" : "translate(-50%, -100%)", width: "max-content", maxWidth: "min(360px, calc(100vw - 24px))", pointerEvents: "none" }}>{text}</div>, document.body)}
+  </>;
+}
+
 /* ─── smart sort comparator ─── */
 function smartCompare(av, bv) {
-  const s1 = String(av ?? ""), s2 = String(bv ?? "");
+  const s1 = toSearchText(av), s2 = toSearchText(bv);
 
   // ISO / YYYY-MM-DD (and datetime variants like "2024-03-15 09:30")
   const isoRe = /^\d{4}-\d{2}-\d{2}/;
@@ -107,6 +169,8 @@ export default function ProTable({
   onExport,
   multiSelect = true,
   onSelectionChange,
+  onRowClick,
+  getRowLabel,
 }: Record<string, any>) {
 
   const [search, setSearch]               = useState("");
@@ -117,11 +181,36 @@ export default function ProTable({
   const [columnFilters, setColumnFilters] = useState<Record<string, any>>({});
   const [showFilters, setShowFilters]     = useState(false);
   const [selected, setSelected]           = useState(new Set<any>());
+  const [detailRow, setDetailRow]         = useState(null);
+  const [detailCopied, setDetailCopied]   = useState(false);
 
   // draft state while panel is open
   const [draft, setDraft] = useState<Record<string, any>>({});
 
   const visibleCols = columns.filter(c => c.hidden !== true);
+  const openDetails = (row, event?) => {
+    if (onRowClick) onRowClick(row, event);
+    else { setDetailRow(row); setDetailCopied(false); }
+  };
+  const detailFields = detailRow
+    ? visibleCols.filter(col => !col.renderCell).map(col => ({
+      key: getColumnKey(col),
+      label: col.label || getColumnKey(col),
+      value: formatColumnValue(getColumnValue(detailRow, col), detailRow, col),
+    })).filter(field => field.key && field.value !== "N/A")
+    : [];
+  const copyDetails = async () => {
+    if (!detailRow) return;
+    try {
+      await navigator.clipboard.writeText(detailFields.map(field => `${field.label}: ${field.value}`).join("\n"));
+      setDetailCopied(true);
+      window.setTimeout(() => setDetailCopied(false), 1800);
+    } catch { /* Clipboard may be unavailable outside a secure browser context. */ }
+  };
+  const columnsByField = useMemo(
+    () => new Map(visibleCols.map(col => [getColumnKey(col), col])),
+    [visibleCols]
+  );
 
   /* auto-detect filterable columns */
   const filterMeta = useMemo(() => {
@@ -130,11 +219,19 @@ export default function ProTable({
       if (!col.filterable) return;
       if (col.options) {
         // static options provided — works even on renderCell columns
-        meta[col.field] = { label: col.label, type: "select", options: col.options };
-      } else if (!col.renderCell) {
-        const vals = [...new Set(data.map(r => r[col.field]).filter(v => v != null && v !== ""))].sort();
+        meta[getColumnKey(col)] = { label: col.label, type: "select", options: col.options };
+      } else {
+        const uniqueValues = new Map();
+        data.forEach(row => {
+          const value = getColumnValue(row, col);
+          if (value == null || value === "") return;
+          const key = toFilterValue(value);
+          if (!uniqueValues.has(key)) uniqueValues.set(key, value);
+        });
+        const vals = [...uniqueValues.values()]
+          .sort((a, b) => smartCompare(a, b));
         const type = guessFieldType(vals);
-        meta[col.field] = { label: col.label, type, options: vals };
+        meta[getColumnKey(col)] = { label: col.label, type, options: vals };
       }
     });
     return meta;
@@ -147,7 +244,7 @@ export default function ProTable({
   /* sync draft when panel opens */
   useEffect(() => {
     if (showFilters) setDraft({ ...columnFilters });
-  }, [showFilters]);
+  }, [showFilters, columnFilters]);
 
   /* processed rows */
   const processed = useMemo(() => {
@@ -158,9 +255,8 @@ export default function ProTable({
       const q = search.toLowerCase();
       rows = rows.filter(row =>
         visibleCols.some(col => {
-          if (col.renderCell) return false;
-          const val = row[col.field];
-          return val != null && String(val).toLowerCase().includes(q);
+          const val = getColumnValue(row, col);
+          return val != null && toSearchText(val).toLowerCase().includes(q);
         })
       );
     }
@@ -169,33 +265,38 @@ export default function ProTable({
     Object.entries(columnFilters).forEach(([field, val]) => {
       if (!val) return;
       const meta = filterMeta[field];
+      const column = columnsByField.get(field);
       if (meta?.type === "date") {
         if (val.from || val.to) {
           rows = rows.filter(row => {
-            const rv = row[field];
+            const rv = column ? getColumnValue(row, column) : resolvePath(row, field);
             if (!rv) return false;
             if (val.from && rv < val.from) return false;
             if (val.to   && rv > val.to)   return false;
             return true;
           });
         } else if (typeof val === "string") {
-          rows = rows.filter(row => String(row[field] ?? "") === val);
+          rows = rows.filter(row => toFilterValue(column ? getColumnValue(row, column) : resolvePath(row, field)) === val);
         }
       } else {
-        rows = rows.filter(row => String(row[field] ?? "") === String(val));
+        rows = rows.filter(row => toFilterValue(column ? getColumnValue(row, column) : resolvePath(row, field)) === String(val));
       }
     });
 
     // sort — uses smartCompare for correct date/time ordering
     if (sortCol) {
       rows.sort((a, b) => {
-        const cmp = smartCompare(a[sortCol], b[sortCol]);
+        const column = columnsByField.get(sortCol);
+        const cmp = smartCompare(
+          column ? getColumnValue(a, column) : resolvePath(a, sortCol),
+          column ? getColumnValue(b, column) : resolvePath(b, sortCol)
+        );
         return sortDir === "asc" ? cmp : -cmp;
       });
     }
 
     return rows;
-  }, [data, search, columnFilters, sortCol, sortDir, visibleCols, filterMeta]);
+  }, [data, search, columnFilters, sortCol, sortDir, visibleCols, filterMeta, columnsByField]);
 
   const totalPages = Math.ceil(processed.length / rowsPerPage);
   const paged      = processed.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
@@ -229,7 +330,7 @@ export default function ProTable({
   const handleExportExcel = async () => {
     const XLSX = await import("xlsx");
     const headers = visibleCols.filter(c => !c.renderCell).map(c => c.label);
-    const rows    = exportData.map(row => visibleCols.filter(c => !c.renderCell).map(c => row[c.field] ?? ""));
+    const rows    = exportData.map(row => visibleCols.filter(c => !c.renderCell).map(c => formatColumnValue(getColumnValue(row, c), row, c) ?? ""));
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
@@ -346,7 +447,7 @@ export default function ProTable({
       {(activeChips.length > 0 || externalFilters.some(f => f.value)) && (
         <div className="pt-chip-row">
           {activeChips.map(([field, val]) => {
-            const col = visibleCols.find(c => c.field === field);
+            const col = visibleCols.find(c => getColumnKey(c) === field);
             return (
               <span key={field} className="pt-chip">
                 <span className="pt-chip-key">{col?.label || field}:</span>
@@ -403,7 +504,11 @@ export default function ProTable({
                     label={meta.label}
                     placeholder="All"
                     value={draft[field] || ""}
-                    options={meta.options.map(v => typeof v === "object" ? v : { value: v, label: v })}
+                    options={meta.options.map(v => (
+                      typeof v === "object" && v !== null && v.value !== undefined && v.label !== undefined
+                        ? v
+                        : { value: toFilterValue(v), label: toSearchText(v) }
+                    ))}
                     onChange={e => setDraft(d => ({ ...d, [field]: e.target.value }))}
                   />
                 );
@@ -468,15 +573,15 @@ export default function ProTable({
               {visibleCols.map((col, i) => (
                 <th
                   key={i}
-                  aria-sort={sortCol === col.field ? (sortDir === "asc" ? "ascending" : "descending") : undefined}
+                  aria-sort={sortCol === getColumnKey(col) ? (sortDir === "asc" ? "ascending" : "descending") : undefined}
                   tabIndex={col.renderCell ? undefined : 0}
-                  onKeyDown={event => { if (!col.renderCell && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); handleSort(col.field); } }}
-                  onClick={() => !col.renderCell && handleSort(col.field)}
+                  onKeyDown={event => { if (!col.renderCell && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); handleSort(getColumnKey(col)); } }}
+                  onClick={() => !col.renderCell && handleSort(getColumnKey(col))}
                   className="whitespace-nowrap" style={{textAlign:col.align||"left", width:col.width, cursor:col.renderCell?"default":"pointer"}}
                 >
                   <span className="inline-flex items-center gap-[4px]" >
                     {col.label}
-                    {!col.renderCell && sortCol === col.field
+                    {!col.renderCell && sortCol === getColumnKey(col)
                       ? (sortDir==="asc" ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronDown size={14} aria-hidden="true" />)
                       : (!col.renderCell && <ChevronsUpDown size={14} aria-hidden="true" className="opacity-[0.4]" />)}
                   </span>
@@ -502,8 +607,26 @@ export default function ProTable({
             ) : paged.map((row, ri) => {
               const globalIdx = page * rowsPerPage + ri;
               const isSel     = selected.has(globalIdx);
+              const handleRecordClick = (event) => {
+                if (event.target.closest("button, a, input, select, textarea, [role=checkbox], [data-slot=checkbox]")) return;
+                openDetails(row, event);
+              };
+              const handleRecordKeyDown = (event) => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                if (event.target !== event.currentTarget) return;
+                event.preventDefault();
+                openDetails(row, event);
+              };
               return (
-                <tr key={ri} style={{ background: isSel ? "var(--primary-ghost)" : "" }}>
+                <tr
+                  key={ri}
+                  tabIndex={0}
+                  aria-label={getRowLabel?.(row) || "Open record details"}
+                  className="pro-table-clickable-row"
+                  onClick={handleRecordClick}
+                  onKeyDown={handleRecordKeyDown}
+                  style={{ background: isSel ? "var(--primary-ghost)" : "" }}
+                >
                   {multiSelect && (
                     <td className="text-center whitespace-nowrap" >
                       <Checkbox aria-label={`Select row ${globalIdx + 1}`} checked={isSel} onCheckedChange={() => toggleRow(globalIdx)} className="mx-auto" />
@@ -512,16 +635,12 @@ export default function ProTable({
                   {visibleCols.map((col, ci) => (
                     <td
                       key={ci}
-                      className="whitespace-nowrap" style={{textAlign:col.align||"left", ...(col.maxWidth ? { maxWidth:col.maxWidth, overflow:"hidden" } : {})}}
+                      className="whitespace-nowrap" style={{textAlign:col.align||"left", ...(!col.renderCell ? { maxWidth:col.maxWidth || 220, overflow:"hidden" } : {})}}
                     >
                       {col.renderCell ? (
                         col.renderCell(row, globalIdx)
-                      ) : col.maxWidth ? (
-                        <span title={String(row[col.field] ?? "")} className="block overflow-hidden whitespace-nowrap" style={{textOverflow:"ellipsis"}}>
-                          {row[col.field] ?? "—"}
-                        </span>
                       ) : (
-                        row[col.field] ?? "—"
+                        <CellText value={formatColumnValue(getColumnValue(row, col), row, col)} maxWidth={col.maxWidth || 220} />
                       )}
                     </td>
                   ))}
@@ -531,6 +650,26 @@ export default function ProTable({
           </tbody>
         </table>
       </div>
+
+      {!onRowClick && <Sheet open={Boolean(detailRow)} onOpenChange={open => { if (!open) setDetailRow(null); }}>
+        <SheetContent side="right" className="table-detail-sheet">
+          {detailRow && <>
+            <SheetHeader className="table-detail-header">
+              <div className="table-detail-title-icon"><FileText size={18} aria-hidden="true" /></div>
+              <div><SheetTitle>{title ? `${title} details` : "Record details"}</SheetTitle><SheetDescription>Record information from this table</SheetDescription></div>
+            </SheetHeader>
+            <div className="table-detail-fields">
+              {detailFields.map(field => <div className="table-detail-field" key={field.key}>
+                <span>{field.label}</span><strong>{String(field.value)}</strong>
+              </div>)}
+              {detailFields.length === 0 && <p className="table-detail-empty">No displayable fields are available for this record.</p>}
+            </div>
+            <div className="table-detail-actions">
+              <Button type="button" variant="outline" onClick={copyDetails}><Copy size={15} aria-hidden="true" />{detailCopied ? "Copied" : "Copy details"}</Button>
+            </div>
+          </>}
+        </SheetContent>
+      </Sheet>}
 
       {/* ── Pagination ── */}
       <div className="pro-table-footer">

@@ -1,11 +1,12 @@
 import ChatWidget from "../../features/Chat/ChatWidget";
 import { useAppStore } from "../../store/useAppStore";
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { getRequest } from "../../shared/services/Apiservice";
 import { getCookie, setCookie } from "../../auth/Cookies";
+import LoadingMask from "../../shared/services/LoadingMask";
 
 export const refreshUserCookies = () => {
   const email = getCookie("email");
@@ -34,13 +35,18 @@ const Layout = () => {
   const setMobileNavOpen = useAppStore(state => state.setMobileNavOpen);
 
   useEffect(() => {
+    const syncRolePalette = () => {
+      const role = getCookie("role").toLowerCase().replace(/[^a-z]/g, "");
+      const rolePalette: Record<string, string> = { admin: "admin", manager: "manager", teamlead: "teamlead", employee: "employee" };
+      document.documentElement.dataset.role = rolePalette[role] || "employee";
+    };
     const token = getCookie("token");
-    if (!token) { setUserReady(true); return; }
+    if (!token) { document.documentElement.removeAttribute("data-role"); setUserReady(true); return; }
 
-    refreshUserCookies().finally(() => setUserReady(true));
+    refreshUserCookies().finally(() => { syncRolePalette(); setUserReady(true); });
   }, []);
 
-  if (!userReady) return null;
+  if (!userReady) return <div className="app-wrapper app-bootstrap-loading"><LoadingMask loading layout label="Preparing your workspace" /></div>;
 
   return (
     <div className="app-wrapper">
@@ -55,7 +61,9 @@ const Layout = () => {
         />
         <main className="main-content">
           <div className="page-wrap">
-            <Outlet />
+            <Suspense fallback={<LoadingMask loading layout label="Loading this page" />}>
+              <Outlet />
+            </Suspense>
           </div>
         </main>
       </div>

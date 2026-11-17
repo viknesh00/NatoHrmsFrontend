@@ -2,11 +2,16 @@ import React, { lazy } from "react";
 import ProtectedRoute from "../auth/ProtectedRoute";
 import GuestRoute from "../auth/GuestRoute";
 const Dashboard = lazy(() => import("../features/Dashboard/Dashboard"));
+const OrganizationChartPage = lazy(() => import("../features/Dashboard/OrganizationChartPage"));
+const HelpCenter = lazy(() => import("../features/HelpCenter/HelpCenter"));
+const PolicyPage = lazy(() => import("../features/Policies/PolicyPage"));
+const Notifications = lazy(() => import("../features/Notifications/Notifications"));
 const Layout = lazy(() => import("./layout/Layout"));
 const Login = lazy(() => import("../features/Login/Login"));
 const Employees = lazy(() => import("../features/Employee/Employee"));
 const AddEmployee = lazy(() => import("../features/Employee/AddEmployee"));
 const ViewEmployee = lazy(() => import("../features/Employee/ViewEmployee"));
+const VCard = lazy(() => import("../features/Employee/VCard"));
 const Attendance = lazy(() => import("../features/Attendance/Attendance"));
 const Announcement = lazy(() => import("../features/Announcement/Announcement"));
 const AnnouncementForm = lazy(() => import("../features/Announcement/AnnouncementForm"));
@@ -48,6 +53,12 @@ const routes = [
     element: (<ProtectedRoute><Layout /></ProtectedRoute>),
     children: [
       { path: "dashboard", element: <DashboardGuard><Dashboard /></DashboardGuard> },
+      { path: "organization-chart", element: <OrganizationChartPage /> },
+      { path: "help-center", element: <HelpCenter /> },
+      { path: "privacy-policy", element: <PolicyPage document="privacy" /> },
+      { path: "terms", element: <PolicyPage document="terms" /> },
+      { path: "standards", element: <PolicyPage document="standards" /> },
+      { path: "notifications", element: <Notifications /> },
       { path: "chat", element: <Chat /> },
       { path: "employees", element: <Employees /> },
       { path: "job-management", element: <JobManagement /> },
@@ -65,6 +76,7 @@ const routes = [
       { path: "employees/add-employee", element: <AddEmployee /> },
       { path: "employees/edit-employee/:email", element: <AddEmployee /> },
       { path: "view-employee", element: <ViewEmployee /> },
+      { path: "vcard", element: <VCard /> },
       { path: "announcement", element: <Announcement /> },
       { path: "announcement/announcement-form", element: <AnnouncementForm /> },
       { path: "payslip", element: <Payslip /> },

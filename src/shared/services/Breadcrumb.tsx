@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, House } from "lucide-react";
 
 function BreadcrumbItem({ item, isLast }: Record<string, any>) {
   return !isLast && item.link ? (
@@ -13,6 +13,14 @@ function BreadcrumbItem({ item, isLast }: Record<string, any>) {
 export default function Breadcrumb({ items, icon }: Record<string, any>) {
   return (
     <nav aria-label="Breadcrumb" className="breadcrumb flex flex-wrap items-center gap-1">
+      {items?.[0]?.label !== "Dashboard" && (
+        <>
+          <Link to="/dashboard" className="breadcrumb-home" aria-label="Go to Dashboard" title="Dashboard">
+            <House size={14} aria-hidden="true" />
+          </Link>
+          <ChevronRight size={12} aria-hidden="true" className="breadcrumb-separator" />
+        </>
+      )}
       {/* Page icon passed from parent */}
       {icon && (
         <span className="flex items-center mr-[8px] text-primary" >
