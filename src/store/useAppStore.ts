@@ -11,7 +11,7 @@ interface AppState {
   setChatPresentation: (presentation: 'widget' | 'sidepanel') => void;
   reset: () => void;
 }
-const initialState = { sidebarCollapsed: false, mobileNavOpen: false, chatOpen: false, chatPresentation: 'widget' as const };
+const initialState = { sidebarCollapsed: false, mobileNavOpen: false, chatOpen: false, chatPresentation: 'sidepanel' as const };
 // UI state only: authentication cookies and HR records are never persisted here.
 export const useAppStore = create<AppState>()(set => ({
   ...initialState,

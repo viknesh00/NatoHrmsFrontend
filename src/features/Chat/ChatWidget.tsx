@@ -22,7 +22,7 @@ export function ChatWidgetLauncher() {
       aria-label="Open HR assistant"
       aria-expanded={open}
       title="HR assistant"
-      onClick={() => { setPresentation("widget"); setOpen(true); }}
+      onClick={() => { setPresentation("sidepanel"); setOpen(true); }}
     >
       <MessageCircleMore size={18} aria-hidden="true" />
     </Button>

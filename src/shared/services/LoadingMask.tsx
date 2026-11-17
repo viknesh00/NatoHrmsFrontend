@@ -1,9 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { LoaderCircle } from "lucide-react";
 import { Users } from "lucide-react";
-import { GameOfLifeLoader } from "../../components/ui/game-of-life-loader";
 
 const LoadingMask = ({ loading, layout = false, label = "Loading your workspace" }: Record<string, any>) => {
+  const [shape] = useState(() => ["circle", "square", "diamond"][Math.floor(Math.random() * 3)]);
   if (!loading) return null;
   return (
     <div className={`loading-overlay${layout ? " loading-overlay-layout" : ""}`} role="status" aria-live="polite" aria-label={label}>
@@ -13,16 +13,12 @@ const LoadingMask = ({ loading, layout = false, label = "Loading your workspace"
           <span>People operations</span>
         </div>
         <div className="loading-animation" aria-hidden="true">
-          <GameOfLifeLoader
-            className="loading-game-of-life"
-            cellRadius={2}
-            cellSize={12}
-            density={0.22}
-            fadeDuration={480}
-            gap={2}
-            maxOpacity={0.34}
-            stepInterval={460}
-          />
+          <div className={`loading-geometry loading-geometry-${shape}`}>
+            <span className="loading-geometry-orbit" />
+            <span className="loading-geometry-primary" />
+            <span className="loading-geometry-secondary" />
+            <span className="loading-geometry-core" />
+          </div>
         </div>
         <div className="loading-status-line">
           <LoaderCircle size={14} className="loading-status-icon" aria-hidden="true" />

@@ -551,29 +551,9 @@ export default function Dashboard() {
             <p className="greeting-motivation" aria-live="polite">{motivation}</p>
           </div>
         </div>
-        <div className="greeting-banner-side">
-          <svg className="greeting-banner-art" viewBox="0 0 230 132" fill="none" aria-hidden="true">
-            <rect x="24" y="15" width="166" height="105" rx="5" fill="var(--card)" fillOpacity=".9" stroke="var(--border)" />
-            <rect x="38" y="29" width="34" height="34" rx="17" fill="var(--information-subtle)" />
-            <circle cx="55" cy="42" r="7" fill="var(--information)" fillOpacity=".75" />
-            <path d="M43 58c1.4-6 5.7-9 12-9s10.6 3 12 9" fill="var(--information)" fillOpacity=".45" />
-            <rect x="82" y="32" width="66" height="6" rx="3" fill="var(--foreground)" fillOpacity=".16" />
-            <rect x="82" y="45" width="49" height="5" rx="2.5" fill="var(--muted-foreground)" fillOpacity=".18" />
-            <rect x="38" y="76" width="49" height="31" rx="3" fill="var(--success-subtle)" />
-            <path d="M46 98l9-8 7 4 11-12" stroke="var(--success)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            <rect x="99" y="76" width="75" height="31" rx="3" fill="var(--muted)" />
-            <rect x="109" y="93" width="7" height="8" rx="1" fill="var(--information)" fillOpacity=".58" />
-            <rect x="122" y="87" width="7" height="14" rx="1" fill="var(--primary)" fillOpacity=".62" />
-            <rect x="135" y="82" width="7" height="19" rx="1" fill="var(--success)" fillOpacity=".75" />
-            <circle cx="194" cy="31" r="17" fill="var(--success-subtle)" stroke="var(--card)" strokeWidth="3" />
-            <path d="m187 31 5 5 9-10" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            <circle cx="206" cy="95" r="12" fill="var(--warning-subtle)" stroke="var(--card)" strokeWidth="3" />
-            <path d="M201 95h10M206 90v10" stroke="var(--warning)" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-          <div className="greeting-banner-date">
-            <Clock size={15} aria-hidden="true" />
-            <div><span>Today</span><strong>{today}</strong></div>
-          </div>
+        <div className="greeting-banner-date">
+          <Clock size={15} aria-hidden="true" />
+          <div><span>Today</span><strong>{today}</strong></div>
         </div>
       </div>
 

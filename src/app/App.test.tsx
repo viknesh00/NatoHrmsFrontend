@@ -11,10 +11,10 @@ vi.mock("../shared/services/Apiservice", () => ({
   deleteRequest: vi.fn(),
 }));
 
-test('renders sign in for a visitor', async () => {
+test('renders the public landing page for a visitor', async () => {
   window.history.replaceState({}, '', '/');
   render(<App />);
-  expect(await screen.findByRole('heading', { name: 'Welcome back' })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: 'Bring your people operations into focus.' })).toBeInTheDocument();
 });
 
 test('redirects a visitor opening a protected URL to sign in', async () => {

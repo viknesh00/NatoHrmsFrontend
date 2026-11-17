@@ -6,6 +6,8 @@ const OrganizationChartPage = lazy(() => import("../features/Dashboard/Organizat
 const HelpCenter = lazy(() => import("../features/HelpCenter/HelpCenter"));
 const PolicyPage = lazy(() => import("../features/Policies/PolicyPage"));
 const Notifications = lazy(() => import("../features/Notifications/Notifications"));
+const SettingsPage = lazy(() => import("../features/Settings/SettingsPage"));
+const LandingPage = lazy(() => import("../features/Landing/LandingPage"));
 const Layout = lazy(() => import("./layout/Layout"));
 const Login = lazy(() => import("../features/Login/Login"));
 const Employees = lazy(() => import("../features/Employee/Employee"));
@@ -23,8 +25,8 @@ const WorkingHours = lazy(() => import("../features/Attendance/WorkingHours"));
 const WorkingHoursForm = lazy(() => import("../features/Attendance/WorkingHoursForm"));
 const TimeSheetLayout = lazy(() => import("../features/TimeSheet/TimeSheetLayout"));
 const TimesheetCalendar = lazy(() => import("../features/TimeSheet/TimesheetCalendar"));
-import RoleBasedRedirect from "../auth/RoleBasedRedirect";
 import { DashboardGuard } from "../auth/HomePath";
+import { NotFoundPage, UnderConstructionPage } from "../features/Status/AppStatusPages";
 const Holiday = lazy(() => import("../features/Holiday/Holiday"));
 const CreateHoliday = lazy(() => import("../features/Holiday/CreateHoliday"));
 const CompanyDocument = lazy(() => import("../features/CompanyDocument/CompanyDocument"));
@@ -43,10 +45,11 @@ const EmployeeDetailsForm = lazy(() => import("../features/PublicForms/EmployeeD
 const Chat = lazy(() => import("../features/Chat/Chat"));
 
 const routes = [
-  { path: "/", element: <GuestRoute><Login /></GuestRoute> },
+  { path: "/", element: <GuestRoute><LandingPage /></GuestRoute> },
   { path: "/login", element: <GuestRoute><Login /></GuestRoute> },
   { path: "/sign-in", element: <GuestRoute><Login /></GuestRoute> },
   { path: "/forgot-password", element: <GuestRoute><ForgotPassword /></GuestRoute> },
+  { path: "/under-construction", element: <UnderConstructionPage /> },
   // Public (no login) - shareable link for employees to submit their details
   { path: "/employee-details", element: <EmployeeDetailsForm /> },
   {
@@ -59,6 +62,7 @@ const routes = [
       { path: "terms", element: <PolicyPage document="terms" /> },
       { path: "standards", element: <PolicyPage document="standards" /> },
       { path: "notifications", element: <Notifications /> },
+      { path: "settings", element: <SettingsPage /> },
       { path: "chat", element: <Chat /> },
       { path: "employees", element: <Employees /> },
       { path: "job-management", element: <JobManagement /> },
@@ -93,9 +97,9 @@ const routes = [
       { path: "company-documents", element: <CompanyDocument /> },
       { path: "company-documents/upload", element: <DocumentUploadForm /> },
       { path: "company-documents/edit", element: <DocumentUploadForm /> },
-      { path: "*", element: <RoleBasedRedirect /> },
     ],
   },
+  { path: "*", element: <NotFoundPage /> },
 ];
 
 export default routes;

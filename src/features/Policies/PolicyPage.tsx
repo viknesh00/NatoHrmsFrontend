@@ -30,9 +30,10 @@ export default function PolicyPage({ document: documentKey }: { document: keyof 
           <span className="policy-document-icon"><FileCheck2 size={18} aria-hidden="true" /></span>
           <div>
             <h2 id="policy-title">Workspace document</h2>
-            <p>Review this information with your organization administrator</p>
+            <p>NCons / Natobotics Technology · HRMS trust information</p>
           </div>
         </div>
+        <img className="policy-watermark" src="/assets/images/natobotics-logo.png" alt="" aria-hidden="true" />
         <article className="help-mdx-content policy-mdx-content"><Content /></article>
       </section>
     </main>
