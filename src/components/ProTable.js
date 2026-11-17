@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   Search, ChevronUp, ChevronDown, ChevronLeft, ChevronRight,
   ChevronsLeft, ChevronsRight, X, FileSpreadsheet, Check,
@@ -305,6 +306,46 @@ function smartCompare(av, bv) {
 
   // fallback — locale-aware with numeric collation
   return s1.localeCompare(s2, undefined, { numeric: true, sensitivity: "base" });
+}
+
+/* ─── CellText: long text ends with "..." and the full text shows in a styled tooltip on hover ─── */
+const DEFAULT_CELL_MAX = 220;
+function CellText({ text }) {
+  const ref = useRef(null);
+  const [tip, setTip] = useState(null);   // { x, y, below }
+
+  const show = () => {
+    const el = ref.current;
+    if (!el || el.scrollWidth <= el.clientWidth) return;   // fits - no tooltip needed
+    const r = el.getBoundingClientRect();
+    const below = window.innerHeight - r.bottom > 140 || r.top < 140;   // opens below the cell; above only when there is no room below
+    setTip({ x: Math.min(Math.max(r.left + r.width / 2, 190), window.innerWidth - 190), y: below ? r.bottom + 8 : r.top - 8, below });
+  };
+
+  return (
+    <>
+      <span ref={ref} onMouseEnter={show} onMouseLeave={() => setTip(null)}
+        style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {text}
+      </span>
+      {tip && createPortal(
+        <div role="tooltip" style={{
+          position: "fixed", left: tip.x, top: tip.y, transform: tip.below ? "translate(-50%, 0)" : "translate(-50%, -100%)",
+          maxWidth: 360, padding: "9px 13px", borderRadius: 10, zIndex: 20000, pointerEvents: "none",
+          background: "#0f1f1a", color: "#fff", fontSize: 12.5, lineHeight: 1.5, fontWeight: 500,
+          whiteSpace: "normal", wordBreak: "break-word", boxShadow: "0 10px 30px rgba(0,0,0,0.28)",
+          border: "1px solid rgba(255,255,255,0.08)", animation: "chipPop 0.14s ease",
+        }}>
+          {text}
+          <span style={{
+            position: "absolute", left: "50%", [tip.below ? "top" : "bottom"]: -5, width: 10, height: 10, background: "#0f1f1a",
+            transform: "translateX(-50%) rotate(45deg)",
+          }} />
+        </div>,
+        document.body
+      )}
+    </>
+  );
 }
 
 /* ─── StatusChip ─── */
@@ -760,16 +801,12 @@ export default function ProTable({
                   {visibleCols.map((col, ci) => (
                     <td
                       key={ci}
-                      style={{ textAlign:col.align||"left", whiteSpace:"nowrap", ...(col.maxWidth ? { maxWidth:col.maxWidth, overflow:"hidden" } : {}) }}
+                      style={{ textAlign:col.align||"left", whiteSpace:"nowrap", ...(!col.renderCell ? { maxWidth:col.maxWidth || DEFAULT_CELL_MAX, overflow:"hidden" } : {}) }}
                     >
                       {col.renderCell ? (
                         col.renderCell(row, globalIdx)
-                      ) : col.maxWidth ? (
-                        <span title={String(row[col.field] ?? "")} style={{ display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                          {row[col.field] ?? "—"}
-                        </span>
                       ) : (
-                        row[col.field] ?? "—"
+                        <CellText text={row[col.field] ?? "—"} />
                       )}
                     </td>
                   ))}
