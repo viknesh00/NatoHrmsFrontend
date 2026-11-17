@@ -1,69 +1,34 @@
-# Nato HRMS Frontend
+# Nato HRMS frontend
 
-The web frontend for Nato HRMS, an employee and human-resources management system. It includes areas for employee records, attendance, leave, payslips, onboarding, projects, hiring, announcements, timesheets, work status, and company documents.
+React 19, TypeScript, Vite, Tailwind CSS, shadcn/ui, and Zustand. Employee records, attendance, leave, payroll, onboarding, timesheets, projects, hiring, work status, documents, and the existing local HR assistant.
 
-## Requirements
+## Development
 
-- Node.js and npm
-- Access to the Nato HRMS API
+Use Node from `.nvmrc` and npm 11:
 
-## Setup
+```sh
+npm ci
+cp .env.example .env
+npm run dev
+```
 
-1. Install the dependencies:
+Set `VITE_API_BASE_URL` to the API root, including its trailing slash. Existing deployments using `REACT_APP_API_BASE_URL` remain supported as a build-time fallback. Frontend environment variables are public; never put credentials in them.
 
-   ```sh
-   npm install
-   ```
+## Validation
 
-2. Create a `.env` file in the project root and set the API base URL:
+```sh
+npm run typecheck
+npm run lint
+npm test
+npm run build
+node scripts/check-bundle.mjs
+npm run audit:production
+npx playwright install chromium
+npm run test:e2e
+```
 
-   ```env
-   REACT_APP_API_BASE_URL=https://your-api-host/
-   ```
+The build is emitted to `build/`. `npm run preview` serves it locally. Production hosting must serve `index.html` for client routes; Vercel configuration is included. E2E tests mock API calls and run Chromium at desktop and mobile viewport sizes.
 
-   Use the API root URL and include the trailing slash. The frontend appends endpoint paths such as `Auth/Login` to this value. `.env` is ignored by Git, so keep local configuration there.
+Brand tokens live in `src/styles/tokens.css`: primary `#EA580C`, accent `#FACC15`, warm neutral `#FFF7ED`, square corners, self-hosted Inter, and Tailwind status palettes. The chatbot is available as a lazy widget throughout the authenticated workspace and at its existing `/chat` route.
 
-3. Start the development server:
-
-   ```sh
-   npm start
-   ```
-
-   The app opens at [http://localhost:3000](http://localhost:3000). Restart the server after changing environment variables.
-
-## Available scripts
-
-| Command | Description |
-| --- | --- |
-| `npm start` | Run the development server. |
-| `npm run build` | Create an optimized production build in `build/`. |
-| `npm test` | Run the configured test runner. |
-
-## Tech stack
-
-- React 18
-- React Router
-- CRACO with Create React App tooling
-- Material UI and shared UI components
-- Axios for API requests
-
-## Project structure
-
-- `src/pages/` — HRMS pages and feature areas
-- `src/components/` — reusable application components
-- `src/services/` — API requests, authentication, permissions, and shared services
-- `src/routes.js` — application routes
-
-The API base URL is read from `REACT_APP_API_BASE_URL` in `src/services/Apiservice.js`. Authenticated API requests use the saved bearer token; the API service redirects to sign-in when the API returns `401`.
-
-## Production routing
-
-Deploy `build/` as the static output. `vercel.json` rewrites application URLs to `index.html` so opening or refreshing a nested route works. Other static hosts need the equivalent SPA fallback (for example, `try_files $uri $uri/ /index.html` in Nginx).
-
-Private routes require both the login flag and a token. Visitors are sent to `/login`, then returned to the requested page after signing in. Signed-in users opening an auth page go to their role and department home. `/employee-details` remains public.
-
-## Licence
-
-Copyright (c) 2026 Natobotics Technologies Private Limited. All rights reserved.
-
-Nato HRMS is proprietary software for authorised internal company use. External use, disclosure, or redistribution requires separate written authorisation. See [LICENSE](LICENSE) for the full terms. Third-party dependencies and assets retain their respective licences.
+See [architecture](docs/ARCHITECTURE.md), [commit-based releases](docs/RELEASING.md), and [security](SECURITY.md). No backend contracts, time calculations, approval rules, or role/department access rules are intentionally changed.

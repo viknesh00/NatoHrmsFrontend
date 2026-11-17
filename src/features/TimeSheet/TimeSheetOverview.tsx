@@ -1,0 +1,391 @@
+import { Button } from "../../components/ui/button";
+import { useEffect, useState } from "react";
+import { ClipboardList, Eye, Zap } from "lucide-react";
+import dayjs from "dayjs";
+import { useNavigate } from "react-router-dom";
+import { getRequest } from "../../shared/services/Apiservice";
+import LoadingMask from "../../shared/services/LoadingMask";
+import Breadcrumb from "../../shared/services/Breadcrumb";
+import ProTable from "../../components/ProTable";
+import { FormMonth } from "../../components/FormComponents";
+
+const MAX_REGULAR = 8;
+
+// FIX: workingHours is stored as a TRUE decimal fraction (hours + minutes/60,
+// e.g. 2h13m = 2.2167, 10h3m = 10.05) via the calendar's hmToDecimal — NOT a
+// literal "HH.MM" string. The previous toMin/fromMin here read the decimal
+// digits as literal minutes (2.2167.toFixed(2) = "2.22" -> misread as 22 min
+// instead of 13), which is why totals like "10.22 / 2.05 / 12.27" showed up
+// instead of the correct 10h13m / 2h3m / 12h16m. decToMin does the real
+// fraction -> minutes conversion; fmtMin formats minutes as "Xh Ym".
+const decToMin = (v) => Math.round((Number(v) || 0) * 60);
+
+/** Format a total-minutes integer as "Xh Ym" (matches the calendar's display). */
+const fmtMin = (totalMin) => {
+  const total = Math.max(0, Math.round(totalMin || 0));
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  if (h && m) return `${h}h ${m}m`;
+  if (h) return `${h}h`;
+  return `${m}m`;
+};
+
+/** Given total minutes for a day, split into { regularMin, overtimeMin } */
+const splitMinutes = (totalMin) => {
+  const regularMin  = Math.min(totalMin, MAX_REGULAR * 60);
+  const overtimeMin = Math.max(totalMin - MAX_REGULAR * 60, 0);
+  return { regularMin, overtimeMin };
+};
+
+export default function TimeSheetOverview({ tabSwitcher }: Record<string, any>) {
+  const navigate = useNavigate();
+  const [loading, setLoading]             = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(dayjs().format("YYYY-MM"));
+  const [appliedMonth, setAppliedMonth]   = useState(null);
+  const [tableData, setTableData]         = useState([]);
+
+  useEffect(() => {
+    const m = dayjs().format("YYYY-MM");
+    setAppliedMonth(m);
+    fetchTimesheet(m);
+  }, []);
+
+  /** Collapse any "Holiday: X" variant into a single "Holiday" bucket */
+  const normalizeLeaveType = (leaveType) => {
+    if (!leaveType) return leaveType;
+    if (/^holiday\s*:/i.test(leaveType.trim())) return "Holiday";
+    return leaveType.trim();
+  };
+
+  // ── Group API rows by user and compute regular / overtime / total / leave counts ──
+  const groupByUser = (data) => {
+    const grouped: Record<string, any> = {};
+    data.forEach(item => {
+      const uid = item.userId;
+      if (!grouped[uid]) {
+        grouped[uid] = {
+          employeeName: item.employeeName,
+          employeeId: item.employeeId,
+          username: item.username,
+          department: item.department,
+          projectAssigned: item.projectAssigned,
+          totalWorkingMin: 0,
+          totalRegularMin: 0,
+          totalOvertimeMin: 0,
+          leaveCounts: {},
+          timesheet: [],
+        };
+      }
+      const dayTotalMin = decToMin(item.workingHours);
+      const { regularMin, overtimeMin } = splitMinutes(dayTotalMin);
+      grouped[uid].timesheet.push(item);
+      grouped[uid].totalWorkingMin  += dayTotalMin;
+      grouped[uid].totalRegularMin  += regularMin;
+      grouped[uid].totalOvertimeMin += overtimeMin;
+
+      if (item.leaveType) {
+        const key = normalizeLeaveType(item.leaveType);
+        grouped[uid].leaveCounts[key] = (grouped[uid].leaveCounts[key] || 0) + 1;
+      }
+    });
+
+    return Object.values(grouped).map(d => ({
+      ...d,
+      totalWorkingHours: fmtMin(d.totalWorkingMin),
+      totalRegularHours: fmtMin(d.totalRegularMin),
+      totalOvertimeHours: fmtMin(d.totalOvertimeMin),
+      _rawTotal: d.totalWorkingMin,    // minutes
+      _rawRegular: d.totalRegularMin,  // minutes
+      _rawOvertime: d.totalOvertimeMin,// minutes
+      _totalLeaveDays: Object.values(d.leaveCounts as Record<string, number>).reduce((a, b) => a + b, 0),
+    }));
+  };
+
+  const fetchTimesheet = (month) => {
+    setLoading(true);
+    getRequest(`TimeSheet/GetTimeSheet?month=${month}`)
+      .then(res => { if (res?.data) setTableData(groupByUser(res.data)); else setTableData([]); })
+      .catch(console.error).finally(() => setLoading(false));
+  };
+
+  const handleApply = () => { fetchTimesheet(selectedMonth); setAppliedMonth(selectedMonth); };
+
+  const handleReset = () => {
+    const m = dayjs().format("YYYY-MM");
+    setSelectedMonth(m);
+    setAppliedMonth(m);
+    fetchTimesheet(m);
+  };
+
+  const normalizeDate = (raw) => {
+    if (!raw) return "";
+    return dayjs(raw.toString().split("T")[0]).format("DD-MM-YYYY");
+  };
+
+  // ── Build the "Leave Summary" sheet ──────────────────────────────────────
+  const buildLeaveSummarySheet = (data, XLSX: typeof import("xlsx")) => {
+    // Collect all distinct leave types present this month
+    const leaveTypesSet = new Set<any>();
+    data.forEach(emp => {
+      Object.keys(emp.leaveCounts || {}).forEach(lt => leaveTypesSet.add(lt));
+    });
+
+    // Fixed priority order: Holiday → Sick Leave → Casual Leave → anything new (alphabetical)
+    const LEAVE_ORDER = ["Holiday", "Sick Leave", "Casual Leave"];
+    const leaveTypes = [
+      ...LEAVE_ORDER.filter(lt => leaveTypesSet.has(lt)),
+      ...Array.from(leaveTypesSet).filter(lt => !LEAVE_ORDER.includes(lt)).sort(),
+    ];
+
+    // Column layout:
+    // [0-4] Emp ID | Employee Name | Email | Department | Project Assigned
+    // [5..4+N] leave type columns (Holiday, Sick Leave, Casual Leave, …)
+    // [5+N..7+N] TOTAL → Regular | Overtime | Total
+    const leaveStartCol  = 5;
+    const totalStartCol  = leaveStartCol + leaveTypes.length;
+
+    const headerRow1 = [
+      "Emp ID", "Employee Name", "Email", "Department", "Project Assigned",
+      ...leaveTypes,
+      "TOTAL", "", "",
+    ];
+    const headerRow2 = [
+      "", "", "", "", "",
+      ...leaveTypes.map(() => ""),
+      "Regular", "Overtime", "Total",
+    ];
+
+    const dataRows = data.map(emp => [
+      emp.employeeId,
+      emp.employeeName,
+      emp.username,
+      emp.department,
+      emp.projectAssigned,
+      ...leaveTypes.map(lt => emp.leaveCounts?.[lt] || 0),
+      emp.totalRegularHours,
+      emp.totalOvertimeHours,
+      emp.totalWorkingHours,
+    ]);
+
+    // Grand total row — leave columns intentionally left blank
+    // NOTE: _rawRegular / _rawOvertime / _rawTotal are in MINUTES
+    let grandRegMin = 0, grandOtMin = 0, grandAllMin = 0;
+    data.forEach(emp => {
+      grandRegMin += emp._rawRegular  || 0;
+      grandOtMin  += emp._rawOvertime || 0;
+      grandAllMin += emp._rawTotal    || 0;
+    });
+    const totalRow = [
+      "", "", "", "",
+      ...leaveTypes.map(() => ""),
+      "TOTAL",
+      fmtMin(grandRegMin), fmtMin(grandOtMin), fmtMin(grandAllMin),
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet([headerRow1, headerRow2, ...dataRows, totalRow]);
+
+    // Merges: only TOTAL spans 3 cols across row 1; leave columns are single cells (no merge)
+    const merges = [
+      { s: { r: 0, c: totalStartCol }, e: { r: 0, c: totalStartCol + 2 } }, // TOTAL
+    ];
+    ws["!merges"] = merges;
+
+    ws["!cols"] = [
+      { wch: 12 }, { wch: 24 }, { wch: 30 }, { wch: 18 }, { wch: 20 },
+      ...leaveTypes.map(() => ({ wch: 16 })),
+      { wch: 10 }, { wch: 10 }, { wch: 10 },
+    ];
+
+    return ws;
+  };
+
+  // ── Excel export — per-day columns split into Reg / OT / Total ───────────
+  const handleExport = async (data) => {
+    const XLSX = await import("xlsx");
+    const mObj = dayjs(selectedMonth + "-01");
+    const end = mObj.endOf("month");
+    const allDates = [];
+    let d = mObj.startOf("month");
+    while (d.isBefore(end) || d.isSame(end, "day")) {
+      allDates.push(d.format("DD-MM-YYYY"));
+      d = d.add(1, "day");
+    }
+
+    // Build header: fixed cols, then for each date 3 sub-cols, then 3 grand totals
+    const headerRow1 = [
+      "Emp ID", "Employee Name", "Email", "Department", "Project Assigned",
+      ...allDates.flatMap(ds => [ds, "", ""]),
+      "TOTAL", "", "",
+    ];
+    const headerRow2 = [
+      "", "", "", "", "",
+      ...allDates.flatMap(() => ["Regular", "Overtime", "Total"]),
+      "Regular", "Overtime", "Total",
+    ];
+
+    const dataRows = data.map(emp => {
+      const dayCells = allDates.flatMap(ds => {
+        const entry = emp.timesheet?.find(t => normalizeDate(t.entryDate) === ds);
+        const dayTotalMin = decToMin(entry?.workingHours);
+        const { regularMin, overtimeMin } = splitMinutes(dayTotalMin);
+        return [fmtMin(regularMin), fmtMin(overtimeMin), fmtMin(dayTotalMin)];
+      });
+
+      return [
+        emp.employeeId,
+        emp.employeeName,
+        emp.username,
+        emp.department,
+        emp.projectAssigned,
+        ...dayCells,
+        emp.totalRegularHours,
+        emp.totalOvertimeHours,
+        emp.totalWorkingHours,
+      ];
+    });
+
+    // Daily summary row
+    const totalRow = ["", "", "", "", "DAILY TOTAL"];
+    let grandRegMin = 0, grandOtMin = 0, grandAllMin = 0;
+    allDates.forEach(ds => {
+      let colRegMin = 0, colOtMin = 0, colTotalMin = 0;
+      data.forEach(emp => {
+        const entry = emp.timesheet?.find(t => normalizeDate(t.entryDate) === ds);
+        const dayTotalMin = decToMin(entry?.workingHours);
+        const { regularMin, overtimeMin } = splitMinutes(dayTotalMin);
+        colRegMin += regularMin;
+        colOtMin  += overtimeMin;
+        colTotalMin += dayTotalMin;
+      });
+      grandRegMin += colRegMin;
+      grandOtMin  += colOtMin;
+      grandAllMin += colTotalMin;
+      totalRow.push(fmtMin(colRegMin), fmtMin(colOtMin), fmtMin(colTotalMin));
+    });
+    totalRow.push(fmtMin(grandRegMin), fmtMin(grandOtMin), fmtMin(grandAllMin));
+
+    const ws = XLSX.utils.aoa_to_sheet([headerRow1, headerRow2, ...dataRows, totalRow]);
+
+    // Merge date header cells (3 cols per date) and total header
+    const merges = [];
+    allDates.forEach((_, i) => {
+      const col = 5 + i * 3;
+      merges.push({ s: { r: 0, c: col }, e: { r: 0, c: col + 2 } });
+    });
+    const totalStartCol = 5 + allDates.length * 3;
+    merges.push({ s: { r: 0, c: totalStartCol }, e: { r: 0, c: totalStartCol + 2 } });
+    ws["!merges"] = merges;
+
+    ws["!cols"] = [
+      { wch: 12 }, { wch: 24 }, { wch: 30 }, { wch: 18 }, { wch: 20 },
+      ...allDates.flatMap(() => [{ wch: 10 }, { wch: 10 }, { wch: 10 }]),
+      { wch: 10 }, { wch: 10 }, { wch: 10 },
+    ];
+
+    const wb = XLSX.utils.book_new();
+
+    // Leave Summary first
+    const leaveSummaryWs = buildLeaveSummarySheet(data, XLSX);
+    XLSX.utils.book_append_sheet(wb, leaveSummaryWs, "Leave Summary");
+
+    // Timesheet second
+    XLSX.utils.book_append_sheet(wb, ws, "Timesheet");
+
+    XLSX.writeFile(wb, `Timesheet_${mObj.format("MMM-YYYY")}.xlsx`);
+  };
+
+  // ── Filter bar ────────────────────────────────────────────────────────────
+  const filterBar = (
+    <FormMonth
+      label="Month"
+      value={selectedMonth}
+      onChange={e => setSelectedMonth(e.target.value)}
+    />
+  );
+
+  // ── Table columns ─────────────────────────────────────────────────────────
+  const columns = [
+    { field: "employeeId",         label: "Emp ID",           width: 100 },
+    { field: "employeeName",       label: "Employee" },
+    { field: "username",           label: "Email" },
+    { field: "department",         label: "Department",        filterable: true },
+    { field: "projectAssigned",    label: "Project Assigned",  filterable: true },
+    {
+      field: "totalRegularHours",
+      label: "Regular Hrs",
+      renderCell: (row) => (
+        <span className="font-semibold text-success bg-success-subtle p-[4px_12px] text-[12px]" style={{fontFamily: "var(--ui-font-heading)", borderRadius: "var(--radius)", display: "inline-block"}}>
+          {row.totalRegularHours}
+        </span>
+      ),
+    },
+    {
+      field: "totalOvertimeHours",
+      label: "Overtime Hrs",
+      renderCell: (row) => {
+        const hasOt = row._rawOvertime > 0;
+        return (
+          <span className="font-semibold p-[4px_12px] text-[12px] inline-flex items-center gap-[4px]" style={{fontFamily: "var(--ui-font-heading)", color:      hasOt ? "var(--primary-dark)" : "var(--muted-foreground)", background: hasOt ? "var(--primary-ghost)"  : "var(--muted)", borderRadius: "var(--radius)"}}>
+            {hasOt && <Zap size={10} />}
+            {row.totalOvertimeHours}
+          </span>
+        );
+      },
+    },
+    {
+      field: "totalWorkingHours",
+      label: "Total Hours",
+      renderCell: (row) => (
+        <span className="font-semibold text-[13px]" style={{fontFamily: "var(--ui-font-heading)", color: "var(--primary, var(--primary))"}}>
+          {row.totalWorkingHours}
+        </span>
+      ),
+    },
+    {
+      field: "action",
+      label: "Action",
+      renderCell: (row) => (
+        <Button variant="ghost" type="button"
+          className="icon-btn"
+          onClick={() => navigate("/timesheet/timesheet-view", {
+            state: {
+              viewData: row,
+              selectedMonth: dayjs((appliedMonth ?? selectedMonth) + "-01").format("MMM-YYYY"),
+            },
+          })}
+        >
+          <Eye size={15} />
+        </Button>
+      ),
+    },
+  ];
+
+  return (
+    <div>
+      <LoadingMask loading={loading} />
+      <div className="page-header">
+        <div>
+          <Breadcrumb icon={<ClipboardList size={13} />} items={[{ label: "Timesheet" }]} />
+          <h1 className="page-title">Timesheet</h1>
+          <p className="page-subtitle">Monthly working hours overview</p>
+          {tabSwitcher}
+        </div>
+      </div>
+      <ProTable
+        title="Employee Timesheet"
+        columns={columns}
+        data={tableData}
+        filterComponents={filterBar}
+        onApplyFilters={handleApply}
+        onResetFilters={handleReset}
+        onExport={handleExport}
+        externalFilters={[
+          {
+            label: "Month",
+            value: appliedMonth ? dayjs(appliedMonth + "-01").format("MMM YYYY") : null,
+          },
+        ]}
+      />
+    </div>
+  );
+}
