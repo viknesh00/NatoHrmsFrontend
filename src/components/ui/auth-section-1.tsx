@@ -35,15 +35,15 @@ function AuthGrainGradient() {
       if (!supportsWebGL) return;
 
       const styles = getComputedStyle(root);
-      const primary = styles.getPropertyValue("--time-art-deep").trim();
-      const light = styles.getPropertyValue("--time-art-light").trim();
+      const primary = styles.getPropertyValue("--role-primary").trim() || styles.getPropertyValue("--primary").trim();
+      const light = styles.getPropertyValue("--role-accent").trim() || styles.getPropertyValue("--accent").trim();
       if (primary && light) setColors([light, primary, primary, light]);
     };
 
     update();
     media.addEventListener("change", update);
     const observer = new MutationObserver(update);
-    observer.observe(root, { attributes: true, attributeFilter: ["data-day-period"] });
+    observer.observe(root, { attributes: true, attributeFilter: ["data-theme", "data-role"] });
     return () => {
       media.removeEventListener("change", update);
       observer.disconnect();

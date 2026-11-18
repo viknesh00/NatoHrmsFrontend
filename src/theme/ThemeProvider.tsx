@@ -1,7 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 
-import { getDayPeriod } from "./dayPeriod";
-
 export type AppTheme = "light" | "dark";
 type ThemeContextValue = { theme: AppTheme; toggleTheme: () => void; now: Date };
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -17,7 +15,6 @@ function getInitialTheme(): AppTheme {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [now, setNow] = useState(() => new Date());
-  const dayPeriod = getDayPeriod(now.getHours());
   const [theme, setTheme] = useState<AppTheme>(getInitialTheme);
   const [hasManualPreference, setHasManualPreference] = useState(() => {
     try {
@@ -58,7 +55,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useLayoutEffect(() => {
     const root = document.documentElement;
-    root.dataset.dayPeriod = dayPeriod;
+    delete root.dataset.dayPeriod;
     root.classList.toggle("dark", theme === "dark");
     root.dataset.theme = theme;
     root.style.colorScheme = theme;
@@ -66,7 +63,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       "content",
       getComputedStyle(document.body).backgroundColor
     );
-  }, [theme, dayPeriod]);
+  }, [theme]);
 
   useEffect(() => {
     if (hasManualPreference) {

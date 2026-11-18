@@ -36,8 +36,8 @@ export default function BirthdayCelebration({ name, profileId, dateKey, onDismis
     const fire = confetti.create(canvas, { resize: true, disableForReducedMotion: true });
     const palette = getComputedStyle(document.documentElement);
     const colors = [
-      palette.getPropertyValue("--time-art-light").trim() || "#77c9a8",
-      palette.getPropertyValue("--time-art-deep").trim() || "#2f7659",
+      palette.getPropertyValue("--accent").trim() || "#51bc8f",
+      palette.getPropertyValue("--primary").trim() || "#2f7659",
       palette.getPropertyValue("--role-accent").trim() || "#51bc8f",
       "#f5c56d",
     ];

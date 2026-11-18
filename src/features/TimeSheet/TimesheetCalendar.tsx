@@ -874,8 +874,7 @@ const includeSunday   = getCookie("includeSunday")   === "true";
       {/* ── Entry Modal ──────────────────────────────────────────────────────── */}
       {modal && selDate && <WorkflowDialog title="Log Hours" onClose={() => setModal(false)} busy={loading} width="560px" dismissible={true}>
 <div
-            className={cn("modal", "max-w-[560px] w-[100%] max-h-[calc(100vh_-_32px)] overflow-y-auto m-[auto] relative z-[99999]")}
-            
+            className="modal timesheet-log-form"
             onClick={e=>e.stopPropagation()}
           >
 
@@ -895,6 +894,8 @@ const includeSunday   = getCookie("includeSunday")   === "true";
                 <Button variant="ghost" type="button" className="modal-close" onClick={()=>setModal(false)}><X size={16}/></Button>
               </div>
             </div>
+
+            <div className="modal-scroll">
 
             {/* Saved Tasks Preview */}
             {currentTaskList.length>0 && !deleteConfirm && (
@@ -982,11 +983,11 @@ const includeSunday   = getCookie("includeSunday")   === "true";
                   </label>
                 </div>
 
-                <div className="grid gap-[8px] mb-[8px] p-[0_4px]" style={{gridTemplateColumns:"1fr 128px 36px"}}>
+                <div className="timesheet-task-grid mb-[8px] p-[0_4px]">
                   <span className="text-[12px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.05em]" >Task Name <span className="text-[var(--coral)]" >*</span></span>
-                  <div className="flex gap-[4px]" >
-                    <span className="text-[12px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.05em] text-center" style={{flex:1}}>HH</span>
-                    <span className="text-[12px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.05em] text-center" style={{flex:1}}>MM</span>
+                  <div className="timesheet-task-duration">
+                    <span className="text-[12px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.05em] text-center">HH</span>
+                    <span className="text-[12px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.05em] text-center">MM</span>
                   </div>
                   <span/>
                 </div>
@@ -1007,7 +1008,7 @@ const includeSunday   = getCookie("includeSunday")   === "true";
                     const mmOptions    = curHH>=maxHour ? Array.from({ length: maxMinAtMax+1 }, (_,i)=>i) : MINUTE_OPTIONS;
                     return (
                       <div key={idx} className="flex flex-col gap-[4px]" >
-                        <div className="grid gap-[8px] items-center" style={{gridTemplateColumns:"1fr 128px 36px"}}>
+                        <div className="timesheet-task-grid">
                           <Input
                             className={cn(`fc-input${nameErrors.reg[idx]?" fc-input-error":""}`, "text-[13px]")}
                             
@@ -1016,7 +1017,7 @@ const includeSunday   = getCookie("includeSunday")   === "true";
                             value={task.name}
                             onChange={e=>updateTask("reg",idx,"name",e.target.value)}
                           />
-                          <div className="flex gap-[4px]" >
+                          <div className="timesheet-task-duration">
                             <DurationDropdown
                               value={curHH}
                               options={hhOptions}
@@ -1126,11 +1127,11 @@ const includeSunday   = getCookie("includeSunday")   === "true";
                     </Button>
                   </div>
 
-                  <div className="grid gap-[8px] mb-[8px] p-[0_4px]" style={{gridTemplateColumns:"1fr 128px 36px"}}>
+                  <div className="timesheet-task-grid mb-[8px] p-[0_4px]">
                     <span className="text-[12px] font-semibold text-primary uppercase tracking-[0.05em]" >OT Task Name <span className="text-[var(--coral)]" >*</span></span>
-                    <div className="flex gap-[4px]" >
-                      <span className="text-[12px] font-semibold text-primary uppercase tracking-[0.05em] text-center" style={{flex:1}}>HH</span>
-                      <span className="text-[12px] font-semibold text-primary uppercase tracking-[0.05em] text-center" style={{flex:1}}>MM</span>
+                    <div className="timesheet-task-duration">
+                      <span className="text-[12px] font-semibold text-primary uppercase tracking-[0.05em] text-center">HH</span>
+                      <span className="text-[12px] font-semibold text-primary uppercase tracking-[0.05em] text-center">MM</span>
                     </div>
                     <span/>
                   </div>
@@ -1150,7 +1151,7 @@ const includeSunday   = getCookie("includeSunday")   === "true";
                       const mmOptions    = curHH>=maxHour ? Array.from({ length: maxMinAtMax+1 }, (_,i)=>i) : MINUTE_OPTIONS;
                       return (
                       <div key={idx} className="flex flex-col gap-[4px]" >
-                        <div className="grid gap-[8px] items-center" style={{gridTemplateColumns:"1fr 128px 36px"}}>
+                        <div className="timesheet-task-grid">
                           <Input
                             className={cn(`fc-input fc-input-ot${nameErrors.ot[idx]?" fc-input-error":""}`, "text-[13px]")}
                             
@@ -1159,7 +1160,7 @@ const includeSunday   = getCookie("includeSunday")   === "true";
                             value={task.name}
                             onChange={e=>updateTask("ot",idx,"name",e.target.value)}
                           />
-                          <div className="flex gap-[4px]" >
+                          <div className="timesheet-task-duration">
                             <DurationDropdown
                               value={curHH}
                               options={hhOptions}
@@ -1310,6 +1311,7 @@ const includeSunday   = getCookie("includeSunday")   === "true";
                   )}
                 </div>
               )}
+            </div>
             </div>
 
             {/* Footer */}

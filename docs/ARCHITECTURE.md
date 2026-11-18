@@ -10,7 +10,7 @@
 
 ## Loading and exports
 
-Feature routes, the assistant widget, spreadsheet exports, and PDF generation load on demand. The worker and local model initialize only within the assistant; its existing navigation guidance and access rules are retained. Existing `/chat` deep links remain available. Closing the widget unmounts the worker and clears its in-memory conversation.
+Feature routes, the assistant widget, spreadsheet exports, and PDF generation load on demand. The assistant answers common navigation questions immediately and loads its local Hugging Face model when preparing to answer other questions. The browser can reuse the model files, and the worker stays warm across widget openings during the current page session. Closing the widget clears the conversation. The `/chat` route opens the same assistant directly.
 
 ## TypeScript migration
 

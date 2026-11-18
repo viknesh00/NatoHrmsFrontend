@@ -1,6 +1,6 @@
 .vcard-badge-stage {
-  --badge-ink: var(--time-art-deep, #19483a);
-  --badge-accent: var(--time-art-light, #81d4ae);
+  --badge-ink: var(--primary);
+  --badge-accent: var(--accent);
   position: relative;
   display: grid;
   width: 100%;
@@ -10,9 +10,7 @@
   place-items: center;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background:
-    var(--time-pattern, none) 0 0 / var(--pattern-size, auto),
-    radial-gradient(ellipse at 50% 57%, var(--card) 10%, var(--workspace-wash, var(--primary-ghost)) 76%, var(--muted));
+  background: radial-gradient(ellipse at 50% 57%, var(--card) 10%, var(--workspace-wash) 76%, var(--muted));
 }
 
 .event-badge-canvas {
@@ -46,16 +44,16 @@
 .vcard-static-badge {
   position: relative;
   width: min(68%, 236px);
-  padding-top: 52px;
-  transform: rotate(-5deg);
+  padding-top: 24px;
+  transform: translateY(-22px) rotate(-5deg);
 }
 
 .vcard-static-strap {
   position: absolute;
-  bottom: calc(100% - 60px);
+  bottom: calc(100% - 32px);
   left: 50%;
   width: 12px;
-  height: 200px;
+  height: 144px;
   background: linear-gradient(90deg, var(--badge-ink) 65%, var(--badge-accent));
   transform: rotate(7deg);
   transform-origin: bottom center;
@@ -78,7 +76,7 @@
   gap: 7px;
   padding: 24px 15px 0;
   border-bottom: 3px solid var(--badge-accent);
-  background: var(--time-pattern, none) 0 0 / var(--pattern-size, auto), var(--badge-ink);
+  background: var(--badge-ink);
   color: #fff;
   font-size: var(--type-secondary);
   font-weight: 700;

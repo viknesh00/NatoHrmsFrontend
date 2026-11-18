@@ -15,7 +15,7 @@
 }
 
 .auth-section-one-visual {
-  --auth-art-base: color-mix(in srgb, var(--time-art-deep, var(--role-primary-hover)) 46%, #13161d);
+  --auth-art-base: color-mix(in srgb, var(--role-primary-hover) 46%, #13161d);
   display: none;
   position: relative;
   isolation: isolate;
@@ -38,15 +38,13 @@
 
 .auth-section-one-art {
   background:
-    radial-gradient(ellipse at 83% 90%, var(--time-art-light, var(--role-dark-accent)), transparent 58%),
-    radial-gradient(ellipse at 60% 71%, var(--time-art-deep, var(--role-primary)), transparent 67%);
+    radial-gradient(ellipse at 83% 90%, var(--role-dark-accent), transparent 58%),
+    radial-gradient(ellipse at 60% 71%, var(--role-primary), transparent 67%);
 }
 
 .auth-section-one-art::after {
   content: "";
-  background-image: var(--time-pattern, none),
-    linear-gradient(154deg, var(--auth-art-base) 5%, color-mix(in srgb, var(--auth-art-base) 88%, transparent) 36%, transparent 78%);
-  background-size: var(--pattern-size, auto), auto;
+  background-image: linear-gradient(154deg, var(--auth-art-base) 5%, color-mix(in srgb, var(--auth-art-base) 88%, transparent) 36%, transparent 78%);
 }
 
 .auth-section-one-copy {

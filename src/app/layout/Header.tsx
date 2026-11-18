@@ -66,18 +66,15 @@ const fetchIp = async (retries = 2) => {
  * Velachery instead of Chennai
  */
 const fetchLocalityFromCoords = async (lat, lon) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3500);
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 6000);
-
     const r = await fetch(
       `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`,
       {
         signal: controller.signal,
       }
     );
-
-    clearTimeout(timeout);
 
     if (r.ok) {
       const d = await r.json();
@@ -103,6 +100,8 @@ const fetchLocalityFromCoords = async (lat, lon) => {
       "BigDataCloud reverse geocode failed:",
       err
     );
+  } finally {
+    clearTimeout(timeout);
   }
 
   return "Unknown";
@@ -113,10 +112,9 @@ const fetchLocalityFromCoords = async (lat, lon) => {
  * Priority is given to smaller locality names.
  */
 const fetchLocalityFromCoordsNominatim = async (lat, lon) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3500);
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 6000);
-
     const r = await fetch(
       `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=18`,
       {
@@ -126,8 +124,6 @@ const fetchLocalityFromCoordsNominatim = async (lat, lon) => {
         },
       }
     );
-
-    clearTimeout(timeout);
 
     if (r.ok) {
       const d = await r.json();
@@ -154,28 +150,17 @@ const fetchLocalityFromCoordsNominatim = async (lat, lon) => {
       "Nominatim reverse geocode failed:",
       err
     );
+  } finally {
+    clearTimeout(timeout);
   }
 
   return "Unknown";
 };
 
-/**
- * Resolve coordinates to locality name.
- *
- * First:
- * BigDataCloud
- *
- * Fallback:
- * OpenStreetMap Nominatim
- */
+/** Keep the same provider priority when comparing GPS locality with the assigned city. */
 const resolveLocalityFromCoords = async (lat, lon) => {
   const locality = await fetchLocalityFromCoords(lat, lon);
-
-  if (locality !== "Unknown") {
-    return locality;
-  }
-
-  return fetchLocalityFromCoordsNominatim(lat, lon);
+  return locality === "Unknown" ? fetchLocalityFromCoordsNominatim(lat, lon) : locality;
 };
 
 /** Approximate cache-only fallback; never used to authorize or submit a clock action. */
@@ -197,48 +182,83 @@ const fetchCityFromIp = async () => {
 
 const MAX_CLOCK_LOCATION_ACCURACY_METERS = 50;
 
-/** Read a fresh high-accuracy fix, then briefly refine coarse readings via watchPosition. */
-const getAccurateCoords = () =>
-  new Promise<{ lat: number; lon: number; accuracy: number } | null>((resolve) => {
-    if (!navigator.geolocation?.getCurrentPosition) return resolve(null);
+type DeviceGeoFix = { lat: number; lon: number; accuracy: number | null };
+type DeviceGeoError = "insecure" | "unsupported" | "denied" | "unavailable" | "timeout";
+type DeviceGeoResult = { fix: DeviceGeoFix } | { error: DeviceGeoError };
 
-    let watchId: number | null = null;
+/** Read a fresh browser location and refine it when the attendance rule requires precision. */
+const getAccurateCoords = ({ requirePreciseAccuracy = false, retry = true } = {}) =>
+  new Promise<DeviceGeoResult>((resolve) => {
+    if (!window.isSecureContext) return resolve({ error: "insecure" });
+    const geolocation = navigator.geolocation;
+    if (!geolocation?.getCurrentPosition) return resolve({ error: "unsupported" });
+
+    let watchId: number | undefined;
     let settled = false;
-    let bestFix: { lat: number; lon: number; accuracy: number } | null = null;
-    let refinementTimeoutId: ReturnType<typeof setTimeout> | null = null;
-    const finish = (fix: typeof bestFix) => {
+    let bestFix: DeviceGeoFix | undefined;
+    let lastError: DeviceGeoError = "timeout";
+    let refinementTimeoutId: ReturnType<typeof setTimeout> | undefined;
+    const options = { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 };
+
+    const finish = (result: DeviceGeoResult) => {
       if (settled) return;
       settled = true;
-      if (refinementTimeoutId) clearTimeout(refinementTimeoutId);
-      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-      resolve(fix);
+      clearTimeout(refinementTimeoutId);
+      clearTimeout(overallTimeoutId);
+      if (watchId !== undefined) geolocation.clearWatch(watchId);
+      resolve(result);
     };
-    const acceptFix = ({ coords }: GeolocationPosition) => {
-      const fix = { lat: coords.latitude, lon: coords.longitude, accuracy: coords.accuracy };
-      if (!Number.isFinite(fix.lat) || !Number.isFinite(fix.lon) || !Number.isFinite(fix.accuracy)) return;
-      if (!bestFix || fix.accuracy < bestFix.accuracy) bestFix = fix;
-      if (bestFix.accuracy <= MAX_CLOCK_LOCATION_ACCURACY_METERS) {
-        finish(bestFix);
+
+    const finishWithBestFix = () => finish(bestFix ? { fix: bestFix } : { error: lastError });
+
+    const startRefinement = () => {
+      if (watchId !== undefined) return;
+      if (!retry || !geolocation.watchPosition) {
+        finishWithBestFix();
         return;
       }
-      if (watchId === null && navigator.geolocation.watchPosition) {
-        watchId = navigator.geolocation.watchPosition(
-          acceptFix,
-          () => finish(null),
-          { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 },
-        );
-        refinementTimeoutId = setTimeout(() => finish(null), 6000);
+      try {
+        watchId = geolocation.watchPosition(acceptFix, handleError, options);
+        refinementTimeoutId = setTimeout(finishWithBestFix, 6000);
+      } catch {
+        finishWithBestFix();
       }
     };
 
+    const handleError = (error: GeolocationPositionError) => {
+      if (settled) return;
+      if (error.code === error.PERMISSION_DENIED) {
+        finish({ error: "denied" });
+        return;
+      }
+      lastError = error.code === error.TIMEOUT ? "timeout" : "unavailable";
+      startRefinement();
+    };
+
+    const acceptFix = ({ coords }: GeolocationPosition) => {
+      if (settled) return;
+      const { latitude: lat, longitude: lon, accuracy } = coords;
+      if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+        lastError = "unavailable";
+        startRefinement();
+        return;
+      }
+
+      const fix = { lat, lon, accuracy: Number.isFinite(accuracy) && accuracy >= 0 ? accuracy : null };
+      if (!requirePreciseAccuracy || (fix.accuracy !== null && fix.accuracy <= MAX_CLOCK_LOCATION_ACCURACY_METERS)) {
+        finish({ fix });
+        return;
+      }
+      if (!bestFix || (fix.accuracy ?? Infinity) < (bestFix.accuracy ?? Infinity)) bestFix = fix;
+      startRefinement();
+    };
+
+    const overallTimeoutId = setTimeout(finishWithBestFix, 15000);
+
     try {
-      navigator.geolocation.getCurrentPosition(acceptFix, () => finish(null), {
-        enableHighAccuracy: true,
-        timeout: 12000,
-        maximumAge: 0,
-      });
+      geolocation.getCurrentPosition(acceptFix, handleError, options);
     } catch {
-      finish(null);
+      finish({ error: "unavailable" });
     }
   });
 
@@ -265,33 +285,13 @@ const playClockConfirmation = () => {
   }
 };
 
-/**
- * Resolve a fresh browser GPS fix and reverse geocode its locality.
- * IP location is intentionally excluded from clock actions because it is not a precise fix.
- *
- * Returns:
- * {
- *   location,
- *   lat,
- *   lon,
- *   accuracy,
- *   source
- * }
- */
-const fetchLocation = async () => {
-  const coords = await getAccurateCoords();
-
-  if (!coords) return null;
-  const locality = await resolveLocalityFromCoords(coords.lat, coords.lon);
-
-  return {
-    location: locality,
-    lat: coords.lat,
-    lon: coords.lon,
-    accuracy: coords.accuracy,
-    source: "GPS",
-  };
-};
+const clockLocationErrorMessage = (error: DeviceGeoError, action: "clock in" | "clock out") => ({
+  insecure: `Open the HTTPS version of this site to share your location and ${action}.`,
+  unsupported: `Use a browser that supports location sharing to ${action}.`,
+  denied: `Allow location access for this site in your browser and device settings to ${action}.`,
+  unavailable: `Your browser couldn't find your location. Turn on your device's location services and try to ${action} again.`,
+  timeout: `Getting your location took too long. Move near a window or outdoors and try to ${action} again.`,
+})[error];
 
 /**
  * Refresh cached GPS-based location.
@@ -310,15 +310,16 @@ const refreshGpsLocationCookie = async () => {
       return;
     }
 
-    const coords = await getAccurateCoords();
+    const result = await getAccurateCoords({ retry: false });
 
-    if (!coords) {
+    if ("error" in result) {
       return;
     }
 
+    const { fix } = result;
     let locality = await resolveLocalityFromCoords(
-      coords.lat,
-      coords.lon
+      fix.lat,
+      fix.lon
     );
 
     if (locality === "Unknown") {
@@ -339,19 +340,19 @@ const refreshGpsLocationCookie = async () => {
 
     setCookie(
       "locationLat",
-      coords.lat,
+      fix.lat,
       expiry
     );
 
     setCookie(
       "locationLon",
-      coords.lon,
+      fix.lon,
       expiry
     );
 
     setCookie(
       "locationAccuracy",
-      coords.accuracy,
+      fix.accuracy ?? "",
       expiry
     );
 
@@ -437,7 +438,6 @@ const Header = ({ onMenuClick = () => { }, navOpen = false }: Record<string, any
     ...getVisibleMenuItems(employeeRole, getCookie("department") || ""),
     { to: "/help-center", label: "Help Center", icon: <CircleHelp size={18} />, roles: [employeeRole] },
     { to: "/notifications", label: "Notifications", icon: <Bell size={18} />, roles: [employeeRole] },
-    { to: "/view-employee", label: "My Profile", icon: <ProfileAvatar seed={getCookie("email")} initials={initials} className="global-search-profile-icon" />, roles: [employeeRole] },
   ].filter((item, index, items) => items.findIndex((candidate) => candidate.to === item.to) === index);
   const matchingSearchItems = searchItems
     .filter((item) => item.label.toLocaleLowerCase().includes(globalSearchQuery.trim().toLocaleLowerCase()))
@@ -622,26 +622,21 @@ const Header = ({ onMenuClick = () => { }, navOpen = false }: Record<string, any
 
   const handleClock = async () => {
     setLoading(true);
+    const action = clockedIn ? "clock out" : "clock in";
 
     try {
-      // Resolve the device GPS fix before any non-location network request.
-      const locationData = await fetchLocation();
-
-      if (
-        !locationData ||
-        locationData.source !== "GPS" ||
-        locationData.accuracy > MAX_CLOCK_LOCATION_ACCURACY_METERS ||
-        typeof locationData.lat !== "number" ||
-        typeof locationData.lon !== "number"
-      ) {
-        ToastError(`Allow precise location access (within ${MAX_CLOCK_LOCATION_ACCURACY_METERS} m) to clock in or out.`);
+      const result = await getAccurateCoords({ requirePreciseAccuracy: geoFenceEnabled });
+      if ("error" in result) {
+        ToastError(clockLocationErrorMessage(result.error, action));
+        return;
+      }
+      const { fix } = result;
+      if (geoFenceEnabled && (fix.accuracy === null || fix.accuracy > MAX_CLOCK_LOCATION_ACCURACY_METERS)) {
+        ToastError(`Your work location requires accuracy within ${MAX_CLOCK_LOCATION_ACCURACY_METERS} m. Turn on precise location, move near a window or outdoors, and try to ${action} again.`);
         return;
       }
 
-      const ip = await fetchIp();
-
-      const location =
-        locationData.location;
+      const location = await resolveLocalityFromCoords(fix.lat, fix.lon);
 
       // ---------------------------------------------------------------------
       // Geo-fence validation
@@ -681,12 +676,11 @@ const Header = ({ onMenuClick = () => { }, navOpen = false }: Record<string, any
             `Clock-In blocked: you're in ${location}, but your assigned location is ${workLocationCity}.`
           );
 
-          setLoading(false);
-
           return;
         }
       }
 
+      const ip = await fetchIp();
       const now = new Date();
 
       // Local ISO without UTC suffix
@@ -710,17 +704,13 @@ const Header = ({ onMenuClick = () => { }, navOpen = false }: Record<string, any
         {
           location,
 
-          latitude:
-            locationData.lat,
+          latitude: fix.lat,
 
-          longitude:
-            locationData.lon,
+          longitude: fix.lon,
 
-          accuracy:
-            locationData.accuracy,
+          accuracy: fix.accuracy,
 
-          locationSource:
-            locationData.source,
+          locationSource: "GPS",
 
           ipAddress: ip,
 
@@ -820,7 +810,7 @@ const Header = ({ onMenuClick = () => { }, navOpen = false }: Record<string, any
       >
         <Menu size={17} />
       </Button>
-      <LoadingMask loading={loading} />
+      <LoadingMask loading={loading} label="Recording attendance" />
 
       {/* Password change modal */}
       {showPassword && (
@@ -978,7 +968,7 @@ const Header = ({ onMenuClick = () => { }, navOpen = false }: Record<string, any
             type="button"
             className="profile-menu-trigger"
             aria-label="View profile"
-            onClick={() => navigate("/view-employee")}
+            onClick={() => navigate("/profile")}
           >
             <ProfileAvatar seed={getCookie("email")} initials={initials} className="header-avatar" />
           </Button>

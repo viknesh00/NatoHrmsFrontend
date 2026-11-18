@@ -15,6 +15,9 @@ async function attendanceWorkspace(page: Page, failFirstLoad = false) {
       clockPayloads.push(route.request().postDataJSON());
       return route.fulfill({ json: {} });
     }
+    if (new URL(url).hostname.endsWith('.ipify.org')) {
+      return route.fulfill({ json: { ip: '192.0.2.1' } });
+    }
     if (url.includes('Attendance/GetDailyAttendance') || url.includes('Attendance/GetMonthlyAttendance')) {
       const payload = route.request().postDataJSON();
       requests.push({ endpoint: url.includes('Monthly') ? 'monthly' : 'daily', payload });
@@ -116,12 +119,16 @@ test('requires GPS permission before sending a clock action', async ({ page }) =
   await page.context().clearPermissions();
   await page.goto('/attendance');
   await page.getByRole('button', { name: 'Clock in', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('Allow precise location access');
+  await expect(page.getByRole('alert')).toContainText('Allow location access');
   expect(api.clockPayloads).toHaveLength(0);
 });
 
-test('rejects approximate browser location instead of submitting it', async ({ page }) => {
+test('rejects approximate browser location when geo-fencing is enabled', async ({ page }) => {
   const api = await attendanceWorkspace(page);
+  await page.context().addCookies([
+    { name: 'geoFenceEnabled', value: 'true', url: 'http://127.0.0.1:4173' },
+    { name: 'workLocationCity', value: 'Mountain View', url: 'http://127.0.0.1:4173' },
+  ]);
   await page.context().grantPermissions(['geolocation']);
   await page.context().setGeolocation({ latitude: 37.4219999, longitude: -122.0840575, accuracy: 500 });
   await page.goto('/attendance');
@@ -130,4 +137,46 @@ test('rejects approximate browser location instead of submitting it', async ({ p
   await clockButton.click();
   await expect(page.getByRole('alert')).toContainText('within 50 m');
   expect(api.clockPayloads).toHaveLength(0);
+});
+
+test('clocks in and out with a coarser GPS fix when geo-fencing is disabled', async ({ page }) => {
+  const api = await attendanceWorkspace(page);
+  await page.context().grantPermissions(['geolocation']);
+  await page.context().setGeolocation({ latitude: 37.4219999, longitude: -122.0840575, accuracy: 120 });
+  await page.goto('/attendance');
+  const clockIn = page.getByRole('button', { name: 'Clock in', exact: true });
+  await clockIn.click();
+  await expect.poll(() => api.clockPayloads.length, { timeout: 5000 }).toBe(1);
+  await page.context().setGeolocation({ latitude: 37.4219999, longitude: -122.0840575, accuracy: 150 });
+  await page.getByRole('button', { name: /Clock out/ }).click();
+  await expect.poll(() => api.clockPayloads.length, { timeout: 5000 }).toBe(2);
+  expect(api.clockPayloads[0]).toMatchObject({
+    latitude: 37.4219999,
+    longitude: -122.0840575,
+    accuracy: 120,
+    locationSource: 'GPS',
+  });
+  expect(api.clockPayloads[1]).toMatchObject({ accuracy: 150, locationSource: 'GPS' });
+  await expect(clockIn).toBeVisible();
+});
+
+test('recovers from an unavailable location on a geo-fenced clock-in', async ({ page }) => {
+  const api = await attendanceWorkspace(page);
+  await page.context().addCookies([
+    { name: 'geoFenceEnabled', value: 'true', url: 'http://127.0.0.1:4173' },
+    { name: 'workLocationCity', value: 'Mountain View', url: 'http://127.0.0.1:4173' },
+    { name: 'locationFetchedAt', value: String(Date.now()), url: 'http://127.0.0.1:4173' },
+  ]);
+  await page.context().grantPermissions(['geolocation']);
+  await page.context().setGeolocation({ latitude: 37.4219999, longitude: -122.0840575, accuracy: 50 });
+  await page.addInitScript(() => {
+    navigator.geolocation.getCurrentPosition = (_, onError) => {
+      queueMicrotask(() => onError?.({ code: 2, message: 'Position unavailable', PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 }));
+    };
+  });
+  await page.route('https://api.bigdatacloud.net/**', route => route.fulfill({ status: 503 }));
+  await page.route('https://nominatim.openstreetmap.org/**', route => route.fulfill({ json: { address: { city: 'Mountain View' } } }));
+  await page.goto('/attendance');
+  await page.getByRole('button', { name: 'Clock in', exact: true }).click();
+  await expect.poll(() => api.clockPayloads[0]).toMatchObject({ location: 'Mountain View', accuracy: 50, locationSource: 'GPS' });
 });

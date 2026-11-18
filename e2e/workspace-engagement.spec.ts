@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 
 test.use({ timezoneId: "Asia/Kolkata", reducedMotion: "reduce", colorScheme: "light" });
 
-test("updates the workspace palette through the day and celebrates the signed-in employee", async ({ page }) => {
+test("celebrates the signed-in employee birthday and keeps a stable default accent", async ({ page }) => {
   const start = new Date("2026-11-18T11:59:05+05:30");
   await page.clock.install({ time: start });
   await page.context().addCookies(Object.entries({
@@ -38,9 +38,9 @@ test("updates the workspace palette through the day and celebrates the signed-in
   await page.goto("/help-center");
   const root = page.locator("html");
   await expect(root).toHaveAttribute("data-role", "manager");
-  await expect(root).toHaveAttribute("data-day-period", "morning");
+  await expect(root).not.toHaveAttribute("data-day-period");
   const content = page.locator(".main-content");
-  const morning = await content.evaluate(element => getComputedStyle(element).backgroundColor);
+  const morningAccent = await colorToken(content, "--accent");
   await expect(page.getByRole("heading", { name: "Happy birthday, Asha!" })).toBeVisible();
   await expect(page.locator(".birthday-confetti")).toBeHidden();
   await page.emulateMedia({ reducedMotion: "no-preference" });
@@ -57,28 +57,12 @@ test("updates the workspace palette through the day and celebrates the signed-in
   await page.getByRole("button", { name: "Dismiss birthday celebration" }).click();
   await expect(page.getByRole("heading", { name: /happy birthday/i })).toHaveCount(0);
 
-  const card = page.locator(".help-faq-card");
-  const cardColors = [await card.evaluate(element => getComputedStyle(element).backgroundColor)];
-  const backgrounds = [morning];
-  const patterns = [await content.evaluate(element => getComputedStyle(element, "::before").backgroundImage)];
-  const primaryColors = [await colorToken(content, "--primary")];
-  for (const [localTime, period] of [
-    ["11:59:05", "afternoon"],
-    ["16:59:05", "evening"],
-    ["20:59:05", "night"],
-  ]) {
+  for (const localTime of ["11:59:05", "16:59:05", "20:59:05"]) {
     await page.clock.setSystemTime(new Date(`2026-11-18T${localTime}+05:30`));
     await page.clock.fastForward(60_000);
-    await expect(root).toHaveAttribute("data-day-period", period);
-    backgrounds.push(await content.evaluate(element => getComputedStyle(element).backgroundColor));
-    cardColors.push(await card.evaluate(element => getComputedStyle(element).backgroundColor));
-    patterns.push(await content.evaluate(element => getComputedStyle(element, "::before").backgroundImage));
-    primaryColors.push(await colorToken(content, "--primary"));
+    await expect(root).not.toHaveAttribute("data-day-period");
+    expect(await colorToken(content, "--accent")).toBe(morningAccent);
   }
-  expect(new Set(backgrounds).size).toBe(4);
-  expect(new Set(cardColors).size).toBe(4);
-  expect(new Set(patterns).size).toBe(4);
-  expect(new Set(primaryColors).size).toBe(4);
   await expect(root).toHaveAttribute("data-role", "manager");
 
   await page.reload();
@@ -98,7 +82,7 @@ test("themes the public sign-in controls in light and dark mode", async ({ page 
   await page.goto("/login");
   const root = page.locator("html");
   const button = page.getByRole("button", { name: "Sign in", exact: true });
-  await expect(root).toHaveAttribute("data-day-period", "night");
+  await expect(root).not.toHaveAttribute("data-day-period");
   const lightPrimary = await colorToken(button, "--primary");
   await expect(button).toHaveCSS("background-color", lightPrimary);
 

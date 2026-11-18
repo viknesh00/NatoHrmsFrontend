@@ -192,15 +192,15 @@ for (const path of ['/', '/sign-in', '/forgot-password']) {
 test.describe('live dashboard colors', () => {
   test.use({ timezoneId: 'Asia/Kolkata', colorScheme: 'light' });
 
-  test('redraws the attendance canvas and card pattern when the palette changes', async ({ page }) => {
+  test('keeps the attendance canvas on the default accent palette', async ({ page }) => {
     await page.clock.install({ time: new Date('2026-11-18T11:58:30+05:30') });
     await workspace(page, true);
     await page.goto('/dashboard');
     const overview = page.locator('.dashboard-kpi-overview');
     const chart = page.locator('.dashboard-chart-canvas canvas').first();
     await expect(chart).toBeVisible();
-    const morningPattern = await overview.evaluate(element => getComputedStyle(element).backgroundImage);
-    expect(morningPattern).toContain('radial-gradient');
+    const accent = await colorToken(overview, '--accent');
+    expect(await overview.evaluate(element => getComputedStyle(element).backgroundImage)).toContain('linear-gradient');
 
     const paintsErrorColor = () => chart.evaluate((canvas: HTMLCanvasElement) => {
       const probe = document.createElement('span');
@@ -220,12 +220,10 @@ test.describe('live dashboard colors', () => {
     });
 
     await expect.poll(paintsErrorColor).toBe(true);
-    const morningError = await colorToken(overview, '--error');
     await page.clock.setSystemTime(new Date('2026-11-18T11:59:10+05:30'));
     await page.clock.fastForward(60_000);
-    await expect(page.locator('html')).toHaveAttribute('data-day-period', 'afternoon');
-    expect(await colorToken(overview, '--error')).not.toBe(morningError);
-    expect(await overview.evaluate(element => getComputedStyle(element).backgroundImage)).toContain('repeating-linear-gradient');
+    await expect(page.locator('html')).not.toHaveAttribute('data-day-period');
+    expect(await colorToken(overview, '--accent')).toBe(accent);
     await expect.poll(paintsErrorColor).toBe(true);
   });
 });

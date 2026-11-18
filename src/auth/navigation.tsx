@@ -2,7 +2,7 @@ import React from "react";
 import {
   LayoutDashboard, Users, Megaphone, File, CalendarCheck2, UserMinus,
   ClipboardList, Calendar, Briefcase, UserCheck, FileBarChart2, Network, ContactRound,
-  ShieldCheck, FileText, Scale, Settings, CircleHelp,
+  ShieldCheck, FileText, Scale, Settings, CircleHelp, UserRound,
 } from "lucide-react";
 export interface NavigationItem { to: string; label: string; icon: React.ReactNode; roles: string[]; departments?: string[]; hiddenDepartments?: string[] }
 
@@ -25,6 +25,7 @@ export const menuItems: NavigationItem[] = [
   { to:"/privacy-policy", label:"Privacy Policy", icon:<ShieldCheck size={20}/>, roles:["Admin","Manager","TeamLead","Employee","Onboarding"] },
   { to:"/terms", label:"Terms of Use", icon:<Scale size={20}/>, roles:["Admin","Manager","TeamLead","Employee","Onboarding"] },
   { to:"/standards", label:"Standards & Integrations", icon:<FileText size={20}/>, roles:["Admin","Manager","TeamLead","Employee","Onboarding"] },
+  { to:"/profile", label:"My Profile", icon:<UserRound size={20}/>, roles:["Admin","Manager","TeamLead","Employee","Onboarding"] },
   { to:"/settings", label:"Settings", icon:<Settings size={20}/>, roles:["Admin","Manager","TeamLead","Employee","Onboarding"] },
   { to:"/help-center", label:"Help Center", icon:<CircleHelp size={20}/>, roles:["Admin","Manager","TeamLead","Employee","Onboarding"] },
 ];
