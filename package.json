@@ -5,7 +5,7 @@
   "license": "SEE LICENSE IN LICENSE",
   "dependencies": {
     "@dicebear/collection": "^9.4.2",
-    "@dicebear/core": "^9.4.3",
+    "@dicebear/core": "^10.7.0",
     "@fontsource-variable/albert-sans": "^5.3.0",
     "@fontsource-variable/aleo": "^5.3.0",
     "@fontsource-variable/inter": "latest",
