@@ -67,7 +67,7 @@ test('retains employee search, pagination, selection, sorting and pending status
   await page.getByRole('columnheader', { name: 'First Name' }).focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('columnheader', { name: 'First Name' })).toHaveAttribute('aria-sort', 'ascending');
-  await page.getByText('Active', { exact: true }).click();
+  await page.getByRole('button', { name: 'Change status for employee1@example.test' }).click();
   const dialog = page.getByRole('dialog', { name: 'Change Status' });
   await expect(dialog).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('status-dialog.png'), animations: 'disabled', scale: 'css' });
@@ -134,7 +134,7 @@ test('shows and filters all Work Status fields from the API response', async ({ 
   const row = page.getByRole('row').filter({ hasText: 'FFM GG' });
   await expect(row).toContainText('ipad, Mac');
   await expect(row).toContainText('Build, Cutover');
-  await expect(row.locator('.work-status-report-comment')).toHaveAttribute('title', /Test FE is working good in activity with no issue/);
+  await expect(row).toContainText('Test FE is working good in activity with no issue');
 
   await page.getByRole('button', { name: /^Filters/ }).click();
   await page.getByLabel('Work Status', { exact: true }).selectOption('Active');
@@ -181,13 +181,19 @@ test('keeps month limits and restores focus after the month picker', async ({ pa
   await expect(picker).toBeFocused();
 });
 
-for (const path of ['/', '/sign-in', '/forgot-password']) {
+for (const path of ['/sign-in', '/forgot-password']) {
   test(`keeps authentication route ${path} responsive`, async ({ page }) => {
     await page.goto(path);
     await expect(page.getByRole('textbox', { name: /email/i })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   });
 }
+
+test('keeps the public landing route responsive', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: /Bring your people operations into focus/ })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+});
 
 test.describe('live dashboard colors', () => {
   test.use({ timezoneId: 'Asia/Kolkata', colorScheme: 'light' });
