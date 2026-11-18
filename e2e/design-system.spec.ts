@@ -109,6 +109,9 @@ test('uses approved tokens and accessible action text', async ({ page }, testInf
   await expect(button).toHaveCSS('color', 'rgb(255, 255, 255)');
   await expect(button).toHaveCSS('border-radius', '4px');
   await expect(page.getByLabel('Email address')).toHaveCSS('height', '44px');
+  const microsoft = page.getByRole('button', { name: 'Sign in with Microsoft', exact: true });
+  await expect(microsoft).toBeDisabled();
+  await expect(microsoft).toHaveAccessibleDescription('Coming soon');
   await page.screenshot({ path: testInfo.outputPath('login.png'), fullPage: true, animations: 'disabled', scale: 'css' });
 });
 

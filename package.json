@@ -11,6 +11,7 @@
     "@fontsource-variable/inter": "latest",
     "@huggingface/transformers": "^4.3.2",
     "@langchain/core": "latest",
+    "@paper-design/shaders-react": "0.0.82",
     "@shadcn/react": "latest",
     "@tanstack/react-table": "latest",
     "@types/d3": "^7.4.3",

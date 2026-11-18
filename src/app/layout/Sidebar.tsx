@@ -3,7 +3,7 @@ import { useAppStore } from "../../store/useAppStore";
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { NavLink } from "react-router-dom";
-import { LogOut, ChevronLeft, ChevronRight, AlertTriangle, Settings, User, Key, Github, ExternalLink, LoaderCircle } from "lucide-react";
+import { LogOut, ChevronLeft, ChevronRight, AlertTriangle, Settings, User, Key, GitBranch, ExternalLink, LoaderCircle } from "lucide-react";
 import { getCookie } from "../../auth/Cookies";
 import { clearSession } from "../../auth/Auth";
 import { useNavigate } from "react-router-dom";
@@ -55,7 +55,7 @@ function GitHubContributors() {
   return (
     <section className="settings-contributors" aria-labelledby="settings-contributors-title">
       <div className="settings-contributors-heading">
-        <span className="settings-contributors-icon"><Github size={17} aria-hidden="true" /></span>
+        <span className="settings-contributors-icon"><GitBranch size={17} aria-hidden="true" /></span>
         <div>
           <h3 id="settings-contributors-title">Project contributors</h3>
           <p>GitHub repository activity</p>
@@ -79,7 +79,7 @@ function GitHubContributors() {
         <div className="settings-contributors-load">
           <p>{loadFailed ? "GitHub contributor data could not be loaded." : "View public contributor highlights from GitHub."}</p>
           <Button variant="outline" size="sm" onClick={loadContributors} disabled={loadingContributors}>
-            {loadingContributors ? <LoaderCircle className="animate-spin" size={14} /> : <Github size={14} />}
+            {loadingContributors ? <LoaderCircle className="animate-spin" size={14} /> : <GitBranch size={14} />}
             {loadingContributors ? "Loading" : loadFailed ? "Try again" : "Load contributors"}
           </Button>
         </div>
