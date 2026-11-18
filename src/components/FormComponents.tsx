@@ -93,6 +93,7 @@ export function FormMultiSelect({ label, required, hint, error, options = [], va
         <Button variant="ghost"
           type="button"
           disabled={disabled}
+          aria-label={label}
           onClick={() => !disabled && setOpen(o => !o)}
           className={cn(`fc-dd-trigger${open ? " open" : ""}${disabled ? " disabled" : ""}`, "flex-wrap h-[auto] min-h-[42px] min-w-0 gap-[4px] items-center overflow-hidden")}
           
