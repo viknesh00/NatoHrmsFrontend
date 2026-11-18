@@ -137,7 +137,7 @@ test('shows and filters all Work Status fields from the API response', async ({ 
   await expect(row).toContainText('Test FE is working good in activity with no issue');
 
   await page.getByRole('button', { name: /^Filters/ }).click();
-  await page.getByRole('button', { name: 'Work Status' }).click();
+  await page.getByRole('button', { name: 'Work Status', exact: true }).click();
   await page.locator('.fc-dd-menu').getByText('Active', { exact: true }).click();
   await page.getByRole('button', { name: 'Apply Filters' }).click();
   await expect(row).toBeVisible();
