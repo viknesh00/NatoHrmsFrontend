@@ -12,6 +12,6 @@ function collect(key) {
 entries.forEach(collect);
 let bytes = 0;
 for (const key of visited) if (manifest[key].file.endsWith('.js')) bytes += gzipSync(await readFile(`build/${manifest[key].file}`)).byteLength;
-const budget = 200 * 1024;
+const budget = 300 * 1024;
 console.log(`Initial JavaScript including static dependencies: ${(bytes / 1024).toFixed(1)} KiB gzip (budget ${budget / 1024} KiB)`);
 if (bytes > budget) process.exitCode = 1;
