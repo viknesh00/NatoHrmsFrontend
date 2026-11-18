@@ -55,9 +55,9 @@ export default function Employees() {
     {
       field: "isActive", label: "Status",
       renderCell: (row) => (
-        <span onClick={() => handleStatusClick(row)} className="cursor-pointer" >
+        <button type="button" aria-label={`Change status for ${row.email}`} onClick={() => handleStatusClick(row)} className="cursor-pointer border-0 bg-transparent p-0">
           <StatusChip label={row.isActive ? "Active" : "Inactive"} />
-        </span>
+        </button>
       ),
     },
     {
