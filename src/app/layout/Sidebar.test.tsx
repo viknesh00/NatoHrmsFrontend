@@ -51,19 +51,21 @@ test("confirm clears the session and opens sign in", async () => {
   expect(isAuthenticated()).toBe(false);
 });
 
-test("settings drawer exposes profile and password actions", async () => {
+test("links separately to the profile and settings pages", async () => {
   render(
     <MemoryRouter initialEntries={["/dashboard"]}>
+      <Sidebar />
       <Routes>
-        <Route path="/dashboard" element={<Sidebar />} />
-        <Route path="/view-employee" element={<h1>My Profile</h1>} />
+        <Route path="/dashboard" element={<h1>Dashboard</h1>} />
+        <Route path="/profile" element={<h1>My Profile</h1>} />
+        <Route path="/settings" element={<h1>Settings</h1>} />
       </Routes>
     </MemoryRouter>
   );
 
-  fireEvent.click(screen.getByRole("button", { name: "Settings" }));
-  expect(await screen.findByRole("heading", { name: "Profile & settings" })).toBeVisible();
-  expect(screen.getByRole("button", { name: "Change Password" })).toBeVisible();
-  fireEvent.click(screen.getByRole("button", { name: "View Profile" }));
+  fireEvent.click(screen.getByRole("link", { name: "Settings" }));
+  expect(await screen.findByRole("heading", { name: "Settings" })).toBeVisible();
+  expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("aria-current", "page");
+  fireEvent.click(screen.getByRole("link", { name: "My Profile" }));
   expect(await screen.findByRole("heading", { name: "My Profile" })).toBeVisible();
 });

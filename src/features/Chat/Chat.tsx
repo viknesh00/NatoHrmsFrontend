@@ -41,6 +41,22 @@ import {
 import Breadcrumb from "../../shared/services/Breadcrumb";
 import { getCookie } from "../../auth/Cookies";
 import { getVisibleMenuItems } from "../../auth/navigation";
+import { accessQuestion, assistantGuides, getQuickReply } from "./quickReplies";
+
+type ChatMessage = { id: string; role: "user" | "assistant"; content: string; createdAt: number; streaming?: boolean; failed?: boolean; quickReply?: boolean };
+type ModelState = "idle" | "loading" | "downloading" | "thinking" | "ready" | "error";
+
+const MODEL_IDLE_TIMEOUT = 90_000;
+const RESPONSE_IDLE_TIMEOUT = 45_000;
+const DOWNLOAD_ERROR = "The AI model couldn’t load. Check your connection and retry.";
+const RESPONSE_ERROR = "The assistant couldn’t finish that reply. Try again.";
+
+let sharedWorker: Worker | null = null;
+
+function releaseWorker(worker: Worker) {
+  worker.terminate();
+  if (sharedWorker === worker) sharedWorker = null;
+}
 
 function MessageTime({ value }: Record<string, any>) {
   return (
@@ -51,16 +67,17 @@ function MessageTime({ value }: Record<string, any>) {
 }
 
 export default function Chat({ embedded = false }: { embedded?: boolean }) {
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const [modelState, setModelState] = useState("idle");
-  const [workerError, setWorkerError] = useState(false);
+  const [modelState, setModelState] = useState<ModelState>("idle");
+  const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
   const [copiedId, setCopiedId] = useState(null);
   const [feedback, setFeedback] = useState({});
-  const workerRef = useRef(null);
-  const requestIdRef = useRef(null);
-  const inputRef = useRef(null);
+  const workerRef = useRef<Worker | null>(null);
+  const requestIdRef = useRef<string | null>(null);
+  const deadlineRef = useRef<number | undefined>(undefined);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const userRole = getCookie("role") || "Employee";
   const userDepartment = getCookie("department") || "";
   const accessibleModules = useMemo(
@@ -68,146 +85,156 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
     [userRole, userDepartment]
   );
   const availableStarters = useMemo(() => {
-    const labels = new Set(accessibleModules.map((module) => module.label));
-    const prompts = [
-      labels.has("Leave") && "How do I request leave?",
-      labels.has("Attendance") && "Where can I check attendance?",
-      labels.has("Employees") && "How can I find an employee record?",
-      labels.has("Documents") && "Where can I find company documents?",
-      labels.has("Onboarding") && "Where do I complete onboarding?",
-      labels.has("Calendar") && "Where can I see upcoming events?",
-    ].filter(Boolean);
-    return prompts.length ? prompts.slice(0, 4) : ["What HRMS areas can I access?"];
+    const paths = new Set(accessibleModules.map(module => module.to));
+    const prompts = assistantGuides.filter(guide => paths.has(guide.path)).map(guide => guide.question);
+    return prompts.length ? prompts.slice(0, 4) : [accessQuestion];
   }, [accessibleModules]);
 
-  useEffect(() => {
-    let worker;
-    try {
-      worker = new Worker(new URL("./hrmsChat.worker.ts", import.meta.url), { type: "module" });
-      workerRef.current = worker;
-      worker.onmessage = ({ data }: Record<string, any>) => {
-        if (data?.requestId && data.requestId !== requestIdRef.current) return;
+  const clearDeadline = useCallback(() => window.clearTimeout(deadlineRef.current), []);
 
-        if (data?.type === "loading") {
-          setModelState("loading");
-          return;
-        }
-        if (data?.type === "progress") {
-          setModelState("loading");
-          return;
-        }
-        if (data?.type === "token") {
-          const assistantId = requestIdRef.current;
-          setMessages((current) => current.map((message) =>
-            message.id === assistantId
-              ? { ...message, content: message.content + data.token }
-              : message
-          ));
-          return;
-        }
-        if (data?.type === "done") {
-          const assistantId = requestIdRef.current;
-          setMessages((current) => current.map((message) =>
-            message.id === assistantId
-              ? { ...message, content: data.response || message.content || "I couldn’t form a response. Please try asking another way.", streaming: false }
-              : message
-          ));
-          setModelState("ready");
-          setBusy(false);
-          return;
-        }
-        if (data?.type === "error") {
-          const assistantId = requestIdRef.current;
-          setMessages((current) => current.map((message) =>
-            message.id === assistantId
-              ? {
-                  ...message,
-                  failed: true,
-                  streaming: false,
-                  content: "I couldn’t respond just now. Please try again.",
-                }
-              : message
-          ));
-          setModelState("error");
-          setBusy(false);
-        }
-      };
-      worker.onerror = () => {
-        setWorkerError(true);
-        setModelState("error");
-        setBusy(false);
-        const assistantId = requestIdRef.current;
-        setMessages((current) => current.map((message) =>
-          message.id === assistantId && message.streaming
-            ? { ...message, streaming: false, failed: true, content: "I couldn’t respond just now. Please try again." }
-            : message
-        ));
-      };
-    } catch {
-      setWorkerError(true);
-      setModelState("error");
-    }
+  const finishRequest = useCallback((content: string, failed = false) => {
+    const requestId = requestIdRef.current;
+    requestIdRef.current = null;
+    clearDeadline();
+    setMessages(current => current.map(message => message.id === requestId
+      ? { ...message, content: content || message.content || RESPONSE_ERROR, streaming: false, failed }
+      : message));
+    setBusy(false);
+    setModelState(failed ? "error" : "ready");
+  }, [clearDeadline]);
 
-    return () => {
-      worker?.terminate();
+  const watchForResponse = useCallback((timeout: number, error: string) => {
+    clearDeadline();
+    deadlineRef.current = window.setTimeout(() => {
+      if (workerRef.current) releaseWorker(workerRef.current);
       workerRef.current = null;
+      finishRequest(error, true);
+    }, timeout);
+  }, [clearDeadline, finishRequest]);
+
+  const connectWorker = useCallback(() => {
+    if (workerRef.current) return workerRef.current;
+    try {
+      if (!sharedWorker) {
+        const worker = new Worker(new URL("./hrmsChat.worker.ts", import.meta.url), { type: "module" });
+        worker.addEventListener("error", () => releaseWorker(worker), { once: true });
+        sharedWorker = worker;
+      }
+      const worker = sharedWorker;
+      workerRef.current = worker;
+      worker.onerror = () => {
+        workerRef.current = null;
+        finishRequest(DOWNLOAD_ERROR, true);
+      };
+      worker.onmessage = ({ data }) => {
+        const requestId = requestIdRef.current;
+        if (data.requestId && data.requestId !== requestId) return;
+
+        switch (data.type) {
+          case "loading":
+          case "progress":
+            setDownloadProgress(data.type === "progress" ? data.progress : null);
+            setModelState(data.type === "progress" && data.progress < 100 ? "downloading" : "loading");
+            if (requestId) watchForResponse(MODEL_IDLE_TIMEOUT, DOWNLOAD_ERROR);
+            break;
+          case "ready":
+            setModelState(requestId ? "thinking" : "ready");
+            break;
+          case "prepare-error":
+            if (!requestId) setModelState("error");
+            break;
+          case "generating":
+            setModelState("thinking");
+            watchForResponse(RESPONSE_IDLE_TIMEOUT, RESPONSE_ERROR);
+            break;
+          case "token":
+            setMessages(current => current.map(message => message.id === requestId
+              ? { ...message, content: message.content + data.token }
+              : message));
+            watchForResponse(RESPONSE_IDLE_TIMEOUT, RESPONSE_ERROR);
+            break;
+          case "done":
+            finishRequest(data.response);
+            break;
+          case "error":
+            finishRequest(data.loadingFailed ? DOWNLOAD_ERROR : RESPONSE_ERROR, true);
+            break;
+        }
+      };
+      return worker;
+    } catch {
+      finishRequest(DOWNLOAD_ERROR, true);
+      return null;
+    }
+  }, [finishRequest, watchForResponse]);
+
+  useEffect(() => {
+    if (sharedWorker) connectWorker()?.postMessage({ type: "prepare" });
+    return () => {
+      clearDeadline();
+      const worker = workerRef.current;
+      if (!worker) return;
+      worker.onmessage = null;
+      worker.onerror = null;
+      if (requestIdRef.current) worker.postMessage({ type: "cancel", requestId: requestIdRef.current });
+      workerRef.current = null;
+      requestIdRef.current = null;
     };
-  }, []);
+  }, [clearDeadline, connectWorker]);
+
+  useEffect(() => {
+    const draft = input.trim();
+    if (draft.length < 8 || modelState !== "idle" || getQuickReply(draft, accessibleModules)) return;
+    const timer = window.setTimeout(() => {
+      if (!workerRef.current) connectWorker()?.postMessage({ type: "prepare" });
+    }, 450);
+    return () => window.clearTimeout(timer);
+  }, [accessibleModules, connectWorker, input, modelState]);
+
+  const requestReply = useCallback((requestId: string, question: string, history: ChatMessage[]) => {
+    requestIdRef.current = requestId;
+    setBusy(true);
+    setModelState(current => current === "ready" ? "thinking" : current === "downloading" ? current : "loading");
+    const worker = connectWorker();
+    if (!worker) return;
+
+    watchForResponse(MODEL_IDLE_TIMEOUT, DOWNLOAD_ERROR);
+    worker.postMessage({
+      type: "generate",
+      requestId,
+      input: question,
+      history: history.filter(message => !message.failed && message.content).slice(-6).map(({ role, content }) => ({ role, content })),
+      userContext: { role: userRole, department: userDepartment, allowedModules: accessibleModules },
+    });
+  }, [accessibleModules, connectWorker, userDepartment, userRole, watchForResponse]);
 
   const sendMessage = useCallback((value = undefined) => {
     const question = (value ?? input).trim();
-    if (!question || busy || workerError || !workerRef.current) return;
+    if (!question || busy || requestIdRef.current) return;
 
-    const userId = `user-${Date.now()}`;
-    const assistantId = `assistant-${Date.now()}`;
     const createdAt = Date.now();
-    const conversationHistory = messages
-      .filter((message) => !message.intro && !message.failed && message.content)
-      .slice(-12)
-      .map(({ role, content }: Record<string, any>) => ({ role, content }));
-
-    requestIdRef.current = assistantId;
-    setMessages((current) => [
+    const userId = `user-${createdAt}`;
+    const assistantId = `assistant-${createdAt}`;
+    const quickReply = getQuickReply(question, accessibleModules);
+    setMessages(current => [
       ...current,
       { id: userId, role: "user", content: question, createdAt },
-      { id: assistantId, role: "assistant", content: "", createdAt, streaming: true },
+      { id: assistantId, role: "assistant", content: quickReply ?? "", createdAt, streaming: !quickReply, quickReply: !!quickReply },
     ]);
     setInput("");
-    setBusy(true);
-    setModelState("loading");
-    workerRef.current.postMessage({
-      type: "generate",
-      requestId: assistantId,
-      input: question,
-      history: conversationHistory,
-      userContext: {
-        role: userRole,
-        department: userDepartment,
-        allowedModules: accessibleModules,
-      },
-    });
-  }, [accessibleModules, busy, input, messages, userDepartment, userRole, workerError]);
+    if (!quickReply) requestReply(assistantId, question, messages);
+  }, [accessibleModules, busy, input, messages, requestReply]);
 
-  const retryMessage = (assistantId) => {
-    if (busy || workerError || !workerRef.current) return;
-    const assistantIndex = messages.findIndex((message) => message.id === assistantId);
-    const userMessage = messages.slice(0, assistantIndex).reverse().find((message) => message.role === "user");
+  const retryMessage = (assistantId: string) => {
+    if (busy || requestIdRef.current) return;
+    const assistantIndex = messages.findIndex(message => message.id === assistantId);
+    const userMessage = messages.slice(0, assistantIndex).reverse().find(message => message.role === "user");
     if (!userMessage) return;
-    const history = messages.slice(0, messages.findIndex((message) => message.id === userMessage.id))
-      .filter((message) => !message.failed && message.content)
-      .slice(-12)
-      .map(({ role, content }) => ({ role, content }));
     const nextId = `assistant-${Date.now()}`;
-    requestIdRef.current = nextId;
-    setMessages((current) => current.map((message) => message.id === assistantId
+    setMessages(current => current.map(message => message.id === assistantId
       ? { ...message, id: nextId, content: "", streaming: true, failed: false, createdAt: Date.now() }
       : message));
-    setBusy(true);
-    setModelState("loading");
-    workerRef.current.postMessage({
-      type: "generate", requestId: nextId, input: userMessage.content, history,
-      userContext: { role: userRole, department: userDepartment, allowedModules: accessibleModules },
-    });
+    requestReply(nextId, userMessage.content, messages.slice(0, messages.indexOf(userMessage)));
   };
 
   const editMessage = (message) => {
@@ -237,13 +264,15 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
     inputRef.current?.focus();
   };
 
-  const statusText = modelState === "ready"
-    ? "Ready"
-    : modelState === "loading"
-      ? "Thinking"
-      : modelState === "error"
-        ? "Unavailable"
-        : "Here to help";
+  const preparingModel = modelState === "loading" || modelState === "downloading";
+  const statusText = {
+    idle: "Here to help",
+    loading: "Starting model",
+    downloading: `Downloading model ${downloadProgress ?? 0}%`,
+    thinking: "Thinking",
+    ready: "Ready",
+    error: "Try again",
+  }[modelState];
 
   return (
     <div className={`chat-page ${embedded ? "chat-embedded" : ""}`}>
@@ -269,7 +298,7 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
             </div>
           </div>
           <div className={`chat-model-status ${modelState}`} aria-live="polite">
-            {modelState === "loading" ? <LoaderCircle size={13} className="chat-spin" /> : <span className="chat-status-dot" />}
+            {preparingModel || modelState === "thinking" ? <LoaderCircle size={13} className="chat-spin" /> : <span className="chat-status-dot" />}
             {statusText}
           </div>
         </div>
@@ -293,7 +322,7 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
                     <p>Ask about finding a page or completing a common HRMS task.</p>
                     <div className="chat-suggestions" aria-label="Suggested questions">
                       {availableStarters.map((prompt) => (
-                        <Button variant="ghost" key={prompt} type="button" onClick={() => sendMessage(prompt)} disabled={busy || workerError}>
+                        <Button variant="ghost" key={prompt} type="button" onClick={() => sendMessage(prompt)} disabled={busy}>
                           <CircleHelp size={14} /> {prompt}
                         </Button>
                       ))}
@@ -328,20 +357,23 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
                               <div className={`chat-assistant-response${message.failed ? " failed" : ""}`}>
                                 {message.content
                                   ? <Streamdown className="chat-markdown" isAnimating={message.streaming}>{message.content}</Streamdown>
-                                  : message.streaming && <span className="chat-thinking">Thinking<LoaderCircle size={13} className="chat-spin" /></span>}
+                                  : message.streaming && <span className="chat-thinking">{statusText}<LoaderCircle size={13} className="chat-spin" /></span>}
                                 {message.streaming && message.content && <span className="chat-stream-cursor" aria-hidden="true" />}
                               </div>
                             )}
-                            {!message.streaming && !message.failed && (
+                            {!message.streaming && (
                               <MessageFooter className="chat-message-actions">
                                 {isUser ? (
                                   <Button variant="ghost" size="icon-xs" aria-label="Edit message" title="Edit message" onClick={() => editMessage(message)} disabled={busy}><Pencil /></Button>
                                 ) : (
                                   <>
+                                    {!message.failed && <>
                                     <Button variant="ghost" size="icon-xs" aria-label={copiedId === message.id ? "Copied" : "Copy response"} title={copiedId === message.id ? "Copied" : "Copy"} onClick={() => copyMessage(message)}>{copiedId === message.id ? <Check /> : <Copy />}</Button>
                                     <Button variant="ghost" size="icon-xs" aria-label="Good response" aria-pressed={feedback[message.id] === "good"} title="Good response" onClick={() => setFeedback((current) => ({ ...current, [message.id]: current[message.id] === "good" ? null : "good" }))}><ThumbsUp /></Button>
                                     <Button variant="ghost" size="icon-xs" aria-label="Bad response" aria-pressed={feedback[message.id] === "bad"} title="Bad response" onClick={() => setFeedback((current) => ({ ...current, [message.id]: current[message.id] === "bad" ? null : "bad" }))}><ThumbsDown /></Button>
-                                    <Button variant="ghost" size="icon-xs" aria-label="Retry response" title="Retry" onClick={() => retryMessage(message.id)} disabled={busy}><RefreshCcw /></Button>
+                                    </>}
+                                    {!message.quickReply &&
+                                      <Button variant="ghost" size="icon-xs" aria-label="Retry response" title="Retry" onClick={() => retryMessage(message.id)} disabled={busy}><RefreshCcw /></Button>}
                                   </>
                                 )}
                               </MessageFooter>
@@ -358,12 +390,8 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
           </MessageScroller>
         </MessageScrollerProvider>
 
-        {modelState === "loading" && (
-          <div className="chat-loading-note" role="status">
-            <LoaderCircle size={14} className="chat-spin" />
-            Preparing a response…
-          </div>
-        )}
+        {modelState === "error" && !messages.some(message => message.failed) &&
+          <div className="chat-loading-note" role="status">{DOWNLOAD_ERROR}</div>}
 
         <form className="chat-composer" onSubmit={handleSubmit}>
           <label className="sr-only" htmlFor="hrms-chat-input">Ask the HRMS assistant</label>
@@ -372,7 +400,7 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
               id="hrms-chat-input"
               ref={inputRef}
               value={input}
-              onChange={(event) => setInput(event.target.value)}
+              onChange={event => setInput(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
@@ -381,12 +409,12 @@ export default function Chat({ embedded = false }: { embedded?: boolean }) {
               }}
               rows={2}
               maxLength={800}
-              placeholder={workerError ? "The assistant is temporarily unavailable." : "Ask a question about HRMS…"}
-              disabled={busy || workerError}
+              placeholder="Ask a question about HRMS…"
+              disabled={busy}
               className="chat-input-textarea"
               aria-label="Ask the HRMS assistant"
             />
-            <InputGroupButton className="chat-send-button" type="submit" size="icon-sm" aria-label="Send message" disabled={busy || workerError || !input.trim()}>
+            <InputGroupButton className="chat-send-button" type="submit" size="icon-sm" aria-label="Send message" disabled={busy || !input.trim()}>
               {busy ? <LoaderCircle size={16} className="chat-spin" /> : <Send size={16} />}
             </InputGroupButton>
           </InputGroup>

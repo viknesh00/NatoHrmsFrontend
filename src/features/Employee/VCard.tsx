@@ -9,7 +9,6 @@ import LoadingMask from "../../shared/services/LoadingMask";
 
 import { useReducedMotion } from "framer-motion";
 import { useTheme } from "@/theme/ThemeProvider";
-import { getDayPeriod } from "@/theme/dayPeriod";
 import "./vcard.css";
 
 const EventBadge3D = lazy(() => import("@/components/ui/event-badge-3d"));
@@ -20,7 +19,7 @@ const valueOr = (value: unknown, fallback = "Not provided") => String(value ?? "
 const escapeVCard = (value: unknown) => String(value ?? "").replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
 
 export default function VCard() {
-  const { now, theme } = useTheme();
+  const { theme } = useTheme();
   const prefersReducedMotion = useReducedMotion();
   const email = getCookie("email") || "";
   const [profile, setProfile] = useState<EmployeeProfile | null>(null);
@@ -134,7 +133,7 @@ export default function VCard() {
                   name={fullName}
                   title={title || "Natobotics HRMS"}
                   initials={initials}
-                  paletteKey={`${getDayPeriod(now.getHours())}:${theme}`}
+                  paletteKey={theme}
                   fallback={staticBadge}
                 />
               </Suspense>

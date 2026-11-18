@@ -335,7 +335,7 @@ export default function AddEmployee() {
         .then((res) => {
           if (res.status === 200) {
             ToastSuccess(isEditMode ? "User Updated Successfully" : "User Added Successfully");
-            !canManageEmployeeFields  ? navigate("/view-employee") : navigate("/employees");
+            !canManageEmployeeFields  ? navigate("/profile") : navigate("/employees");
           }
         })
         .catch((err) => {
@@ -348,7 +348,7 @@ export default function AddEmployee() {
     }
   };
 
-  const handleCancel = () => (!canManageEmployeeFields  ? navigate("/view-employee") : navigate("/employees"));
+  const handleCancel = () => (!canManageEmployeeFields  ? navigate("/profile") : navigate("/employees"));
   const handleBack   = () => setActiveStep((prev) => prev - 1);
 
   /* ── step content ── */

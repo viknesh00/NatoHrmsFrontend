@@ -26,6 +26,14 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
       host: true,
+      headers: {
+        'Permissions-Policy': 'geolocation=(self)',
+      },
+    },
+    preview: {
+      headers: {
+        'Permissions-Policy': 'geolocation=(self)',
+      },
     },
   };
 });

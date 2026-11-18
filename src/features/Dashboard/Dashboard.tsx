@@ -5,7 +5,7 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Users, CalendarCheck2, UserMinus, Megaphone, Clock, ChevronRight, ArrowUpRight, Briefcase, ClipboardList, Sparkles, CalendarDays, UserCheck, FileText } from "lucide-react";
 import { getRequest, postRequest } from "../../shared/services/Apiservice";
 import { getCookie } from "../../auth/Cookies";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import { getEventColors } from "../Holiday/eventColors";
@@ -59,6 +59,11 @@ const PROJECT_COLORS = [
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const fmt = (d) => (d ? dayjs(d).format("DD-MM-YYYY") : "N/A");
+const normalize = (value: unknown) => String(value ?? "").trim().toLowerCase();
+
+function responseRows(result: PromiseSettledResult<{ data: unknown }>) {
+  return result.status === "fulfilled" && Array.isArray(result.value?.data) ? result.value.data : null;
+}
 
 function deptMatch(projDept, userDept) {
   if (!projDept || !userDept) return false;
@@ -244,30 +249,26 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
-  const [employees, setEmployees] = useState([]);
-  const [todayAttendance, setTodayAtt] = useState([]);
+  const [employeeRows, setEmployees] = useState(null);
+  const [dailyAttendanceRows, setTodayAtt] = useState(null);
   const [monthlyAtt, setMonthlyAtt] = useState([]);
-  const [leaves, setLeaves] = useState([]);
-  const [announcements, setAnn] = useState([]);
+  const [leaveRows, setLeaves] = useState(null);
+  const [announcementRows, setAnn] = useState(null);
   const [holidays, setHolidays] = useState([]);
   const [projects, setProjects] = useState([]);
-  const [onboardingRows, setOnboardingRows] = useState([]);
-  const [onboardingWorkRows, setOnboardingWorkRows] = useState([]);
-  const [onboardingMetricsReady, setOnboardingMetricsReady] = useState(false);
+  const [submissionRows, setOnboardingRows] = useState(null);
+  const [workStatusRows, setOnboardingWorkRows] = useState(null);
   const [myUserData, setMyUserData] = useState(null);
-  const [dashboardCategory, setDashboardCategory] = useState("overview");
+  const [selectedCategory, setDashboardCategory] = useState("overview");
   const { now: localTime } = useTheme();
   const now = dayjs(localTime);
-  const [motivation, setMotivation] = useState("A focused step today can make meaningful progress for your team.");
-  const [motivationBusy, setMotivationBusy] = useState(false);
-  const motivationWorkerRef = useRef<Worker | null>(null);
-  const lastMotivationPeriodRef = useRef("");
+  const fetchVersionRef = useRef(0);
 
   const firstName = getCookie("firstName") || "User";
   const userRole = getCookie("role");
   const userEmail = getCookie("email");
-  const userDepartment = getCookie("department") || "";
-  const canViewOnboardingMetrics = getVisibleMenuItems(userRole, userDepartment).some((item) => item.to === "/onboarding");
+  const myDepartment = myUserData?.department || getCookie("department");
+  const visiblePaths = new Set(getVisibleMenuItems(userRole, myDepartment).map((item) => item.to));
 
   /* ── Role flags ──
      Admin        → sees everything, unscoped
@@ -283,59 +284,20 @@ export default function Dashboard() {
   const isTeamLead = userRole === "TeamLead";
   const isAdminOrMgr = isAdmin || isManager || isTeamLead;
   const isEmployee = !isAdminOrMgr;
-  const isOnboardingDashboard = userRole?.toLowerCase() === "onboarding" || getCookie("department")?.trim().toLowerCase() === "onboarding" || myUserData?.department?.trim().toLowerCase() === "onboarding";
+  const isOnboardingDashboard = normalize(userRole) === "onboarding" || normalize(myDepartment) === "onboarding";
+  const canViewEmployees = !isOnboardingDashboard && visiblePaths.has("/employees");
+  const canShowAttendance = !isOnboardingDashboard && visiblePaths.has("/attendance");
+  const canViewLeaves = !isOnboardingDashboard && visiblePaths.has("/leave");
+  const canViewAnnouncements = !isOnboardingDashboard && visiblePaths.has("/announcement");
+  const canViewOnboarding = isOnboardingDashboard && visiblePaths.has("/onboarding");
+  const canViewWorkStatus = isOnboardingDashboard && visiblePaths.has("/work-status");
   const kpiPalette = isOnboardingDashboard ? ROLE_KPI_PALETTES.Onboarding : (ROLE_KPI_PALETTES[userRole] || ROLE_KPI_PALETTES.Employee);
-  const todayStr = dayjs().format("YYYY-MM-DD");
+  const todayStr = now.format("YYYY-MM-DD");
   const dayPeriod = getDayPeriod(now.hour());
   const greetings = { morning: "Good morning", afternoon: "Good afternoon", evening: "Good evening", night: "Good evening" };
   const greetingIcons = { morning: "🌞", afternoon: "☀️", evening: "✨", night: "🌙" };
   const greeting = greetings[dayPeriod];
   const today = now.format("dddd, DD MMM YYYY");
-
-  useEffect(() => () => motivationWorkerRef.current?.terminate(), []);
-
-  const generateMotivation = useCallback(() => {
-    if (motivationBusy) return;
-    setMotivationBusy(true);
-    const requestId = `motivation-${Date.now()}`;
-    let worker = motivationWorkerRef.current;
-    if (!worker) {
-      try {
-        worker = new Worker(new URL("../Chat/hrmsChat.worker.ts", import.meta.url), { type: "module" });
-        motivationWorkerRef.current = worker;
-      } catch {
-        setMotivationBusy(false);
-        return;
-      }
-    }
-
-    worker.onmessage = ({ data }: MessageEvent) => {
-      if (data?.type === "motivation-done" && data.requestId === requestId) {
-        const generated = String(data.response || "").trim().split(/\n/)[0].replace(/^[-*\d.)\s]+/, "");
-        if (generated) setMotivation(generated);
-        setMotivationBusy(false);
-      } else if (data?.type === "motivation-error" && data.requestId === requestId) {
-        setMotivationBusy(false);
-      }
-    };
-    worker.onerror = () => {
-      setMotivationBusy(false);
-      worker?.terminate();
-      motivationWorkerRef.current = null;
-    };
-    worker.postMessage({
-      type: "motivation",
-      requestId,
-      input: `Write one original, warm, concise motivational sentence (maximum 20 words) for a ${greeting.toLowerCase()} to a ${userRole || "team member"}. Do not invent company facts, promise outcomes, or mention being an AI.`,
-      userContext: { role: userRole, department: getCookie("department") || "" },
-    });
-  }, [motivationBusy, greeting, userRole]);
-
-  useEffect(() => {
-    if (motivationBusy || lastMotivationPeriodRef.current === greeting) return;
-    lastMotivationPeriodRef.current = greeting;
-    generateMotivation();
-  }, [generateMotivation, greeting, motivationBusy]);
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "N/A";
@@ -344,74 +306,82 @@ export default function Dashboard() {
 
   // ── Fetch all ───────────────────────────────────────────────────────────────
   const fetchAll = useCallback(async (isInitial = false) => {
+    const version = ++fetchVersionRef.current;
     if (isInitial) setLoading(true);
     try {
       const [empR, attDailyR, attMonthlyR, lvR, annR, holR, projR, myUserR, onboardingR, onboardingWorkR] = await Promise.allSettled([
-        isAdminOrMgr ? getRequest("User/All") : Promise.resolve(null),
-        postRequest("Attendance/GetDailyAttendance", { date: todayStr }),
-        postRequest("Attendance/GetMonthlyAttendance", {
-          fromDate: isEmployee ? dayjs().startOf("month").format("YYYY-MM-DD") : todayStr,
+        canViewEmployees ? getRequest("User/All") : null,
+        canShowAttendance ? postRequest("Attendance/GetDailyAttendance", { date: todayStr }) : null,
+        canShowAttendance && isEmployee ? postRequest("Attendance/GetMonthlyAttendance", {
+          fromDate: dayjs(todayStr).startOf("month").format("YYYY-MM-DD"),
           toDate: todayStr,
-        }),
-        getRequest("User/GetEmployeeLeave"),
-        getRequest("Announcement/GetAnnouncement"),
+        }) : null,
+        canViewLeaves ? getRequest("User/GetEmployeeLeave") : null,
+        canViewAnnouncements ? getRequest("Announcement/GetAnnouncement") : null,
         getRequest("Holiday/GetHolidays"),
-        getRequest("Project/All"),
-        getRequest(`User/GetUser/${userEmail}`),
-        canViewOnboardingMetrics ? getRequest("EmployeeOnboarding/GetAll") : Promise.resolve(null),
-        isOnboardingDashboard ? getRequest("WorkStatus/GetAll") : Promise.resolve(null),
+        !isOnboardingDashboard ? getRequest("Project/All") : null,
+        userEmail ? getRequest(`User/GetUser/${userEmail}`) : null,
+        canViewOnboarding ? getRequest("EmployeeOnboarding/GetAll") : null,
+        canViewWorkStatus ? getRequest("WorkStatus/GetAll") : null,
       ]);
+      if (version !== fetchVersionRef.current) return;
 
-      if (empR?.status === "fulfilled" && empR.value?.data)
-        setEmployees(empR.value.data);
-      if (attDailyR?.status === "fulfilled" && attDailyR.value?.data)
-        setTodayAtt(attDailyR.value.data);
-      if (attMonthlyR?.status === "fulfilled" && attMonthlyR.value?.data)
-        setMonthlyAtt(attMonthlyR.value.data);
-      if (lvR?.status === "fulfilled" && lvR.value?.data)
-        setLeaves(lvR.value.data.leaves || []);
-      if (annR?.status === "fulfilled" && annR.value?.data)
-        setAnn(annR.value.data.filter(a => a.isActive !== false).slice(0, 6));
-      if (holR?.status === "fulfilled" && holR.value?.data)
-        setHolidays(holR.value.data.map(h => ({
-          ...h,
-          eventDate: dayjs(h.eventDate).format("YYYY-MM-DD"),
-        })));
-      if (projR?.status === "fulfilled" && projR.value?.data)
-        setProjects(projR.value.data);
-      if (myUserR?.status === "fulfilled" && myUserR.value?.data?.length)
-        setMyUserData(myUserR.value.data[0]);
-      if (onboardingR?.status === "fulfilled" && Array.isArray(onboardingR.value?.data)) {
-        setOnboardingRows(onboardingR.value.data);
-        setOnboardingMetricsReady(true);
-      } else if (canViewOnboardingMetrics) {
-        setOnboardingRows([]);
-        setOnboardingMetricsReady(false);
+      setEmployees(responseRows(empR));
+      setTodayAtt(responseRows(attDailyR));
+      setMonthlyAtt(responseRows(attMonthlyR) ?? []);
+      const leaveData = lvR.status === "fulfilled" ? lvR.value?.data?.leaves : null;
+      setLeaves(Array.isArray(leaveData) ? leaveData : null);
+      setAnn(responseRows(annR)?.filter(a => a.isActive !== false) ?? null);
+      setHolidays((responseRows(holR) ?? []).map(h => ({
+        ...h,
+        eventDate: dayjs(h.eventDate).format("YYYY-MM-DD"),
+      })));
+      setProjects(responseRows(projR) ?? []);
+      if (myUserR.status === "fulfilled" && myUserR.value?.data) {
+        const profile = myUserR.value.data;
+        setMyUserData(Array.isArray(profile) ? profile[0] : profile);
       }
-      if (onboardingWorkR?.status === "fulfilled" && onboardingWorkR.value?.data)
-        setOnboardingWorkRows(onboardingWorkR.value.data);
+      setOnboardingRows(responseRows(onboardingR));
+      setOnboardingWorkRows(responseRows(onboardingWorkR));
     } finally {
-      if (isInitial) setLoading(false);
+      if (version === fetchVersionRef.current) setLoading(false);
     }
-  }, [isAdminOrMgr, isEmployee, isOnboardingDashboard, canViewOnboardingMetrics, todayStr, userEmail]);
-
-  useEffect(() => { fetchAll(true); }, [fetchAll]);
+  }, [canViewEmployees, canShowAttendance, isEmployee, canViewLeaves, canViewAnnouncements,
+    isOnboardingDashboard, canViewOnboarding, canViewWorkStatus, todayStr, userEmail]);
 
   useEffect(() => {
+    void fetchAll(true);
     const handler = () => fetchAll(false);
     window.addEventListener("attendance:updated", handler);
-    return () => window.removeEventListener("attendance:updated", handler);
-  }, [fetchAll]);
+    return () => {
+      fetchVersionRef.current += 1;
+      window.removeEventListener("attendance:updated", handler);
+    };
+  }, [fetchAll, userRole, myDepartment]);
 
   // ── Attendance derived ──────────────────────────────────────────────────────
+  const employees = employeeRows ?? [];
+  const onboardingRows = submissionRows ?? [];
+  const onboardingWorkRows = workStatusRows ?? [];
+  const announcements = announcementRows ?? [];
+  const myEmail = normalize(userEmail);
+  const myName = normalize([myUserData?.firstName || getCookie("firstName"), myUserData?.lastName || getCookie("lastName")].filter(Boolean).join(" "));
+  const leaves = (leaveRows ?? []).filter(l => {
+    const email = normalize(l.userName || l.userEmail);
+    return !isEmployee || !email || email === myEmail;
+  });
   const totalEmp = employees.length;
   const activeEmp = employees.filter(e => e.isActive).length;
 
-  const presentToday = [...new Set(
-    todayAttendance
-      .filter(a => (a.type || "").toLowerCase().includes("clock") && (a.type || "").toLowerCase().includes("in"))
-      .map(a => a.userName || a.userEmail)
-  )].length;
+  const clockIns = (dailyAttendanceRows ?? []).filter(row => normalize(row.type).replace(/[\s_-]+/g, "") === "clockin");
+  const presentToday = new Set(clockIns.map(row => normalize(row.userEmail || row.employeeId || row.userName)).filter(Boolean)).size;
+  const clockedInToday = clockIns.some(row => {
+    const email = normalize(row.userEmail);
+    const name = normalize(row.userName);
+    if (email) return email === myEmail;
+    if (name.includes("@")) return name === myEmail;
+    return !name || !myName || name === myName;
+  });
 
   const todayLeaves = leaves.filter(l => {
     const from = dayjs(l.fromDate, ["DD-MM-YYYY", "YYYY-MM-DD", "DD/MM/YYYY"]);
@@ -437,28 +407,23 @@ export default function Dashboard() {
   }));
 
   // Use fresh API data for current user (projectAssigned, department)
-  const myDepartment = myUserData?.department || getCookie("department") || "";
   const myProjectAssigned = myUserData?.projectAssigned || null;
-  const isDeizeisau = myDepartment.trim().toLowerCase() === "deizeisau";
   const dashboardCategories = isOnboardingDashboard ? [
     { value: "overview", label: "Overview" },
-    { value: "onboarding", label: "Onboarding" },
-    { value: "work-status", label: "Work Status" },
+    ...(canViewOnboarding ? [{ value: "onboarding", label: "Onboarding" }] : []),
+    ...(canViewWorkStatus ? [{ value: "work-status", label: "Work Status" }] : []),
     { value: "updates", label: "Updates" },
   ] : [
     { value: "overview", label: "Overview" },
-    ...((isAdminOrMgr || (isEmployee && !isDeizeisau)) ? [{ value: "attendance", label: "Attendance" }] : []),
+    ...(canShowAttendance ? [{ value: "attendance", label: "Attendance" }] : []),
     ...(isAdminOrMgr ? [{ value: "people", label: "People" }] : []),
     ...(isAdminOrMgr ? [{ value: "organization", label: "Organization" }] : []),
     { value: "projects", label: isAdminOrMgr ? "Projects" : "My Project" },
     { value: "updates", label: "Updates" },
   ];
-  const canShowAttendance = !isOnboardingDashboard && (isAdminOrMgr || (isEmployee && !isDeizeisau));
-  useEffect(() => {
-    if (dashboardCategory === "attendance" && !canShowAttendance) setDashboardCategory("overview");
-  }, [dashboardCategory, canShowAttendance]);
+  const dashboardCategory = dashboardCategories.some(category => category.value === selectedCategory) ? selectedCategory : "overview";
   const showOverview = dashboardCategory === "overview";
-  const showAttendance = !isOnboardingDashboard && (showOverview || dashboardCategory === "attendance");
+  const showAttendance = canShowAttendance && (showOverview || dashboardCategory === "attendance");
   const showPeople = !isOnboardingDashboard && (showOverview || dashboardCategory === "people");
   const showProjects = !isOnboardingDashboard && (showOverview || dashboardCategory === "projects");
   const showUpdates = showOverview || dashboardCategory === "updates";
@@ -496,31 +461,48 @@ export default function Dashboard() {
     : null;
 
   // ── Stat cards ──────────────────────────────────────────────────────────────
-  const activeOnboardingCount = onboardingRows.filter((row) => String(row.employeeStatus || "Active").toLowerCase() === "active").length;
-  const assignedOnboardingWorkCount = onboardingRows.filter((row) => row.workStatus && String(row.workStatus).toLowerCase() !== "not assigned").length;
-  const onboardingRowsThisMonth = onboardingRows.filter((row) => row.submittedAt && dayjs(row.submittedAt).isSame(now, "month")).length;
-  const roleStatCards = isOnboardingDashboard ? [
-    { label: "Onboarding records", value: onboardingRows.length, sub: "Employee submissions", icon: <UserCheck size={22} />, accent: kpiPalette[0], link: "/onboarding" },
-    { label: "Active employees", value: activeOnboardingCount, sub: "Current onboarding roster", icon: <Users size={22} />, accent: kpiPalette[1], link: "/onboarding" },
-    { label: "Assigned work", value: assignedOnboardingWorkCount, sub: "With a work status", icon: <Briefcase size={22} />, accent: kpiPalette[2], link: "/work-status" },
-    { label: "Submitted this month", value: onboardingRowsThisMonth, sub: "Current month", icon: <FileText size={22} />, accent: kpiPalette[3], link: "/onboarding" },
-  ] : isAdminOrMgr ? [
-    { label: "Total Employees", value: totalEmp, sub: `${activeEmp} active`, icon: <Users size={22} />, accent: kpiPalette[0], link: "/employees" },
-    { label: "Present Today", value: presentToday, sub: `of ${activeEmp} active`, icon: <CalendarCheck2 size={22} />, accent: kpiPalette[1], link: "/attendance" },
-    { label: "Pending Leaves", value: allPendingLeaves, sub: "Awaiting approval", icon: <UserMinus size={22} />, accent: kpiPalette[2], link: "/leave" },
-    { label: "Announcements", value: announcements.length, sub: "Active notices", icon: <Megaphone size={22} />, accent: kpiPalette[3], link: "/announcement" },
+  const activeOnboardingCount = onboardingRows.filter(row => normalize(row.employeeStatus || "Active") === "active").length;
+  const assignedOnboardingWorkCount = onboardingRows.filter(row => {
+    const status = normalize(row.workStatus);
+    return status && status !== "not assigned" && status !== "unassigned";
+  }).length;
+  const onboardingRowsThisMonth = onboardingRows.filter(row => row.submittedAt && dayjs(row.submittedAt).isSame(now, "month")).length;
+  const onboardingUnavailable = "Onboarding data unavailable";
+  const approvedPersonalLeaves = leaves.filter(leave => leave.isApproved && leave.approvedBy).length;
+  const statCards = isOnboardingDashboard && canViewOnboarding ? [
+    { label: "Onboarding records", value: submissionRows?.length, sub: submissionRows ? "Employee submissions" : onboardingUnavailable, icon: <UserCheck size={22} />, accent: kpiPalette[0], link: "/onboarding" },
+    { label: "Active employees", value: submissionRows ? activeOnboardingCount : null, sub: submissionRows ? "Current onboarding roster" : onboardingUnavailable, icon: <Users size={22} />, accent: kpiPalette[1], link: "/onboarding" },
+    { label: "Assigned work", value: submissionRows ? assignedOnboardingWorkCount : null, sub: submissionRows ? "Employees with a work assignment" : onboardingUnavailable, icon: <Briefcase size={22} />, accent: kpiPalette[2], link: canViewWorkStatus ? "/work-status" : undefined },
+    { label: "Submitted this month", value: submissionRows ? onboardingRowsThisMonth : null, sub: submissionRows ? now.format("MMMM YYYY") : onboardingUnavailable, icon: <FileText size={22} />, accent: kpiPalette[3], link: "/onboarding" },
   ] : [
-    { label: "My Leaves", value: leaves.length, sub: `${leaves.filter(l => l.isApproved && l.approvedBy).length} approved`, icon: <UserMinus size={22} />, accent: kpiPalette[0], link: "/leave" },
-    ...(!isDeizeisau ? [{ label: "Present Today", value: presentToday > 0 ? "Yes" : "N/A", sub: "Clock-in recorded", icon: <CalendarCheck2 size={22} />, accent: kpiPalette[1], link: "/attendance" }] : []),
-    { label: "Announcements", value: announcements.length, sub: "Active notices", icon: <Megaphone size={22} />, accent: kpiPalette[2], link: "/announcement" },
+    ...(canViewEmployees ? [{
+      label: isAdmin ? "Total Employees" : isManager ? "Department Staff" : "Team Members",
+      value: employeeRows ? totalEmp : null, sub: employeeRows ? `${activeEmp} active` : "Employee data unavailable",
+      icon: <Users size={22} />, accent: kpiPalette[0], link: "/employees",
+    }] : []),
+    ...(isEmployee && canViewLeaves ? [{
+      label: "My Leaves", value: leaveRows ? leaves.length : null,
+      sub: leaveRows ? `${approvedPersonalLeaves} approved` : "Leave data unavailable",
+      icon: <UserMinus size={22} />, accent: kpiPalette[0], link: "/leave",
+    }] : []),
+    ...(canShowAttendance ? [{
+      label: "Present Today", value: dailyAttendanceRows ? (isEmployee ? (clockedInToday ? "Yes" : "No") : presentToday) : null,
+      sub: !dailyAttendanceRows ? "Attendance unavailable" : isEmployee
+        ? (clockedInToday ? "Clock-in recorded" : "No clock-in recorded")
+        : employeeRows ? `of ${activeEmp} active` : "Employees who clocked in",
+      icon: <CalendarCheck2 size={22} />, accent: kpiPalette[1], link: "/attendance",
+    }] : []),
+    ...(isAdminOrMgr && canViewLeaves ? [{
+      label: "Pending Leaves", value: leaveRows ? allPendingLeaves : null,
+      sub: leaveRows ? "Awaiting a decision" : "Leave data unavailable",
+      icon: <UserMinus size={22} />, accent: kpiPalette[2], link: "/leave",
+    }] : []),
+    ...(canViewAnnouncements ? [{
+      label: "Announcements", value: announcementRows?.length, sub: announcementRows ? "Active notices" : "Announcements unavailable",
+      icon: <Megaphone size={22} />, accent: kpiPalette[isEmployee ? 2 : 3], link: "/announcement",
+    }] : []),
   ];
-  const onboardingStatCards = [
-    { label: "Onboarding records", value: onboardingMetricsReady ? onboardingRows.length : "N/A", sub: onboardingMetricsReady ? "Employee submissions" : "Not available for this role", icon: <UserCheck size={22} />, accent: kpiPalette[0], link: canViewOnboardingMetrics ? "/onboarding" : undefined },
-    { label: "Active employees", value: onboardingMetricsReady ? activeOnboardingCount : "N/A", sub: onboardingMetricsReady ? "Current onboarding roster" : "Not available for this role", icon: <Users size={22} />, accent: kpiPalette[1], link: canViewOnboardingMetrics ? "/onboarding" : undefined },
-    { label: "Assigned work", value: onboardingMetricsReady ? assignedOnboardingWorkCount : "N/A", sub: onboardingMetricsReady ? "With a work status" : "Not available for this role", icon: <Briefcase size={22} />, accent: kpiPalette[2], link: getVisibleMenuItems(userRole, userDepartment).some((item) => item.to === "/work-status") ? "/work-status" : undefined },
-    { label: "Submitted this month", value: onboardingMetricsReady ? onboardingRowsThisMonth : "N/A", sub: onboardingMetricsReady ? "Current month" : "Not available for this role", icon: <FileText size={22} />, accent: kpiPalette[3], link: canViewOnboardingMetrics ? "/onboarding" : undefined },
-  ];
-  const statCards = onboardingStatCards;
+  const featuredStat = statCards[0];
 
   const leaveStatus = (row) => {
     if (!row.approvedBy) return { cls: "badge-yellow", label: "Pending" };
@@ -546,9 +528,6 @@ export default function Dashboard() {
       <div className={cn("greeting-banner", "mb-[18px]")}>
         <div className="greeting-banner-copy">
           <div className="greeting-title">{greeting}, {firstName}! <span className="greeting-emoji" aria-hidden="true">{greetingIcons[dayPeriod]}</span> <Sparkles size={18} aria-hidden="true" /></div>
-          <div className="greeting-motivation-row">
-            <p className="greeting-motivation" aria-live="polite">{motivation}</p>
-          </div>
         </div>
         <div className="greeting-banner-date">
           <Clock size={15} aria-hidden="true" />
@@ -557,38 +536,28 @@ export default function Dashboard() {
       </div>
 
       {/* Stat Cards */}
-      <div className="dashboard-stats-grid" style={{ "--stat-columns": statCards.length } as React.CSSProperties}>
-        {statCards.map((s, i) => (
-          <div
-            key={i}
-            className="stat-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
-            role={s.link ? "link" : undefined}
-            tabIndex={s.link ? 0 : undefined}
-            aria-label={s.link ? `${s.label}: ${s.value}` : undefined}
-            style={{ "--accent-color": s.accent.ghost, cursor: s.link ? "pointer" : "default" } as React.CSSProperties}
-            onClick={() => s.link && navigate(s.link)}
-            onKeyDown={(event) => {
-              if (s.link && event.key === "Enter") {
-                event.preventDefault();
-                navigate(s.link);
-              }
-            }}
-          >
-            <div className="stat-icon" style={{ background: s.accent.ghost }}>
-              {React.cloneElement(s.icon, { color: s.accent.text })}
+      {featuredStat && <div className="dashboard-stats-grid" aria-busy={loading} style={{ "--stat-columns": statCards.length } as React.CSSProperties}>
+        {statCards.map(card => {
+          const value = card.value ?? "N/A";
+          const cardProps = {
+            className: "stat-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
+            style: { "--accent-color": card.accent.ghost, cursor: card.link ? "pointer" : "default" } as React.CSSProperties,
+          };
+          const content = <>
+            <div className="stat-icon" aria-hidden="true" style={{ background: card.accent.ghost }}>
+              {React.cloneElement(card.icon, { color: card.accent.text })}
             </div>
-            {loading ? (
-              <><Skel h={28} w="55%" mb={5} /><Skel h={13} w="40%" /></>
-            ) : (
-              <>
-                <div className="stat-value">{s.value ?? 0}</div>
-                <div className="stat-label">{s.label}</div>
-                {s.sub && <div className="stat-sub">{s.sub}</div>}
-              </>
-            )}
-          </div>
-        ))}
-      </div>
+            {loading ? <><Skel h={28} w="55%" mb={5} /><Skel h={13} w="40%" /></> : <>
+              <div className="stat-value">{value}</div>
+              <div className="stat-label">{card.label}</div>
+              <div className="stat-sub">{card.sub}</div>
+            </>}
+          </>;
+          return card.link ? (
+            <Link key={card.label} to={card.link} aria-label={loading ? card.label : `${card.label}: ${value}`} {...cardProps}>{content}</Link>
+          ) : <div key={card.label} {...cardProps}>{content}</div>;
+        })}
+      </div>}
 
       <div className="dashboard-category-tabs">
         <Tabs value={dashboardCategory} onValueChange={setDashboardCategory}>
@@ -598,27 +567,26 @@ export default function Dashboard() {
         </Tabs>
       </div>
 
-      <div className="card dashboard-kpi-overview dashboard-visual-card">
+      {featuredStat && <div className="card dashboard-kpi-overview dashboard-visual-card">
         <div className="card-header">
           <span className={cn("card-title", "flex items-center gap-[8px]")}>
             <Sparkles size={17} aria-hidden="true" className="text-primary" />
-            {isOnboardingDashboard ? "Onboarding overview" : isAdmin ? "Organization overview" : isManager ? "Department  overview" : isTeamLead ? "Team  overview" : "My  overview"}
+            {isOnboardingDashboard ? "Onboarding overview" : isAdmin ? "Organization overview" : isManager ? "Department overview" : isTeamLead ? "Team overview" : "My overview"}
           </span>
-          <span className="text-xs text-muted-foreground">Role-based overview</span>
         </div>
         <div className="dashboard-kpi-overview-body">
           <div className="dashboard-kpi-feature">
-            <span className="dashboard-kpi-feature-icon" style={{ color: roleStatCards[0]?.accent.text, background: roleStatCards[0]?.accent.ghost }}>{React.cloneElement(roleStatCards[0]?.icon || <Sparkles size={22} />, { size: 22 })}</span>
+            <span className="dashboard-kpi-feature-icon" aria-hidden="true" style={{ color: featuredStat.accent.text, background: featuredStat.accent.ghost }}>{featuredStat.icon}</span>
             <div className="dashboard-kpi-feature-copy">
-              <div className="dashboard-kpi-feature-heading"><span>{roleStatCards[0]?.label || "Dashboard metrics"}</span><strong>{loading ? "—" : roleStatCards[0]?.value ?? "N/A"}</strong></div>
-              <p>{roleStatCards[0]?.sub || "Key metrics based on your role"}</p>
+              <div className="dashboard-kpi-feature-heading"><span>{featuredStat.label}</span><strong>{loading ? "—" : featuredStat.value ?? "N/A"}</strong></div>
+              {!loading && <p>{featuredStat.sub}</p>}
             </div>
           </div>
           <div className="dashboard-kpi-chart-wrap">
-            {loading ? <Skel h={148} mb={0} /> : <KpiSnapshotChart data={roleStatCards.map((card) => ({ label: card.label, value: card.value, color: card.accent.bg }))} />}
+            {loading ? <Skel h={148} mb={0} /> : <KpiSnapshotChart data={statCards.map(card => ({ label: card.label, value: card.value ?? "N/A", color: card.accent.bg }))} />}
           </div>
         </div>
-      </div>
+      </div>}
 
       {showOrganization && <section className="card dashboard-organization-card" aria-labelledby="organization-chart-heading">
         <div className="card-header">
@@ -631,20 +599,19 @@ export default function Dashboard() {
       </section>}
 
       {isOnboardingDashboard && dashboardCategory !== "organization" && <div className="dashboard-main-grid onboarding-dashboard-bento" data-category={dashboardCategory}>
-        {(dashboardCategory === "overview" || dashboardCategory === "onboarding") && <section className="card onboarding-dashboard-card">
+        {canViewOnboarding && (showOverview || dashboardCategory === "onboarding") && <section className="card onboarding-dashboard-card">
           <div className="card-header">
             <div className="onboarding-card-heading"><span className="onboarding-card-icon"><UserCheck size={18} /></span><div><h2 className="card-title">Employee onboarding</h2><p>Submission and employee status overview</p></div></div>
             <Button variant="outline" size="sm" type="button" onClick={() => navigate("/onboarding")}>Open onboarding <ArrowUpRight size={14} /></Button>
           </div>
           <div className="onboarding-dashboard-card-body">
             <div className="onboarding-summary-metrics">
-              <div><strong>{loading ? "N/A" : onboardingRows.length}</strong><span>Onboarding records</span></div>
-              <div><strong>{loading ? "N/A" : activeOnboardingCount}</strong><span>Active employees</span></div>
-              <div><strong>{loading ? "N/A" : assignedOnboardingWorkCount}</strong><span>Assigned work</span></div>
-              <div><strong>{loading ? "N/A" : onboardingRowsThisMonth}</strong><span>Submitted this month</span></div>
+              {statCards.map(card => <div key={card.label}><strong>{loading ? "—" : card.value ?? "N/A"}</strong><span>{card.label}</span></div>)}
             </div>
-            <div className="onboarding-summary-progress"><span style={{ width: `${onboardingRows.length ? Math.round(activeOnboardingCount / onboardingRows.length * 100) : 0}%` }} /></div>
-            <div className="onboarding-summary-note">{onboardingRows.length ? `${Math.round(activeOnboardingCount / onboardingRows.length * 100)}% of records are active` : "Records will appear here when available"}</div>
+            {!loading && onboardingRows.length > 0 && <>
+              <div className="onboarding-summary-progress"><span style={{ width: `${Math.round(activeOnboardingCount / onboardingRows.length * 100)}%` }} /></div>
+              <div className="onboarding-summary-note">{Math.round(activeOnboardingCount / onboardingRows.length * 100)}% of records are active</div>
+            </>}
             <div className="onboarding-recent-list">
               <div className="onboarding-list-heading">Recent submissions</div>
               {loading ? <Skel h={44} mb={8} /> : onboardingRows.slice(0, 5).map((row, index) => (
@@ -654,20 +621,20 @@ export default function Dashboard() {
                   <span className={`onboarding-record-status ${String(row.employeeStatus || "Active").toLowerCase() === "active" ? "is-active" : "is-other"}`}>{row.employeeStatus || "Active"}</span>
                 </div>
               ))}
-              {!loading && onboardingRows.length === 0 && <div className="onboarding-empty-state">No onboarding submissions yet.</div>}
+              {!loading && onboardingRows.length === 0 && <div className="onboarding-empty-state">{submissionRows ? "No onboarding submissions yet." : onboardingUnavailable}</div>}
             </div>
           </div>
         </section>}
 
-        {(dashboardCategory === "overview" || dashboardCategory === "work-status") && <section className="card onboarding-dashboard-card">
+        {canViewWorkStatus && (showOverview || dashboardCategory === "work-status") && <section className="card onboarding-dashboard-card">
           <div className="card-header">
             <div className="onboarding-card-heading"><span className="onboarding-card-icon is-work"><Briefcase size={18} /></span><div><h2 className="card-title">Work status</h2><p>Current assignments and activity</p></div></div>
             <Button variant="outline" size="sm" type="button" onClick={() => navigate("/work-status")}>Open work status <ArrowUpRight size={14} /></Button>
           </div>
           <div className="onboarding-dashboard-card-body">
             <div className="onboarding-work-summary">
-              <span><strong>{loading ? "N/A" : onboardingWorkRows.length}</strong> work records</span>
-              <span><strong>{loading ? "N/A" : onboardingWorkRows.filter((row) => String(row.workStatus || "").toLowerCase() === "active").length}</strong> active</span>
+              <span><strong>{loading ? "—" : workStatusRows?.length ?? "N/A"}</strong> work records</span>
+              <span><strong>{loading ? "—" : workStatusRows?.filter(row => normalize(row.workStatus) === "active").length ?? "N/A"}</strong> active</span>
             </div>
             <div className="onboarding-recent-list">
               <div className="onboarding-list-heading">Latest work records</div>
@@ -678,7 +645,7 @@ export default function Dashboard() {
                   <span className={`onboarding-record-status ${String(row.workStatus || "").toLowerCase() === "active" ? "is-active" : "is-other"}`}>{row.workStatus || "Unassigned"}</span>
                 </div>
               ))}
-              {!loading && onboardingWorkRows.length === 0 && <div className="onboarding-empty-state">No work status records yet.</div>}
+              {!loading && onboardingWorkRows.length === 0 && <div className="onboarding-empty-state">{workStatusRows ? "No work status records yet." : "Work status data unavailable"}</div>}
             </div>
           </div>
         </section>}
@@ -700,7 +667,7 @@ export default function Dashboard() {
         {/* ── LEFT column ────────────────────────────────────────────────── */}
         {showLeftColumn && <div className="dashboard-bento-column" >
 
-          {showAttendance && isEmployee && !isDeizeisau && (
+          {showAttendance && isEmployee && (
             <div className="card dashboard-visual-card">
               <div className="card-header">
                 <span className={cn("card-title", "flex items-center gap-[8px]")}>
@@ -726,7 +693,9 @@ export default function Dashboard() {
                 </Button>
               </div>
               <div className="card-body">
-                {loading ? [1, 2, 3, 4].map(i => <Skel key={i} h={22} mb={14} />) : (
+                {loading ? [1, 2, 3, 4].map(i => <Skel key={i} h={22} mb={14} />) : !dailyAttendanceRows || !employeeRows ? (
+                  <div className="text-center text-sm text-muted-foreground">Attendance data unavailable</div>
+                ) : (
                   <>
                     <AttendanceChart values={{ present: presentToday, onLeave: approvedTodayLeaves, pending: pendingTodayLeaves, absent: absentToday }} />
                     <div className="dashboard-attendance-summary">
@@ -832,7 +801,7 @@ export default function Dashboard() {
         {showMiddleColumn && <div className="dashboard-bento-column" >
 
           {/* Announcements */}
-          {showUpdates && <div className="card">
+          {showUpdates && canViewAnnouncements && <div className="card">
             <div className="card-header">
               <span className={cn("card-title", "flex items-center gap-[8px]")} >
                 <Megaphone size={17} color="var(--primary)" /> Announcements
@@ -845,8 +814,8 @@ export default function Dashboard() {
               {loading
                 ? [1, 2, 3].map(i => <Skel key={i} h={48} mb={10} />)
                 : announcements.length === 0
-                  ? <div className="text-center p-[24px_0] text-[var(--text-muted)] text-[13px]" >No announcements</div>
-                  : announcements.map((ann, i) => {
+                  ? <div className="text-center p-[24px_0] text-[var(--text-muted)] text-[13px]" >{announcementRows ? "No announcements" : "Announcements unavailable"}</div>
+                  : announcements.slice(0, 6).map((ann, i) => {
                     const colors = ["var(--primary)", "var(--primary)", "var(--primary)"];
                     const c = colors[i % colors.length];
                     const isNew = dayjs().diff(dayjs(ann.announcementDate || ann.createdDate, "DD-MM-YYYY"), "day") <= 7;
@@ -951,7 +920,7 @@ export default function Dashboard() {
 
       </div>}{/* end main grid */}
 
-      {showPeople && <section className="card dashboard-full-width-card" aria-labelledby="recent-leaves-heading">
+      {showPeople && canViewLeaves && <section className="card dashboard-full-width-card" aria-labelledby="recent-leaves-heading">
         <div className="card-header">
           <span id="recent-leaves-heading" className={cn("card-title", "flex items-center gap-[8px]")}>
             <UserMinus size={17} className="text-primary" aria-hidden="true" /> Recent Leave Requests
@@ -967,7 +936,7 @@ export default function Dashboard() {
               <thead><tr><th>Employee</th><th>Type</th><th>From</th><th>To</th><th>Status</th></tr></thead>
               <tbody>
                 {recentLeaves.length === 0
-                  ? <tr><td colSpan={5}><div className="table-empty"><div className="table-empty-text">No leave requests</div></div></td></tr>
+                  ? <tr><td colSpan={5}><div className="table-empty"><div className="table-empty-text">{leaveRows ? "No leave requests" : "Leave data unavailable"}</div></div></td></tr>
                   : recentLeaves.map((row, i) => {
                     const status = leaveStatus(row);
                     return <tr key={i}>

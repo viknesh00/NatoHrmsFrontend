@@ -4,9 +4,9 @@ import { getCookie } from "../../auth/Cookies";
 import { getRequest } from "../../shared/services/Apiservice";
 import Breadcrumb from "../../shared/services/Breadcrumb";
 import LoadingMask from "../../shared/services/LoadingMask";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import dayjs from "dayjs";
-import { Edit, User, Briefcase, DollarSign, GraduationCap, MapPin, FileText, Shield, Heart, IdCard, Users } from "lucide-react";
+import { Edit, User, Briefcase, DollarSign, GraduationCap, MapPin, FileText, Shield, Heart, IdCard } from "lucide-react";
 import ProfileAvatar from "../../components/ProfileAvatar";
 
 const fmt = (v) => {
@@ -17,66 +17,68 @@ const fmt = (v) => {
   return v;
 };
 
-function Section({ icon, title, children }: Record<string, any>) {
+function Section({ icon, title, children, fieldList = true }: Record<string, any>) {
   return (
-    <div className="bg-[var(--bg-card)] overflow-hidden mb-[16px]" style={{borderRadius: "var(--radius-lg)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)"}}>
+    <section className="bg-[var(--bg-card)] overflow-hidden mb-[16px]" style={{borderRadius: "var(--radius-lg)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)"}}>
       <div className="p-[16px_20px] bg-muted flex items-center gap-[12px]" style={{borderBottom: "1px solid var(--border)"}}>
         <div className="w-[34px] h-[34px] bg-primary flex items-center justify-center" style={{borderRadius: "var(--radius)"}}>
           {React.cloneElement(icon, { size: 17, color: "var(--card)" })}
         </div>
-        <span className="text-[14px] font-semibold text-[var(--text-primary)] uppercase tracking-[0.04em]" style={{fontFamily: "var(--ui-font-heading)"}}>{title}</span>
+        <h2 className="text-[14px] font-semibold text-[var(--text-primary)]" style={{fontFamily: "var(--ui-font-heading)"}}>{title}</h2>
       </div>
       <div className="p-[20px_20px]" >
-        <div className="grid gap-[12px_24px]" style={{gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))"}}>
+        {fieldList ? <dl className="grid gap-[12px_24px]" style={{gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 240px), 1fr))"}}>
           {children}
-        </div>
+        </dl> : children}
       </div>
-    </div>
+    </section>
   );
 }
 
 function Field({ label, value }: Record<string, any>) {
   return (
-    <div>
-      <div className="text-[12px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.06em] mb-[4px]" >{label}</div>
-      <div className="text-[14px] font-semibold text-[var(--text-primary)]" >{value || "N/A"}</div>
+    <div className="min-w-0">
+      <dt className="mb-1 text-xs font-medium text-muted-foreground">{label}</dt>
+      <dd className="break-words text-sm font-semibold text-foreground">{value === 0 ? value : value || "N/A"}</dd>
     </div>
   );
 }
 
 export default function ViewEmployee() {
-  const navigate = useNavigate();
   const email = getCookie("email");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getRequest(`User/GetUser/${email}`)
-      .then(res => { if (res.data?.length) setData(res.data[0]); })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    const controller = new AbortController();
+    if (!email) { setLoading(false); return; }
+    getRequest(`User/GetUser/${encodeURIComponent(email)}`, { signal: controller.signal })
+      .then(res => { if (!controller.signal.aborted) setData(Array.isArray(res.data) ? res.data[0] : res.data); })
+      .catch(() => { if (!controller.signal.aborted) setData(null); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
   }, [email]);
 
   const fmtGender = (g) => g === "M" ? "Male" : g === "F" ? "Female" : g || "N/A";
 
-  if (loading) return <LoadingMask loading />;
-  if (!data) return <div className="text-center p-[60px] text-[var(--text-muted)]" >No profile data found</div>;
-
-  const initials = `${data.firstName?.[0] || ""}${data.lastName?.[0] || ""}`.toUpperCase();
+  const initials = `${data?.firstName?.[0] || ""}${data?.lastName?.[0] || ""}`.toUpperCase();
 
   return (
     <div>
       <div className="page-header">
         <div>
-          <Breadcrumb icon={<Users size={13} />} items={[{ label: "View Profile" }]} />
+          <Breadcrumb icon={<User size={13} />} items={[{ label: "My Profile" }]} />
           <h1 className="page-title">My Profile</h1>
           <p className="page-subtitle">Your employee information</p>
         </div>
-        <Button variant="default" type="button" className="btn btn-primary" onClick={() => navigate(`/employees/edit-employee/${email}`)}>
-          <Edit size={15} /> Edit Profile
-        </Button>
+        {data && <Button variant="default" className="btn btn-primary" asChild>
+          <Link to={`/employees/edit-employee/${encodeURIComponent(email)}`}><Edit size={15} /> Edit Profile</Link>
+        </Button>}
       </div>
 
+      {loading && <LoadingMask loading layout label="Loading your profile" />}
+      {!loading && !data && <p className="card card-body text-muted-foreground" role="status">Your profile information is unavailable.</p>}
+      {data && <>
       {/* Profile Hero Card */}
       <div className="profile-hero-card">
         <ProfileAvatar seed={data.email || email} initials={initials} className="profile-hero-avatar" />
@@ -85,7 +87,7 @@ export default function ViewEmployee() {
             {data.firstName} {data.lastName}
           </div>
           <div className="profile-hero-subtitle">
-            {data.designation} · {data.department}
+            {[data.designation, data.department].filter(Boolean).join(" · ")}
           </div>
           <div className="profile-hero-meta">
             {[
@@ -173,10 +175,11 @@ export default function ViewEmployee() {
       </Section>
 
       {data.notes && (
-        <Section icon={<FileText />} title="Notes">
-          <div className="text-[14px] text-[var(--text-secondary)] leading-[1.7]" style={{gridColumn: "1 / -1"}}>{data.notes}</div>
+        <Section icon={<FileText />} title="Notes" fieldList={false}>
+          <p className="break-words text-sm text-muted-foreground">{data.notes}</p>
         </Section>
       )}
+      </>}
     </div>
   );
 }

@@ -147,6 +147,11 @@
   --shadow-xl: var(--shadow-lg);
   --transition: 150ms ease;
   --transition-bounce: var(--transition);
+  --control-surface: color-mix(in srgb, var(--accent) 11%, var(--card));
+  --control-hover: color-mix(in srgb, var(--accent) 19%, var(--card));
+  --workspace-header: var(--card);
+  --workspace-sidebar: var(--sidebar);
+  --workspace-wash: color-mix(in srgb, var(--accent) 24%, var(--card));
 }
 
 /* Role accents change the shared semantic palette consistently. */
@@ -271,88 +276,9 @@
   --shadow-md: 0 8px 24px rgb(0 0 0 / 0.32);
   --shadow-lg: 0 12px 32px rgb(0 0 0 / 0.4);
   --shadow-xl: var(--shadow-lg);
-}
-
-/* Shared tokens carry the active palette into native elements, Tailwind, shadcn, and legacy CSS. */
-:root[data-day-period] {
-  --background: color-mix(in srgb, var(--time-surface) 64%, var(--base-background));
-  --card: color-mix(in srgb, var(--time-surface) 45%, var(--base-card));
-  --popover: color-mix(in srgb, var(--time-surface) 36%, var(--base-popover));
-  --secondary: color-mix(in srgb, var(--time-surface) 54%, var(--base-secondary));
-  --muted: color-mix(in srgb, var(--time-surface) 48%, var(--base-muted));
-  --border: color-mix(in srgb, var(--time-accent) 16%, var(--base-border));
-  --input: color-mix(in srgb, var(--time-accent) 18%, var(--base-input));
-  --decoration: color-mix(in srgb, var(--time-surface) 16%, var(--base-decoration));
-  --foreground: color-mix(in srgb, var(--time-action) 4%, var(--base-foreground));
-  --muted-foreground: color-mix(in srgb, var(--time-action) 6%, var(--base-muted-foreground));
-  --secondary-foreground: color-mix(in srgb, var(--time-action) 6%, var(--base-secondary-foreground));
-  --neutral: color-mix(in srgb, var(--time-action) 9%, var(--base-neutral));
-  --success-subtle: color-mix(in srgb, var(--time-surface) 12%, var(--base-success-subtle));
-  --error-subtle: color-mix(in srgb, var(--time-surface) 12%, var(--base-error-subtle));
-  --warning-subtle: color-mix(in srgb, var(--time-surface) 12%, var(--base-warning-subtle));
-  --information-subtle: color-mix(in srgb, var(--time-surface) 12%, var(--base-information-subtle));
-  --success: color-mix(in srgb, var(--time-action) 10%, var(--base-success));
-  --success-border: color-mix(in srgb, var(--time-accent) 15%, var(--base-success-border));
-  --warning: color-mix(in srgb, var(--time-action) 10%, var(--base-warning));
-  --warning-border: color-mix(in srgb, var(--time-accent) 15%, var(--base-warning-border));
-  --error: color-mix(in srgb, var(--time-action) 10%, var(--base-error));
-  --error-border: color-mix(in srgb, var(--time-accent) 15%, var(--base-error-border));
-  --information: color-mix(in srgb, var(--time-action) 10%, var(--base-information));
-  --information-border: color-mix(in srgb, var(--time-accent) 15%, var(--base-information-border));
-  --primary: color-mix(in srgb, light-dark(var(--role-primary), var(--role-dark-primary)) 40%, var(--time-action));
-  --primary-hover: color-mix(in srgb, light-dark(var(--role-primary-hover), var(--role-dark-hover)) 40%, var(--time-action-hover));
-  --accent: color-mix(in srgb, light-dark(var(--role-accent), var(--role-dark-accent)) 44%, var(--time-accent));
-  --primary-ghost: color-mix(in srgb, var(--primary) 11%, var(--card));
-  --primary-glow: color-mix(in srgb, var(--primary) 18%, transparent);
-  --control-surface: color-mix(in srgb, var(--time-accent) 11%, var(--card));
-  --control-hover: color-mix(in srgb, var(--time-accent) 19%, var(--card));
-  --sidebar-accent: var(--primary-ghost);
-  --workspace-header: color-mix(in srgb, var(--time-surface) 48%, var(--card));
-  --workspace-sidebar: color-mix(in srgb, var(--time-surface) 56%, var(--sidebar));
-  --workspace-wash: color-mix(in srgb, var(--time-accent) 24%, var(--card));
-  --pattern-ink: color-mix(in srgb, var(--time-action) 16%, transparent);
-  --pattern-size: 18px 18px;
-}
-
-:root[data-day-period="morning"] {
-  --time-surface: light-dark(#fff3dc, #2f281c);
-  --time-accent: light-dark(#d99a39, #c19758);
-  --time-action: light-dark(#825617, #e6b766);
-  --time-action-hover: light-dark(#67420f, #f2cc87);
-  --time-art-deep: #60401b;
-  --time-art-light: #e8b464;
-  --time-pattern: radial-gradient(var(--pattern-ink) .8px, transparent 1px);
-}
-
-:root[data-day-period="afternoon"] {
-  --time-surface: light-dark(#e9f6ed, #202d28);
-  --time-accent: light-dark(#54a184, #65b99b);
-  --time-action: light-dark(#24634a, #91d9b2);
-  --time-action-hover: light-dark(#194935, #a9e6c5);
-  --time-art-deep: #19483a;
-  --time-art-light: #81d4ae;
-  --time-pattern: repeating-linear-gradient(135deg, var(--pattern-ink) 0 1px, transparent 1px 11px);
-  --pattern-size: auto;
-}
-
-:root[data-day-period="evening"] {
-  --time-surface: light-dark(#f8ebf3, #302432);
-  --time-accent: light-dark(#b878a3, #bf86b7);
-  --time-action: light-dark(#794469, #edb4db);
-  --time-action-hover: light-dark(#603354, #f6c9e8);
-  --time-art-deep: #51334d;
-  --time-art-light: #dba0c8;
-  --time-pattern: radial-gradient(ellipse at 20% 50%, var(--pattern-ink) 1px, transparent 1.5px);
-  --pattern-size: 16px 11px;
-}
-
-:root[data-day-period="night"] {
-  --time-surface: light-dark(#eaf0ff, #212b42);
-  --time-accent: light-dark(#6684c9, #7b9cde);
-  --time-action: light-dark(#3e568d, #9dbfff);
-  --time-action-hover: light-dark(#304573, #b7d0ff);
-  --time-art-deep: #263a68;
-  --time-art-light: #95b5ee;
-  --time-pattern: radial-gradient(ellipse at 22% 25%, var(--pattern-ink) 1px, transparent 1.5px);
-  --pattern-size: 24px 29px;
+  --control-surface: color-mix(in srgb, var(--accent) 11%, var(--card));
+  --control-hover: color-mix(in srgb, var(--accent) 19%, var(--card));
+  --workspace-header: var(--card);
+  --workspace-sidebar: var(--sidebar);
+  --workspace-wash: color-mix(in srgb, var(--accent) 24%, var(--card));
 }

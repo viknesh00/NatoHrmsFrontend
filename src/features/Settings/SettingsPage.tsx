@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Building2, ExternalLink, GitFork, KeyRound, LoaderCircle, Moon, Sun, UserRound, ShieldCheck, FileText, Scale, CircleHelp, SlidersHorizontal, LayoutDashboard, ArrowRight } from "lucide-react";
+import { Building2, ExternalLink, GitFork, KeyRound, LoaderCircle, Moon, Sun, Settings, ShieldCheck, FileText, Scale, CircleHelp, SlidersHorizontal } from "lucide-react";
 import { Button } from "../../components/ui/button";
-import ProfileAvatar from "../../components/ProfileAvatar";
 import PasswordChange from "../../shared/services/PasswordChange";
 import Breadcrumb from "../../shared/services/Breadcrumb";
-import { getCookie } from "../../auth/Cookies";
 import { useTheme } from "../../theme/ThemeProvider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 
@@ -66,59 +64,34 @@ function ContributorList() {
 export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme();
   const [showPassword, setShowPassword] = useState(false);
-  const firstName = getCookie("firstName") || "";
-  const lastName = getCookie("lastName") || "";
-  const email = getCookie("email") || "";
-  const role = getCookie("role") || "Employee";
 
   return (
-    <main className="settings-page">
+    <div className="settings-page">
       <div className="page-header">
         <div>
-          <Breadcrumb icon={<UserRound size={14} aria-hidden="true" />} items={[{ label: "Settings" }]} />
+          <Breadcrumb icon={<Settings size={14} aria-hidden="true" />} items={[{ label: "Settings" }]} />
           <h1 className="page-title">Settings</h1>
-          <p className="page-subtitle">Manage your profile, sign-in, appearance, and workspace information.</p>
+          <p className="page-subtitle">Manage sign-in security, appearance, and workspace preferences.</p>
         </div>
       </div>
 
-      <Tabs defaultValue="overview" className="settings-tabs">
+      <Tabs defaultValue="security" className="settings-tabs">
         <TabsList className="settings-tabs-list" aria-label="Settings sections">
-          <TabsTrigger value="overview"><LayoutDashboard size={15} /> Overview</TabsTrigger>
-          <TabsTrigger value="profile"><UserRound size={15} /> Profile</TabsTrigger>
+          <TabsTrigger value="security"><KeyRound size={15} /> Security</TabsTrigger>
           <TabsTrigger value="appearance"><SlidersHorizontal size={15} /> Appearance</TabsTrigger>
           <TabsTrigger value="trust"><ShieldCheck size={15} /> Trust &amp; Policies</TabsTrigger>
           <TabsTrigger value="contributors"><GitFork size={15} /> Contributors</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="settings-tab-panel">
-          <section className="settings-overview-card" aria-labelledby="settings-overview-title">
-            <div className="settings-overview-heading">
-              <span className="settings-section-icon"><LayoutDashboard size={18} aria-hidden="true" /></span>
-              <div><h2 id="settings-overview-title">Workspace settings</h2><p>Quick access to your account, appearance, support, and policies.</p></div>
+        <TabsContent value="security" className="settings-tab-panel">
+          <section className="card settings-section" aria-labelledby="security-title">
+            <div className="settings-section-heading">
+              <span className="settings-section-icon"><KeyRound size={17} aria-hidden="true" /></span>
+              <div><h2 id="security-title">Sign-in security</h2></div>
             </div>
-            <div className="settings-overview-summary">
-              <div><span>Signed in as</span><strong>{[firstName, lastName].filter(Boolean).join(" ") || email || "Workspace user"}</strong><small>{role}</small></div>
-              <div><span>Appearance</span><strong>{theme === "dark" ? "Dark theme" : "Light theme"}</strong><small>Saved for this browser</small></div>
-              <div><span>Workspace owner</span><strong>NCons / Natobotics Technology</strong><small>HRMS workspace</small></div>
-            </div>
-            <div className="settings-overview-links">
-              <Link to="/help-center">Help Center <ArrowRight size={15} /></Link>
-              <Link to="/standards">Trust &amp; Policies <ArrowRight size={15} /></Link>
-            </div>
-          </section>
-        </TabsContent>
-
-        <TabsContent value="profile" className="settings-tab-panel">
-          <section className="settings-profile-card" aria-labelledby="settings-profile-title">
-            <ProfileAvatar seed={email} initials={`${firstName[0] || ""}${lastName[0] || ""}`.toUpperCase()} className="settings-page-avatar" />
-            <div className="settings-profile-copy">
-              <h2 id="settings-profile-title">{[firstName, lastName].filter(Boolean).join(" ") || "Your profile"}</h2>
-              <p>{email || "Signed-in account"}</p>
-              <span className="settings-role-label">{role}</span>
-            </div>
-            <div className="settings-profile-actions">
-              <Button variant="outline" asChild><Link to="/view-employee"><UserRound size={15} /> View profile</Link></Button>
-              <Button variant="outline" onClick={() => setShowPassword(true)}><KeyRound size={15} /> Change password</Button>
+            <div className="settings-control-row">
+              <div><strong>Password</strong><span>Update the password for your HRMS account.</span></div>
+              <Button variant="outline" onClick={() => setShowPassword(true)}>Change password</Button>
             </div>
           </section>
         </TabsContent>
@@ -129,7 +102,7 @@ export default function SettingsPage() {
               <span className="settings-section-icon">{theme === "dark" ? <Moon size={17} aria-hidden="true" /> : <Sun size={17} aria-hidden="true" />}</span>
               <div><h2 id="appearance-title">Appearance</h2><p>Choose a theme for this browser</p></div>
             </div>
-            <div className="settings-appearance-row">
+            <div className="settings-control-row">
               <div><strong>{theme === "dark" ? "Dark theme" : "Light theme"}</strong><span>Stored locally for this browser</span></div>
               <Button variant="outline" onClick={toggleTheme}>{theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}{theme === "dark" ? "Use light" : "Use dark"}</Button>
             </div>
@@ -155,12 +128,12 @@ export default function SettingsPage() {
           </section>
         </TabsContent>
 
-        <TabsContent value="contributors" className="settings-tab-panel" forceMount>
+        <TabsContent value="contributors" className="settings-tab-panel">
           <ContributorList />
         </TabsContent>
       </Tabs>
 
       {showPassword && <PasswordChange isManualChange onSuccess={() => setShowPassword(false)} onClose={() => setShowPassword(false)} />}
-    </main>
+    </div>
   );
 }

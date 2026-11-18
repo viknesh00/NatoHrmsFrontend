@@ -339,33 +339,6 @@ textarea:focus-visible,
   font-weight: 600;
 }
 
-.sidebar-settings-sheet {
-  width: min(360px, calc(100vw - 24px));
-  padding: 24px;
-  border-left: 1px solid var(--border);
-}
-
-.sidebar-settings-user {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.sidebar-settings-avatar {
-  width: 44px;
-  height: 44px;
-  flex: 0 0 44px;
-  border: 1px solid var(--border);
-}
-
-.sidebar-settings-actions {
-  display: grid;
-  gap: 8px;
-  padding-top: 16px;
-}
-
 .profile-hero-avatar {
   overflow: hidden;
   border: 1px solid var(--border);

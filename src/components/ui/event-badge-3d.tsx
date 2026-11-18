@@ -35,8 +35,8 @@ class BadgeErrorBoundary extends Component<{ fallback: ReactNode; children: Reac
 
 function makeBadgeTexture({ name, title, initials }: BadgeIdentity) {
   const palette = getComputedStyle(document.documentElement);
-  const deep = palette.getPropertyValue("--time-art-deep").trim() || "#19483a";
-  const light = palette.getPropertyValue("--time-art-light").trim() || "#81d4ae";
+  const deep = palette.getPropertyValue("--primary").trim() || "#2f7659";
+  const light = palette.getPropertyValue("--accent").trim() || "#51bc8f";
   const colors = readCanvasColors({
     "--card": "#faf9f5",
     "--foreground": "#162026",

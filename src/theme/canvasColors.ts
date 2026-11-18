@@ -39,7 +39,7 @@ export function useCanvasColors<T extends ColorTokens>(tokens: T) {
     const observer = new MutationObserver(refresh);
     observer.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ["data-day-period", "data-theme", "data-role"],
+      attributeFilter: ["data-theme", "data-role"],
     });
     refresh();
     return () => observer.disconnect();

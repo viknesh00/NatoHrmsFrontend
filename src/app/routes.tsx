@@ -1,4 +1,5 @@
 import React, { lazy } from "react";
+import { Navigate } from "react-router-dom";
 import ProtectedRoute from "../auth/ProtectedRoute";
 import GuestRoute from "../auth/GuestRoute";
 const Dashboard = lazy(() => import("../features/Dashboard/Dashboard"));
@@ -79,7 +80,8 @@ const routes = [
       { path: "leave/apply-leave", element: <LeaveForm /> },
       { path: "employees/add-employee", element: <AddEmployee /> },
       { path: "employees/edit-employee/:email", element: <AddEmployee /> },
-      { path: "view-employee", element: <ViewEmployee /> },
+      { path: "profile", element: <ViewEmployee /> },
+      { path: "view-employee", element: <Navigate to="/profile" replace /> },
       { path: "vcard", element: <VCard /> },
       { path: "announcement", element: <Announcement /> },
       { path: "announcement/announcement-form", element: <AnnouncementForm /> },
