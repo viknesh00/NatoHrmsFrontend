@@ -107,7 +107,8 @@ test('clock-in submits the browser GPS coordinates and accuracy', async ({ page 
     locationSource: 'GPS',
   });
   await expect(page.getByRole('button', { name: /Clock out/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Clock out/ })).toHaveCSS('background-color', 'rgb(180, 35, 50)');
+  const clockOut = page.getByRole('button', { name: /Clock out/ });
+  await expect(clockOut).toHaveCSS('background-color', await colorToken(clockOut, '--destructive'));
 });
 
 test('requires GPS permission before sending a clock action', async ({ page }) => {

@@ -20,7 +20,7 @@ const valueOr = (value: unknown, fallback = "Not provided") => String(value ?? "
 const escapeVCard = (value: unknown) => String(value ?? "").replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
 
 export default function VCard() {
-  const { now } = useTheme();
+  const { now, theme } = useTheme();
   const prefersReducedMotion = useReducedMotion();
   const email = getCookie("email") || "";
   const [profile, setProfile] = useState<EmployeeProfile | null>(null);
@@ -134,7 +134,7 @@ export default function VCard() {
                   name={fullName}
                   title={title || "Natobotics HRMS"}
                   initials={initials}
-                  paletteKey={getDayPeriod(now.getHours())}
+                  paletteKey={`${getDayPeriod(now.getHours())}:${theme}`}
                   fallback={staticBadge}
                 />
               </Suspense>

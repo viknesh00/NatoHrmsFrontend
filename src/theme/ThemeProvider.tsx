@@ -38,20 +38,27 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
     updateTime();
     document.addEventListener("visibilitychange", updateTime);
+    window.addEventListener("focus", updateTime);
     return () => {
       window.clearTimeout(timer);
       document.removeEventListener("visibilitychange", updateTime);
+      window.removeEventListener("focus", updateTime);
     };
   }, []);
+
+  useEffect(() => {
+    if (hasManualPreference) return;
+    const preference = window.matchMedia?.("(prefers-color-scheme: dark)");
+    if (!preference) return;
+    const sync = () => setTheme(preference.matches ? "dark" : "light");
+    preference.addEventListener("change", sync);
+    sync();
+    return () => preference.removeEventListener("change", sync);
+  }, [hasManualPreference]);
 
   useLayoutEffect(() => {
     const root = document.documentElement;
     root.dataset.dayPeriod = dayPeriod;
-    return () => { delete root.dataset.dayPeriod; };
-  }, [dayPeriod]);
-
-  useEffect(() => {
-    const root = document.documentElement;
     root.classList.toggle("dark", theme === "dark");
     root.dataset.theme = theme;
     root.style.colorScheme = theme;
@@ -59,10 +66,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       "content",
       getComputedStyle(document.body).backgroundColor
     );
+  }, [theme, dayPeriod]);
+
+  useEffect(() => {
     if (hasManualPreference) {
       try { localStorage.setItem(THEME_STORAGE_KEY, theme); } catch { /* Theme still works for this session. */ }
     }
-  }, [theme, dayPeriod, hasManualPreference]);
+  }, [theme, hasManualPreference]);
 
   const toggleTheme = useCallback(() => {
     setHasManualPreference(true);

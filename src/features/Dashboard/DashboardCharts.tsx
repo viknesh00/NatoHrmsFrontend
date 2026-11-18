@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { ArcElement, BarElement, CategoryScale, Chart as ChartJS, LinearScale, Tooltip } from "chart.js";
 import { Bar } from "react-chartjs-2";
 import { max, scaleBand, scaleLinear, select } from "d3";
+import { useCanvasColors } from "@/theme/canvasColors";
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip);
 
@@ -16,41 +17,42 @@ type DepartmentDatum = { department: string; count: number };
 type KpiDatum = { label: string; value: number | string; color: string };
 type AttendanceRow = { status?: string; attendanceStatus?: string };
 
-function cssToken(name: string, fallback: string) {
-  if (typeof window === "undefined") return fallback;
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
-}
+const CHART_COLORS = {
+  "--success": "#276749",
+  "--information": "#245f92",
+  "--warning": "#854d0e",
+  "--error": "#b42332",
+  "--foreground": "#252a30",
+  "--muted-foreground": "#676c73",
+  "--border": "#e3e5ea",
+  "--popover": "#ffffff",
+};
 
 export function AttendanceChart({ values }: { values: AttendanceSeries }) {
-  const colors = useMemo(() => [
-    cssToken("--success", "#276749"),
-    cssToken("--information", "#245f92"),
-    cssToken("--warning", "#854d0e"),
-    cssToken("--error", "#b42332"),
-  ], []);
+  const palette = useCanvasColors(CHART_COLORS);
   const data = useMemo(() => ({
     labels: ["Present", "On leave", "Pending leave", "Absent"],
     datasets: [{
       data: [values.present, values.onLeave, values.pending, values.absent],
-      backgroundColor: colors,
+      backgroundColor: [palette["--success"], palette["--information"], palette["--warning"], palette["--error"]],
       borderRadius: 4,
       borderSkipped: false,
       barThickness: 18,
     }],
-  }), [colors, values]);
+  }), [palette, values]);
   const options = useMemo(() => ({
     indexAxis: "y" as const,
     maintainAspectRatio: false,
     responsive: true,
     plugins: {
       legend: { display: false },
-      tooltip: { callbacks: { label: (context) => ` ${context.formattedValue} people/requests` } },
+      tooltip: { backgroundColor: palette["--popover"], titleColor: palette["--foreground"], bodyColor: palette["--foreground"], borderColor: palette["--border"], borderWidth: 1, callbacks: { label: (context) => ` ${context.formattedValue} people/requests` } },
     },
     scales: {
-      x: { beginAtZero: true, ticks: { precision: 0, color: cssToken("--muted-foreground", "#676c73") }, grid: { color: cssToken("--border", "#e3e5ea") } },
-      y: { ticks: { color: cssToken("--foreground", "#252a30") }, grid: { display: false } },
+      x: { beginAtZero: true, ticks: { precision: 0, color: palette["--muted-foreground"] }, grid: { color: palette["--border"] } },
+      y: { ticks: { color: palette["--foreground"] }, grid: { display: false } },
     },
-  }), []);
+  }), [palette]);
 
   return (
     <div className="dashboard-chart-canvas" role="img" aria-label={`Today's counts: ${values.present} present, ${values.onLeave} on leave, ${values.pending} pending leave, ${values.absent} absent`}>
@@ -71,25 +73,20 @@ export function PersonalAttendanceChart({ rows }: { rows: AttendanceRow[] }) {
     });
     return result;
   }, [rows]);
-  const colors = useMemo(() => [
-    cssToken("--success", "#276749"),
-    cssToken("--error", "#b42332"),
-    cssToken("--information", "#245f92"),
-    cssToken("--muted-foreground", "#676c73"),
-  ], []);
+  const palette = useCanvasColors(CHART_COLORS);
   const data = useMemo(() => ({
     labels: ["Present", "Absent", "Leave", "Non-working"],
-    datasets: [{ data: [counts.present, counts.absent, counts.leave, counts.nonWorking], backgroundColor: colors, borderRadius: 4, borderSkipped: false, maxBarThickness: 44 }],
-  }), [colors, counts]);
+    datasets: [{ data: [counts.present, counts.absent, counts.leave, counts.nonWorking], backgroundColor: [palette["--success"], palette["--error"], palette["--information"], palette["--muted-foreground"]], borderRadius: 4, borderSkipped: false, maxBarThickness: 44 }],
+  }), [palette, counts]);
   const options = useMemo(() => ({
     maintainAspectRatio: false,
     responsive: true,
-    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (context) => ` ${context.formattedValue} days` } } },
+    plugins: { legend: { display: false }, tooltip: { backgroundColor: palette["--popover"], titleColor: palette["--foreground"], bodyColor: palette["--foreground"], borderColor: palette["--border"], borderWidth: 1, callbacks: { label: (context) => ` ${context.formattedValue} days` } } },
     scales: {
-      x: { ticks: { color: cssToken("--muted-foreground", "#676c73") }, grid: { display: false } },
-      y: { beginAtZero: true, ticks: { precision: 0, color: cssToken("--muted-foreground", "#676c73") }, grid: { color: cssToken("--border", "#e3e5ea") } },
+      x: { ticks: { color: palette["--muted-foreground"] }, grid: { display: false } },
+      y: { beginAtZero: true, ticks: { precision: 0, color: palette["--muted-foreground"] }, grid: { color: palette["--border"] } },
     },
-  }), []);
+  }), [palette]);
   const total = counts.present + counts.absent + counts.leave + counts.nonWorking;
   return total ? (
     <div className="dashboard-chart-canvas" role="img" aria-label={`My attendance this month: ${counts.present} present, ${counts.absent} absent, ${counts.leave} leave, ${counts.nonWorking} non-working days`}>

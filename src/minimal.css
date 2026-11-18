@@ -174,8 +174,8 @@ h1, h2, h3, h4, h5, h6 { font-weight: 600; }
 .btn-primary, .btn-teal, .clock-btn-idle { background: var(--primary); color: var(--primary-foreground); }
 .clock-btn-active { background: var(--destructive); color: var(--destructive-foreground); }
 .btn-primary:hover, .btn-teal:hover { background: var(--primary-hover); color: var(--primary-foreground); box-shadow: none; transform: none; }
-.btn-outline, .btn-ghost { color: var(--foreground); border: 1px solid var(--border); background: var(--card); }
-.btn-outline:hover, .btn-ghost:hover { background: var(--muted); border-color: var(--border-strong); color: var(--foreground); }
+.btn-outline, .btn-ghost { color: var(--foreground); border: 1px solid var(--border); background: var(--control-surface, var(--card)); }
+.btn-outline:hover, .btn-ghost:hover { background: var(--control-hover, var(--muted)); border-color: var(--border-strong); color: var(--foreground); }
 .btn-danger, .btn-danger:hover { background: var(--destructive); color: var(--destructive-foreground); }
 .btn:disabled, .icon-btn:disabled, .calendar-nav-btn:disabled { opacity: .5; cursor: not-allowed; }
 .icon-btn, .page-btn, .calendar-nav-btn, .modal-close { width: var(--control-height-compact); height: var(--control-height-compact); min-width: var(--control-height-compact); padding: var(--space-2); }
@@ -469,7 +469,7 @@ h1, h2, h3, h4, h5, h6 { font-weight: 600; }
 .greeting-banner-date strong { color: var(--foreground); font-size: 13px; font-weight: 600; white-space: nowrap; }
 .greeting-motivation-row { margin-top: 3px; }
 .greeting-motivation { max-width: 720px; color: var(--secondary-foreground); font-size: 13px; }
-.dashboard-kpi-overview { height: auto; min-height: 270px; border: 0; border-radius: var(--radius); background: linear-gradient(112deg, color-mix(in srgb, var(--primary-ghost) 58%, var(--card)), color-mix(in srgb, var(--information-subtle) 38%, var(--card))); box-shadow: none; }
+.dashboard-kpi-overview { height: auto; min-height: 270px; border: 0; border-radius: var(--radius); box-shadow: none; }
 .dashboard-kpi-overview > .card-header { min-height: 58px; border: 0; background: transparent; padding: 16px 24px 8px; }
 .dashboard-kpi-overview-body { display: grid; min-height: 200px; flex: 1; grid-template-columns: minmax(180px, .36fr) minmax(0, .64fr); align-items: center; gap: 28px; padding: 8px 24px 22px; }
 .dashboard-kpi-feature { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; gap: 5px; }
@@ -527,6 +527,7 @@ h1, h2, h3, h4, h5, h6 { font-weight: 600; }
   --overview-left: color-mix(in srgb, var(--workspace-wash, var(--card)) 68%, var(--card));
   --overview-right: color-mix(in srgb, var(--primary-ghost) 55%, var(--card));
   border: 1px solid color-mix(in srgb, var(--border) 84%, var(--foreground) 16%);
+  background-color: var(--card);
   background-image: var(--time-pattern, none), linear-gradient(112deg, var(--overview-left), var(--overview-right));
   background-size: var(--pattern-size, auto), auto;
   box-shadow: var(--shadow-sm);
@@ -1079,7 +1080,7 @@ html.dark .profile-hero-card { background: linear-gradient(115deg, color-mix(in 
 .duration-trigger { padding: 8px 4px; gap: 4px; }
 
 /* Dashboard overview uses one contained card with two calm content columns. */
-.dashboard-kpi-overview { height: auto; min-height: 270px; overflow: hidden; border: 0; background: linear-gradient(112deg, color-mix(in srgb, var(--primary-ghost) 58%, var(--card)), color-mix(in srgb, var(--information-subtle) 38%, var(--card))); box-shadow: none; }
+.dashboard-kpi-overview { height: auto; min-height: 270px; overflow: hidden; border: 0; box-shadow: none; }
 .dashboard-kpi-overview > .card-header { border: 0; background: transparent; padding: 16px 24px 8px; }
 .onboarding-summary-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; }
 .onboarding-summary-metrics > div { min-height: 76px; justify-content: center; border: 0; border-left: 1px solid var(--border); border-radius: 0; background: transparent; padding: 8px 12px; }

@@ -57,6 +57,8 @@ test("updates the workspace palette through the day and celebrates the signed-in
   await page.getByRole("button", { name: "Dismiss birthday celebration" }).click();
   await expect(page.getByRole("heading", { name: /happy birthday/i })).toHaveCount(0);
 
+  const card = page.locator(".help-faq-card");
+  const cardColors = [await card.evaluate(element => getComputedStyle(element).backgroundColor)];
   const backgrounds = [morning];
   const patterns = [await content.evaluate(element => getComputedStyle(element, "::before").backgroundImage)];
   const primaryColors = [await colorToken(content, "--primary")];
@@ -69,10 +71,12 @@ test("updates the workspace palette through the day and celebrates the signed-in
     await page.clock.fastForward(60_000);
     await expect(root).toHaveAttribute("data-day-period", period);
     backgrounds.push(await content.evaluate(element => getComputedStyle(element).backgroundColor));
+    cardColors.push(await card.evaluate(element => getComputedStyle(element).backgroundColor));
     patterns.push(await content.evaluate(element => getComputedStyle(element, "::before").backgroundImage));
     primaryColors.push(await colorToken(content, "--primary"));
   }
   expect(new Set(backgrounds).size).toBe(4);
+  expect(new Set(cardColors).size).toBe(4);
   expect(new Set(patterns).size).toBe(4);
   expect(new Set(primaryColors).size).toBe(4);
   await expect(root).toHaveAttribute("data-role", "manager");
@@ -98,10 +102,18 @@ test("themes the public sign-in controls in light and dark mode", async ({ page 
   const lightPrimary = await colorToken(button, "--primary");
   await expect(button).toHaveCSS("background-color", lightPrimary);
 
+  const field = page.getByLabel("Email address");
+  const lightField = await colorToken(field, "--card");
+  await expect(field).toHaveCSS("background-color", lightField);
+  await field.fill("person@example.test");
+
   await page.emulateMedia({ colorScheme: "dark" });
-  await page.reload();
   await expect(root).toHaveAttribute("data-theme", "dark");
   const darkPrimary = await colorToken(button, "--primary");
   expect(darkPrimary).not.toBe(lightPrimary);
   await expect(button).toHaveCSS("background-color", darkPrimary);
+  const darkField = await colorToken(field, "--card");
+  expect(darkField).not.toBe(lightField);
+  await expect(field).toHaveCSS("background-color", darkField);
+  await expect(field).toHaveValue("person@example.test");
 });

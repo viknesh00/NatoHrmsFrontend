@@ -8,6 +8,7 @@ import { RoundedBox } from "@react-three/drei";
 import { BallCollider, CuboidCollider, Physics, RigidBody, type RapierRigidBody, useRopeJoint, useSphericalJoint } from "@react-three/rapier";
 import { MeshLineGeometry, MeshLineMaterial } from "meshline";
 import { CanvasTexture, CatmullRomCurve3, Color, SRGBColorSpace, Vector2, Vector3 } from "three";
+import { readCanvasColors } from "@/theme/canvasColors";
 
 type BadgeIdentity = {
   name: string;
@@ -36,13 +37,19 @@ function makeBadgeTexture({ name, title, initials }: BadgeIdentity) {
   const palette = getComputedStyle(document.documentElement);
   const deep = palette.getPropertyValue("--time-art-deep").trim() || "#19483a";
   const light = palette.getPropertyValue("--time-art-light").trim() || "#81d4ae";
+  const colors = readCanvasColors({
+    "--card": "#faf9f5",
+    "--foreground": "#162026",
+    "--muted-foreground": "#676c73",
+    "--border": "#e3e5ea",
+  });
   const canvas = document.createElement("canvas");
   canvas.width = 600;
   canvas.height = 810;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("The badge needs a 2D canvas texture.");
 
-  context.fillStyle = "#faf9f5";
+  context.fillStyle = colors["--card"];
   context.fillRect(0, 0, 600, 810);
   const gradient = context.createLinearGradient(0, 0, 600, 330);
   gradient.addColorStop(0, "#162026");
@@ -77,12 +84,15 @@ function makeBadgeTexture({ name, title, initials }: BadgeIdentity) {
 
   context.textAlign = "left";
   context.textBaseline = "alphabetic";
+  context.fillStyle = colors["--foreground"];
   context.font = '600 55px "Aleo Variable", Georgia, serif';
   context.fillText(name, 48, 513, 504);
+  context.fillStyle = colors["--muted-foreground"];
   context.font = '500 25px "Albert Sans Variable", sans-serif';
   context.fillText(title, 48, 560, 504);
-  context.fillStyle = deep;
+  context.fillStyle = colors["--border"];
   context.fillRect(48, 689, 504, 2);
+  context.fillStyle = colors["--muted-foreground"];
   context.font = '600 18px "Albert Sans Variable", sans-serif';
   context.fillText("DIGITAL BUSINESS CARD", 48, 737);
 
