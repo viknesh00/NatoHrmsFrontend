@@ -77,6 +77,9 @@ test('answers a common HR question without downloading the model', async ({ page
   await page.getByRole('textbox', { name: 'Ask the HRMS assistant' }).fill('Which HRMS page shows clock-in and clock-out records?');
   await page.getByRole('button', { name: 'Send message' }).click();
   await expect(page.getByText(/for clock-in and clock-out entries/)).toBeVisible();
+  await page.getByRole('textbox', { name: 'Ask the HRMS assistant' }).fill('What kind of help can you provide?');
+  await page.getByRole('button', { name: 'Send message' }).click();
+  await expect(page.getByText(/I can explain how to use the HRMS pages available to you/)).toBeVisible();
   expect(workers.filter(url => url.includes('hrmsChat.worker'))).toHaveLength(0);
 });
 

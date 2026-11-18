@@ -44,16 +44,16 @@
 .vcard-static-badge {
   position: relative;
   width: min(68%, 236px);
-  padding-top: 52px;
-  transform: rotate(-5deg);
+  padding-top: 24px;
+  transform: translateY(-22px) rotate(-5deg);
 }
 
 .vcard-static-strap {
   position: absolute;
-  bottom: calc(100% - 60px);
+  bottom: calc(100% - 32px);
   left: 50%;
   width: 12px;
-  height: 200px;
+  height: 144px;
   background: linear-gradient(90deg, var(--badge-ink) 65%, var(--badge-accent));
   transform: rotate(7deg);
   transform-origin: bottom center;

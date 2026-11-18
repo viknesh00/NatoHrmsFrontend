@@ -19,6 +19,11 @@ export function getQuickReply(question: string, modules: AssistantModule[]) {
     return modules.length ? `Your sidebar includes ${modules.map(({ label }) => `**${label}**`).join(", ")}.`
       : "The pages available to you will appear in the sidebar. If it is empty, contact your HR administrator.";
   }
+  if (/\b(?:what (?:can you do|can you help (?:me )?with|kind of help can you provide)|example of something you can help with)\b/.test(query)) {
+    const sample = assistantGuides.find(item => modules.some(({ to }) => to === item.path));
+    return sample ? `I can explain how to use the HRMS pages available to you. Try asking “${sample.question}”`
+      : "I can explain how to find the HRMS pages available to you.";
+  }
   const asksWhere = /\b(?:where (?:can|do) i|which (?:\w+ ){0,2}(?:page|tab|section)|how (?:can|do) i (?:find|see|view|check|request|apply))\b/.test(query);
   const matchingTopics = asksWhere ? assistantGuides.filter(item => item.topic.test(query)) : [];
   const guide = assistantGuides.find(item => normalize(item.question) === query) ?? (matchingTopics.length === 1 ? matchingTopics[0] : null);

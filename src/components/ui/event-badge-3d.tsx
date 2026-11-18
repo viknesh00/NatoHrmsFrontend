@@ -109,6 +109,11 @@ type LanyardProps = {
   setDragged: (dragged: boolean) => void;
 };
 
+const ANCHOR_Y = 2.9;
+const ROPE_SEGMENT_LENGTH = 0.38;
+const INITIAL_SEGMENT_DROP = ROPE_SEGMENT_LENGTH - 0.01;
+const BADGE_ATTACHMENT_Y = 1.36;
+
 function Lanyard({ artwork, onReady, dragged, setDragged }: LanyardProps) {
   const fixed = useRef<RapierRigidBody>(null);
   const first = useRef<RapierRigidBody>(null);
@@ -131,10 +136,10 @@ function Lanyard({ artwork, onReady, dragged, setDragged }: LanyardProps) {
   useEffect(() => { strapMaterial.color = new Color(artwork.deep); }, [artwork.deep, strapMaterial]);
   useEffect(() => { strapMaterial.resolution.set(width, height); }, [strapMaterial, width, height]);
 
-  useRopeJoint(fixed, first, [[0, 0, 0], [0, 0, 0], 0.58]);
-  useRopeJoint(first, second, [[0, 0, 0], [0, 0, 0], 0.58]);
-  useRopeJoint(second, third, [[0, 0, 0], [0, 0, 0], 0.58]);
-  useSphericalJoint(third, badge, [[0, 0, 0], [0, 1.36, 0]]);
+  useRopeJoint(fixed, first, [[0, 0, 0], [0, 0, 0], ROPE_SEGMENT_LENGTH]);
+  useRopeJoint(first, second, [[0, 0, 0], [0, 0, 0], ROPE_SEGMENT_LENGTH]);
+  useRopeJoint(second, third, [[0, 0, 0], [0, 0, 0], ROPE_SEGMENT_LENGTH]);
+  useSphericalJoint(third, badge, [[0, 0, 0], [0, BADGE_ATTACHMENT_Y, 0]]);
 
   useFrame(({ pointer: cursor, camera, viewport }) => {
     const body = badge.current;
@@ -181,11 +186,11 @@ function Lanyard({ artwork, onReady, dragged, setDragged }: LanyardProps) {
 
   return (
     <>
-      <RigidBody ref={fixed} type="fixed" position={[0, 2.9, 0]} colliders={false} />
-      <RigidBody ref={first} position={[0.12, 2.37, 0]} colliders={false} linearDamping={2}><BallCollider args={[0.045]} /></RigidBody>
-      <RigidBody ref={second} position={[0.19, 1.81, 0]} colliders={false} linearDamping={2}><BallCollider args={[0.045]} /></RigidBody>
-      <RigidBody ref={third} position={[0.23, 1.25, 0]} colliders={false} linearDamping={2}><BallCollider args={[0.045]} /></RigidBody>
-      <RigidBody ref={badge} position={[0.23, -0.11, 0]} type={dragged ? "kinematicPosition" : "dynamic"} colliders={false} linearDamping={2} angularDamping={5} enabledRotations={[false, false, true]}>
+      <RigidBody ref={fixed} type="fixed" position={[0, ANCHOR_Y, 0]} colliders={false} />
+      <RigidBody ref={first} position={[0.08, ANCHOR_Y - INITIAL_SEGMENT_DROP, 0]} colliders={false} linearDamping={2}><BallCollider args={[0.045]} /></RigidBody>
+      <RigidBody ref={second} position={[0.13, ANCHOR_Y - 2 * INITIAL_SEGMENT_DROP, 0]} colliders={false} linearDamping={2}><BallCollider args={[0.045]} /></RigidBody>
+      <RigidBody ref={third} position={[0.16, ANCHOR_Y - 3 * INITIAL_SEGMENT_DROP, 0]} colliders={false} linearDamping={2}><BallCollider args={[0.045]} /></RigidBody>
+      <RigidBody ref={badge} position={[0.16, ANCHOR_Y - 3 * INITIAL_SEGMENT_DROP - BADGE_ATTACHMENT_Y, 0]} type={dragged ? "kinematicPosition" : "dynamic"} colliders={false} linearDamping={2} angularDamping={5} enabledRotations={[false, false, true]}>
         <CuboidCollider args={[0.96, 1.27, 0.04]} />
         <group onPointerDown={startDrag} onPointerUp={endDrag} onPointerCancel={endDrag}>
           <RoundedBox args={[1.94, 2.6, 0.09]} radius={0.065} smoothness={4}>
