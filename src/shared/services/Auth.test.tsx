@@ -66,17 +66,17 @@ test("renders protected content when signed in", () => {
   expect(screen.getByText("Private")).toBeInTheDocument();
 });
 
-test.each(["/", "/login", "/sign-in", "/forgot-password"])("sends signed-in onboarding users from %s to their home", async (path) => {
+test.each(["/", "/login", "/sign-in", "/forgot-password"])("sends signed-in onboarding users from %s to the dashboard", async (path) => {
   signIn("Onboarding");
   render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path={path} element={<GuestRoute><div>Sign in</div></GuestRoute>} />
-        <Route path="/onboarding" element={<div>Onboarding home</div>} />
+        <Route path="/dashboard" element={<div>Dashboard home</div>} />
       </Routes>
     </MemoryRouter>
   );
-  expect(await screen.findByText("Onboarding home")).toBeInTheDocument();
+  expect(await screen.findByText("Dashboard home")).toBeInTheDocument();
 });
 
 test.each(["https://other.example", "//other.example", "/\\other.example", "/login", "/sign-in/", "/forgot-password", "/"])("uses the role home instead of unsafe or auth destination %s", (pathname) => {

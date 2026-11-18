@@ -6,8 +6,9 @@ test('retains administrator access regardless of department', () => {
 });
 test('retains employee department restrictions', () => {
   const onboarding = paths('Employee', 'Onboarding');
+  expect(onboarding).toContain('/dashboard');
   expect(onboarding).toContain('/onboarding');
-  expect(onboarding).not.toContain('/dashboard');
+  expect(onboarding).not.toContain('/attendance');
   expect(onboarding).not.toContain('/employees');
   expect(paths('Employee', 'deizeisau')).not.toContain('/attendance');
   expect(paths('Employee', 'Engineering')).not.toContain('/employees');

@@ -55,11 +55,15 @@ test('header avatar opens the profile directly without a dropdown', async ({ pag
   await expect(page.getByRole('menu')).toHaveCount(0);
 });
 
-test('retains department-based landing and navigation rules', async ({ page, isMobile }) => {
+test('opens the onboarding dashboard and applies department navigation rules', async ({ page, isMobile }) => {
   await session(page, 'Employee', 'Onboarding');
-  await page.goto('/dashboard');
-  await expect(page).toHaveURL(/\/onboarding$/);
-  if (isMobile) await page.getByRole('button', { name: /navigation|menu/i }).first().click();
-  await expect(page.getByRole('link', { name: 'Onboarding', exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Employees', exact: true })).toHaveCount(0);
+  await page.goto('/forgot-password');
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page.getByText('Onboarding overview', { exact: true })).toBeVisible();
+  if (isMobile) await page.getByRole('button', { name: 'Toggle navigation' }).click();
+  const sidebar = page.getByRole('complementary', { name: 'Primary navigation' });
+  await expect(sidebar.getByRole('link', { name: 'Dashboard', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(sidebar.getByRole('link', { name: 'Onboarding', exact: true })).toBeVisible();
+  await expect(sidebar.getByRole('link', { name: 'Attendance', exact: true })).toHaveCount(0);
+  await expect(sidebar.getByRole('link', { name: 'Employees', exact: true })).toHaveCount(0);
 });
