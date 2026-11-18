@@ -2,6 +2,22 @@
    Legacy aliases keep existing features on the semantic palette. */
 :root {
   color-scheme: light;
+  --background: var(--base-background);
+  --card: var(--base-card);
+  --popover: var(--base-popover);
+  --secondary: var(--base-secondary);
+  --muted: var(--base-muted);
+  --border: var(--base-border);
+  --input: var(--base-input);
+  --decoration: var(--base-decoration);
+  --foreground: var(--base-foreground);
+  --muted-foreground: var(--base-muted-foreground);
+  --secondary-foreground: var(--base-secondary-foreground);
+  --neutral: var(--base-neutral);
+  --success-subtle: var(--base-success-subtle);
+  --error-subtle: var(--base-error-subtle);
+  --warning-subtle: var(--base-warning-subtle);
+  --information-subtle: var(--base-information-subtle);
   --role-primary: #2f7659;
   --role-primary-hover: #27634b;
   --role-primary-ghost: #edf7f2;
@@ -12,45 +28,45 @@
   --role-dark-ghost: rgb(81 188 143 / 0.15);
   --role-dark-glow: rgb(81 188 143 / 0.22);
   --role-dark-accent: #71d1a6;
-  --background: #fcfcfd;
-  --foreground: #252a30;
-  --card: #ffffff;
+  --base-background: #fcfcfd;
+  --base-foreground: #252a30;
+  --base-card: #ffffff;
   --card-foreground: var(--foreground);
-  --popover: #ffffff;
+  --base-popover: #ffffff;
   --popover-foreground: var(--foreground);
   --primary: var(--role-primary);
   --primary-foreground: #ffffff;
   --primary-hover: var(--role-primary-hover);
-  --secondary: #f3f4f6;
-  --secondary-foreground: #676c73;
-  --muted: #f3f4f6;
-  --muted-foreground: #676c73;
+  --base-secondary: #f3f4f6;
+  --base-secondary-foreground: #676c73;
+  --base-muted: #f3f4f6;
+  --base-muted-foreground: #676c73;
   --accent: var(--role-accent);
   --accent-foreground: #252a30;
   /* Decorative only: use muted-foreground for readable text. */
-  --decoration: #aeb2b9;
-  --neutral: #838589;
-  --border: #e3e5ea;
-  --input: #e3e5ea;
+  --base-decoration: #aeb2b9;
+  --base-neutral: #838589;
+  --base-border: #e3e5ea;
+  --base-input: #e3e5ea;
   --ring: var(--primary);
   --border-strong: var(--decoration);
   --overlay: rgb(37 42 48 / 0.48);
 
   --success: #276749;
   --success-foreground: #ffffff;
-  --success-subtle: #edf7f1;
+  --base-success-subtle: #edf7f1;
   --success-border: #9ac6ad;
   --warning: #854d0e;
   --warning-foreground: #ffffff;
-  --warning-subtle: #fff7e6;
+  --base-warning-subtle: #fff7e6;
   --warning-border: #d6b77c;
   --error: #b42332;
   --error-foreground: #ffffff;
-  --error-subtle: #fdf0f1;
+  --base-error-subtle: #fdf0f1;
   --error-border: #dea1a8;
   --information: #245f92;
   --information-foreground: #ffffff;
-  --information-subtle: #edf4fb;
+  --base-information-subtle: #edf4fb;
   --information-border: #a2bdd5;
   --destructive: var(--error);
   --destructive-foreground: var(--error-foreground);
@@ -166,43 +182,43 @@
 /* Dark mode keeps semantic states distinct while using the active role accent. */
 :root.dark {
   color-scheme: dark;
-  --background: #14181d;
-  --foreground: #eef1f4;
-  --card: #1d232a;
+  --base-background: #14181d;
+  --base-foreground: #eef1f4;
+  --base-card: #1d232a;
   --card-foreground: var(--foreground);
-  --popover: #20272e;
+  --base-popover: #20272e;
   --popover-foreground: var(--foreground);
   --primary: var(--role-dark-primary);
   --primary-foreground: #17211c;
   --primary-hover: var(--role-dark-hover);
-  --secondary: #29313a;
-  --secondary-foreground: #c2c9d0;
-  --muted: #252c34;
-  --muted-foreground: #aeb7c0;
+  --base-secondary: #29313a;
+  --base-secondary-foreground: #c2c9d0;
+  --base-muted: #252c34;
+  --base-muted-foreground: #aeb7c0;
   --accent: var(--role-dark-accent);
   --accent-foreground: #17211c;
-  --decoration: #505963;
-  --neutral: #a0a6ad;
-  --border: #343d46;
-  --input: #39434d;
+  --base-decoration: #505963;
+  --base-neutral: #a0a6ad;
+  --base-border: #343d46;
+  --base-input: #39434d;
   --ring: var(--primary);
   --border-strong: #505963;
   --overlay: rgb(0 0 0 / 0.68);
   --success: #79c99b;
   --success-foreground: #14241a;
-  --success-subtle: #1d3326;
+  --base-success-subtle: #1d3326;
   --success-border: #426b50;
   --warning: #edbd65;
   --warning-foreground: #2a2111;
-  --warning-subtle: #392f1e;
+  --base-warning-subtle: #392f1e;
   --warning-border: #79623a;
   --error: #ff929b;
   --error-foreground: #2a1518;
-  --error-subtle: #3b2428;
+  --base-error-subtle: #3b2428;
   --error-border: #78434b;
   --information: #87b9e8;
   --information-foreground: #142231;
-  --information-subtle: #202f3d;
+  --base-information-subtle: #202f3d;
   --information-border: #425c74;
   --destructive: var(--error);
   --destructive-foreground: var(--error-foreground);
@@ -247,4 +263,78 @@
   --shadow-md: 0 8px 24px rgb(0 0 0 / 0.32);
   --shadow-lg: 0 12px 32px rgb(0 0 0 / 0.4);
   --shadow-xl: var(--shadow-lg);
+}
+
+/* Shared tokens carry the active palette into native elements, Tailwind, shadcn, and legacy CSS. */
+:root[data-day-period] {
+  --background: color-mix(in srgb, var(--time-surface) 64%, var(--base-background));
+  --card: color-mix(in srgb, var(--time-surface) 18%, var(--base-card));
+  --popover: color-mix(in srgb, var(--time-surface) 13%, var(--base-popover));
+  --secondary: color-mix(in srgb, var(--time-surface) 28%, var(--base-secondary));
+  --muted: color-mix(in srgb, var(--time-surface) 27%, var(--base-muted));
+  --border: color-mix(in srgb, var(--time-surface) 31%, var(--base-border));
+  --input: color-mix(in srgb, var(--time-surface) 27%, var(--base-input));
+  --decoration: color-mix(in srgb, var(--time-surface) 16%, var(--base-decoration));
+  --foreground: color-mix(in srgb, var(--time-action) 4%, var(--base-foreground));
+  --muted-foreground: color-mix(in srgb, var(--time-action) 6%, var(--base-muted-foreground));
+  --secondary-foreground: color-mix(in srgb, var(--time-action) 6%, var(--base-secondary-foreground));
+  --neutral: color-mix(in srgb, var(--time-action) 9%, var(--base-neutral));
+  --success-subtle: color-mix(in srgb, var(--time-surface) 12%, var(--base-success-subtle));
+  --error-subtle: color-mix(in srgb, var(--time-surface) 12%, var(--base-error-subtle));
+  --warning-subtle: color-mix(in srgb, var(--time-surface) 12%, var(--base-warning-subtle));
+  --information-subtle: color-mix(in srgb, var(--time-surface) 12%, var(--base-information-subtle));
+  --primary: color-mix(in srgb, light-dark(var(--role-primary), var(--role-dark-primary)) 64%, var(--time-action));
+  --primary-hover: color-mix(in srgb, light-dark(var(--role-primary-hover), var(--role-dark-hover)) 64%, var(--time-action-hover));
+  --accent: color-mix(in srgb, light-dark(var(--role-accent), var(--role-dark-accent)) 64%, var(--time-accent));
+  --primary-ghost: color-mix(in srgb, var(--primary) 11%, var(--card));
+  --primary-glow: color-mix(in srgb, var(--primary) 18%, transparent);
+  --sidebar-accent: var(--primary-ghost);
+  --workspace-header: color-mix(in srgb, var(--time-surface) 48%, var(--card));
+  --workspace-sidebar: color-mix(in srgb, var(--time-surface) 56%, var(--sidebar));
+  --workspace-wash: color-mix(in srgb, var(--time-accent) 24%, var(--card));
+  --pattern-ink: color-mix(in srgb, var(--time-action) 16%, transparent);
+  --pattern-size: 18px 18px;
+}
+
+:root[data-day-period="morning"] {
+  --time-surface: light-dark(#fff3dc, #2f281c);
+  --time-accent: light-dark(#d99a39, #c19758);
+  --time-action: light-dark(#825617, #e6b766);
+  --time-action-hover: light-dark(#67420f, #f2cc87);
+  --time-art-deep: #60401b;
+  --time-art-light: #e8b464;
+  --time-pattern: radial-gradient(var(--pattern-ink) .8px, transparent 1px);
+}
+
+:root[data-day-period="afternoon"] {
+  --time-surface: light-dark(#e9f6ed, #202d28);
+  --time-accent: light-dark(#54a184, #65b99b);
+  --time-action: light-dark(#24634a, #91d9b2);
+  --time-action-hover: light-dark(#194935, #a9e6c5);
+  --time-art-deep: #19483a;
+  --time-art-light: #81d4ae;
+  --time-pattern: repeating-linear-gradient(135deg, var(--pattern-ink) 0 1px, transparent 1px 11px);
+  --pattern-size: auto;
+}
+
+:root[data-day-period="evening"] {
+  --time-surface: light-dark(#f8ebf3, #302432);
+  --time-accent: light-dark(#b878a3, #bf86b7);
+  --time-action: light-dark(#794469, #edb4db);
+  --time-action-hover: light-dark(#603354, #f6c9e8);
+  --time-art-deep: #51334d;
+  --time-art-light: #dba0c8;
+  --time-pattern: radial-gradient(ellipse at 20% 50%, var(--pattern-ink) 1px, transparent 1.5px);
+  --pattern-size: 16px 11px;
+}
+
+:root[data-day-period="night"] {
+  --time-surface: light-dark(#eaf0ff, #212b42);
+  --time-accent: light-dark(#6684c9, #7b9cde);
+  --time-action: light-dark(#3e568d, #9dbfff);
+  --time-action-hover: light-dark(#304573, #b7d0ff);
+  --time-art-deep: #263a68;
+  --time-art-light: #95b5ee;
+  --time-pattern: radial-gradient(ellipse at 22% 25%, var(--pattern-ink) 1px, transparent 1.5px);
+  --pattern-size: 24px 29px;
 }

@@ -1,3 +1,4 @@
+import { colorToken } from "./color-token";
 import { expect, test, type Page } from '@playwright/test';
 
 const employee = { employeeId: 'E001', firstName: 'Asha', lastName: 'Rao', email: 'asha@example.test', userName: 'asha@example.test', department: 'Engineering', accessRole: 'Employee', isActive: true, projectAssigned: '', isDefaultPasswordChanged: true };
@@ -105,7 +106,7 @@ test('keeps payslip document scrollable without changing its values', async ({ p
 test('uses approved tokens and accessible action text', async ({ page }, testInfo) => {
   await page.goto('/login');
   const button = page.getByRole('button', { name: 'Sign in', exact: true });
-  await expect(button).toHaveCSS('background-color', 'rgb(47, 118, 89)');
+  await expect(button).toHaveCSS('background-color', await colorToken(button, '--primary'));
   await expect(button).toHaveCSS('color', 'rgb(255, 255, 255)');
   await expect(button).toHaveCSS('border-radius', '4px');
   await expect(page.getByLabel('Email address')).toHaveCSS('height', '44px');

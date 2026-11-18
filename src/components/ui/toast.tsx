@@ -1,39 +1,17 @@
 import React, { useSyncExternalStore } from "react";
 import { AlertTriangle, CheckCircle2, CircleAlert, Info, LoaderCircle, X } from "lucide-react";
 
+import { playChime } from "@/shared/services/playChime";
+
 let items = [];
 let nextId = 1;
 const listeners = new Set<() => void>();
 const timers = new Map();
-let audioContext;
 
 function playNotificationSound(type) {
   if (type === "loading" || typeof window === "undefined") return;
-  try {
-    const AudioContextConstructor = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContextConstructor) return;
-    audioContext ||= new AudioContextConstructor();
-    const context = audioContext;
-    if (context.state === "suspended") void context.resume().catch(() => {});
-    const notes = type === "success" ? [740, 988] : type === "error" ? [392, 294] : type === "warning" ? [587] : [784];
-    const start = context.currentTime;
-    notes.forEach((frequency, index) => {
-      const oscillator = context.createOscillator();
-      const gain = context.createGain();
-      const at = start + index * 0.085;
-      oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(frequency, at);
-      gain.gain.setValueAtTime(0.0001, at);
-      gain.gain.exponentialRampToValueAtTime(0.035, at + 0.012);
-      gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.075);
-      oscillator.connect(gain);
-      gain.connect(context.destination);
-      oscillator.start(at);
-      oscillator.stop(at + 0.08);
-    });
-  } catch {
-    // Browser autoplay policy or unavailable audio must never block an action.
-  }
+  const notes = type === "success" ? [740, 988] : type === "error" ? [392, 294] : type === "warning" ? [587] : [784];
+  void playChime(notes);
 }
 
 function subscribe(listener) {

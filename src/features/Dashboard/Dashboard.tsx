@@ -12,6 +12,9 @@ import { getEventColors } from "../Holiday/eventColors";
 import { AttendanceChart, DepartmentChart, KpiSnapshotChart, PersonalAttendanceChart } from "./DashboardCharts";
 import OrganizationDendrogram from "./OrganizationDendrogram";
 import { getVisibleMenuItems } from "../../auth/navigation";
+import { getDayPeriod } from "../../theme/dayPeriod";
+import { useTheme } from "../../theme/ThemeProvider";
+
 dayjs.extend(isoWeek);
 
 const ROLE_KPI_PALETTES = {
@@ -253,7 +256,8 @@ export default function Dashboard() {
   const [onboardingMetricsReady, setOnboardingMetricsReady] = useState(false);
   const [myUserData, setMyUserData] = useState(null);
   const [dashboardCategory, setDashboardCategory] = useState("overview");
-  const [now, setNow] = useState(() => dayjs());
+  const { now: localTime } = useTheme();
+  const now = dayjs(localTime);
   const [motivation, setMotivation] = useState("A focused step today can make meaningful progress for your team.");
   const [motivationBusy, setMotivationBusy] = useState(false);
   const motivationWorkerRef = useRef<Worker | null>(null);
@@ -282,16 +286,11 @@ export default function Dashboard() {
   const isOnboardingDashboard = userRole?.toLowerCase() === "onboarding" || getCookie("department")?.trim().toLowerCase() === "onboarding" || myUserData?.department?.trim().toLowerCase() === "onboarding";
   const kpiPalette = isOnboardingDashboard ? ROLE_KPI_PALETTES.Onboarding : (ROLE_KPI_PALETTES[userRole] || ROLE_KPI_PALETTES.Employee);
   const todayStr = dayjs().format("YYYY-MM-DD");
-  const hour = now.hour();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-  const dayPeriod = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
-  const greetingEmoji = hour < 12 ? "🌞" : hour < 17 ? "😊" : "✨";
+  const dayPeriod = getDayPeriod(now.hour());
+  const greetings = { morning: "Good morning", afternoon: "Good afternoon", evening: "Good evening", night: "Good evening" };
+  const greetingIcons = { morning: "🌞", afternoon: "☀️", evening: "✨", night: "🌙" };
+  const greeting = greetings[dayPeriod];
   const today = now.format("dddd, DD MMM YYYY");
-
-  useEffect(() => {
-    const timerId = window.setInterval(() => setNow(dayjs()), 60_000);
-    return () => window.clearInterval(timerId);
-  }, []);
 
   useEffect(() => () => motivationWorkerRef.current?.terminate(), []);
 
@@ -544,9 +543,9 @@ export default function Dashboard() {
     <div className="dashboard-page p-[0_0_24px]" >
 
       {/* Greeting Banner */}
-      <div className={cn("greeting-banner", "mb-[18px]")} data-period={dayPeriod}>
+      <div className={cn("greeting-banner", "mb-[18px]")}>
         <div className="greeting-banner-copy">
-          <div className="greeting-title">{greeting}, {firstName}! <span className="greeting-emoji" aria-hidden="true">{greetingEmoji} 🎉</span> <Sparkles size={18} aria-hidden="true" /></div>
+          <div className="greeting-title">{greeting}, {firstName}! <span className="greeting-emoji" aria-hidden="true">{greetingIcons[dayPeriod]}</span> <Sparkles size={18} aria-hidden="true" /></div>
           <div className="greeting-motivation-row">
             <p className="greeting-motivation" aria-live="polite">{motivation}</p>
           </div>
@@ -599,7 +598,7 @@ export default function Dashboard() {
         </Tabs>
       </div>
 
-      <div className="card dashboard-kpi-overview dashboard-visual-card" data-period={dayPeriod}>
+      <div className="card dashboard-kpi-overview dashboard-visual-card">
         <div className="card-header">
           <span className={cn("card-title", "flex items-center gap-[8px]")}>
             <Sparkles size={17} aria-hidden="true" className="text-primary" />

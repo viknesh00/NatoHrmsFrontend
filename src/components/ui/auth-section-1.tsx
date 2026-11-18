@@ -15,29 +15,39 @@ function AuthGrainGradient() {
     if (typeof WebGL2RenderingContext === "undefined") return;
 
     const media = window.matchMedia("(min-width: 900px)");
-    const root = getComputedStyle(document.documentElement);
-    const primary = root.getPropertyValue("--role-primary").trim();
-    const accent = root.getPropertyValue("--role-dark-accent").trim();
+    const root = document.documentElement;
+    let supportsWebGL: boolean | undefined;
     const update = () => {
-      if (!media.matches || !primary || !accent) {
+      if (!media.matches) {
         setColors(null);
         return;
       }
 
-      try {
-        const context = document.createElement("canvas").getContext("webgl2");
-        if (context && !context.isContextLost()) {
-          context.getExtension("WEBGL_lose_context")?.loseContext();
-          setColors([accent, primary, primary, accent]);
+      if (supportsWebGL === undefined) {
+        try {
+          const context = document.createElement("canvas").getContext("webgl2");
+          supportsWebGL = Boolean(context && !context.isContextLost());
+          context?.getExtension("WEBGL_lose_context")?.loseContext();
+        } catch {
+          supportsWebGL = false;
         }
-      } catch {
-        // Keep the CSS gradient if WebGL is unavailable.
       }
+      if (!supportsWebGL) return;
+
+      const styles = getComputedStyle(root);
+      const primary = styles.getPropertyValue("--time-art-deep").trim();
+      const light = styles.getPropertyValue("--time-art-light").trim();
+      if (primary && light) setColors([light, primary, primary, light]);
     };
 
     update();
     media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
+    const observer = new MutationObserver(update);
+    observer.observe(root, { attributes: true, attributeFilter: ["data-day-period"] });
+    return () => {
+      media.removeEventListener("change", update);
+      observer.disconnect();
+    };
   }, []);
 
   if (!colors) return null;

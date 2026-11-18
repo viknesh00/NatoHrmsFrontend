@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { AtSign, BriefcaseBusiness, Building2, Check, Copy, Download, ExternalLink, Link2, Mail, MapPin, Phone, QrCode, Share2, UserRound } from "lucide-react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { AtSign, BriefcaseBusiness, Building2, Check, Copy, Download, ExternalLink, Grip, Link2, Mail, MapPin, Phone, Share2, UserRound } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import ProfileAvatar from "../../components/ProfileAvatar";
 import { getCookie } from "../../auth/Cookies";
@@ -7,12 +7,21 @@ import { getRequest } from "../../shared/services/Apiservice";
 import Breadcrumb from "../../shared/services/Breadcrumb";
 import LoadingMask from "../../shared/services/LoadingMask";
 
+import { useReducedMotion } from "framer-motion";
+import { useTheme } from "@/theme/ThemeProvider";
+import { getDayPeriod } from "@/theme/dayPeriod";
+import "./vcard.css";
+
+const EventBadge3D = lazy(() => import("@/components/ui/event-badge-3d"));
+
 type EmployeeProfile = Record<string, any>;
 
 const valueOr = (value: unknown, fallback = "Not provided") => String(value ?? "").trim() || fallback;
 const escapeVCard = (value: unknown) => String(value ?? "").replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
 
 export default function VCard() {
+  const { now } = useTheme();
+  const prefersReducedMotion = useReducedMotion();
   const email = getCookie("email") || "";
   const [profile, setProfile] = useState<EmployeeProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -90,13 +99,25 @@ export default function VCard() {
 
   if (loading) return <LoadingMask loading />;
 
+  const staticBadge = (
+    <div className="vcard-static-badge" aria-hidden="true">
+      <span className="vcard-static-strap" />
+      <div className="vcard-static-face">
+        <div className="vcard-static-brand"><img src="/assets/images/natobotics-logo.png" alt="" /> Natobotics</div>
+        <span className="vcard-static-initials">{initials}</span>
+        <div className="vcard-static-copy"><strong>{fullName}</strong><span>{title}</span></div>
+        <div className="vcard-static-footer">Digital business card</div>
+      </div>
+    </div>
+  );
+
   return (
     <main className="vcard-page">
       <div className="page-header vcard-page-header">
         <div>
           <Breadcrumb icon={<ContactRoundIcon />} items={[{ label: "Digital Business Card" }]} />
           <h1 className="page-title">My digital business card</h1>
-          <p className="page-subtitle">A polished, shareable introduction to you and your work.</p>
+          <p className="page-subtitle">Preview and share your work contact details.</p>
         </div>
         <div className="vcard-page-actions">
           <Button type="button" variant="outline" onClick={shareCard}><Share2 size={16} /> Share card</Button>
@@ -106,36 +127,27 @@ export default function VCard() {
 
       <div className="vcard-layout">
         <section className="vcard-preview-column" aria-label="Digital contact card preview">
-          <article className="vcard-preview">
-            <div className="vcard-cover">
-              <div className="vcard-cover-grid" aria-hidden="true" />
-              <span className="vcard-brand-mark"><img src="/assets/images/natobotics-logo.png" alt="Natobotics" /> <span>NATOBOTICS</span></span>
-              <span className="vcard-card-label">DIGITAL CONTACT CARD</span>
-            </div>
-            <div className="vcard-main">
-              <ProfileAvatar seed={profile?.email || email} initials={initials} className="vcard-avatar" />
-              <span className="vcard-availability"><i /> Team member</span>
-              <h2>{fullName}</h2>
-              <p className="vcard-title">{title || "Your role and team"}</p>
-              <div className="vcard-divider" />
-              <div className="vcard-quick-actions">
-                <a href={`mailto:${profile?.email || email}`} aria-label="Email"><Mail size={17} /></a>
-                {profile?.contactNumber && <a href={`tel:${profile.contactNumber}`} aria-label="Call"><Phone size={17} /></a>}
-                {profile?.linkedIn && <a href={profile.linkedIn} target="_blank" rel="noreferrer" aria-label="LinkedIn"><Link2 size={17} /></a>}
-                <button type="button" onClick={copyProfileLink} aria-label="Copy profile link"><Copy size={17} /></button>
-              </div>
-              <Button className="vcard-save-button" type="button" onClick={downloadContact}><Download size={16} /> Add to contacts</Button>
-            </div>
-            <div className="vcard-card-foot"><span>Designed for meaningful connections</span><QrCode size={18} aria-hidden="true" /></div>
-          </article>
-          <p className="vcard-preview-caption"><span><Check size={14} /> Live preview</span><span>Details stay in sync with your HR profile</span></p>
+          <div className="vcard-badge-stage">
+            {prefersReducedMotion || typeof WebGL2RenderingContext === "undefined" ? staticBadge : (
+              <Suspense fallback={staticBadge}>
+                <EventBadge3D
+                  name={fullName}
+                  title={title || "Natobotics HRMS"}
+                  initials={initials}
+                  paletteKey={getDayPeriod(now.getHours())}
+                  fallback={staticBadge}
+                />
+              </Suspense>
+            )}
+            <span className="vcard-badge-hint" aria-hidden="true"><Grip size={14} /> Drag the badge</span>
+          </div>
         </section>
 
         <section className="vcard-details-column" aria-label="Contact details">
           <div className="vcard-details-card">
             <div className="vcard-details-heading">
-              <span className="vcard-details-icon"><UserRound size={18} /></span>
-              <div><h2>Contact details</h2><p>Information shown on your card</p></div>
+              <ProfileAvatar seed={profile?.email || email} initials={initials} className="vcard-avatar" />
+              <div><h2>{fullName}</h2>{title && <p>{title}</p>}</div>
             </div>
             <div className="vcard-contact-list">
               {contactLines.map(({ label, value, icon: Icon, href }) => (
@@ -151,8 +163,14 @@ export default function VCard() {
               <span><AtSign size={15} /> {valueOr(profile?.accessRole, "HRMS member")}</span>
             </div>
           </div>
-          <div className="vcard-tip"><span className="vcard-tip-icon"><Share2 size={17} /></span><p><strong>Ready to connect?</strong><br />Share your card or save it to any phone’s contacts in one tap.</p></div>
-          <Button className="vcard-copy-link" type="button" variant="outline" onClick={copyProfileLink}><Copy size={15} /> Copy profile link</Button>
+          <div className="vcard-contact-actions">
+            <Button type="button" variant="outline" onClick={copyProfileLink}><Copy size={15} /> Copy profile link</Button>
+            {profile?.linkedIn && (
+              <Button variant="outline" asChild>
+                <a href={profile.linkedIn} target="_blank" rel="noreferrer"><Link2 size={15} /> LinkedIn</a>
+              </Button>
+            )}
+          </div>
         </section>
       </div>
       {notice && <div role="status" className="vcard-toast"><Check size={15} /> {notice}</div>}

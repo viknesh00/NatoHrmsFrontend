@@ -1,3 +1,4 @@
+import { colorToken } from "./color-token";
 import { expect, test, type Page } from '@playwright/test';
 
 async function mockApi(page: Page, department = 'Engineering') {
@@ -21,7 +22,7 @@ test('protects deep links and renders sign in without horizontal overflow', asyn
   await page.goto('/employees');
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toHaveCSS('background-color', 'rgb(47, 118, 89)');
+  await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toHaveCSS('background-color', await colorToken(page.getByRole('button', { name: 'Sign in', exact: true }), '--primary'));
   await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toHaveCSS('border-radius', '4px');
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
   expect(overflow).toBe(false);

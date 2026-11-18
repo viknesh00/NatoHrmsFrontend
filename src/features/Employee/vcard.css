@@ -1,0 +1,114 @@
+.vcard-badge-stage {
+  --badge-ink: var(--time-art-deep, #19483a);
+  --badge-accent: var(--time-art-light, #81d4ae);
+  position: relative;
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  height: clamp(420px, 63vh, 550px);
+  overflow: hidden;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background:
+    var(--time-pattern, none) 0 0 / var(--pattern-size, auto),
+    radial-gradient(ellipse at 50% 57%, var(--card) 10%, var(--workspace-wash, var(--primary-ghost)) 76%, var(--muted));
+}
+
+.event-badge-canvas {
+  position: absolute;
+  inset: 0;
+  cursor: grab;
+  visibility: hidden;
+  touch-action: none;
+}
+
+.event-badge-canvas[data-ready="true"] { visibility: visible; }
+.event-badge-canvas[data-dragging="true"] { cursor: grabbing; }
+
+.vcard-badge-hint {
+  position: absolute;
+  inset: auto 14px 14px auto;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--muted-foreground);
+  font-size: var(--type-meta);
+  pointer-events: none;
+}
+
+.vcard-badge-stage:has([data-ready="true"]) .vcard-badge-hint { display: inline-flex; }
+
+.vcard-static-badge {
+  position: relative;
+  width: min(68%, 236px);
+  padding-top: 52px;
+  transform: rotate(-5deg);
+}
+
+.vcard-static-strap {
+  position: absolute;
+  bottom: calc(100% - 60px);
+  left: 50%;
+  width: 12px;
+  height: 200px;
+  background: linear-gradient(90deg, var(--badge-ink) 65%, var(--badge-accent));
+  transform: rotate(7deg);
+  transform-origin: bottom center;
+}
+
+.vcard-static-face {
+  position: relative;
+  min-height: 270px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: var(--shadow-lg);
+}
+
+.vcard-static-brand {
+  display: flex;
+  height: 98px;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 24px 15px 0;
+  border-bottom: 3px solid var(--badge-accent);
+  background: var(--time-pattern, none) 0 0 / var(--pattern-size, auto), var(--badge-ink);
+  color: #fff;
+  font-size: var(--type-secondary);
+  font-weight: 700;
+}
+
+.vcard-static-brand img { width: 19px; height: 19px; border-radius: 50%; background: #fff; }
+
+.vcard-static-initials {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  margin: -22px 0 0 15px;
+  position: relative;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--badge-accent);
+  color: #162026;
+  font-weight: 700;
+}
+
+.vcard-static-copy { display: grid; gap: 4px; padding: 15px; }
+.vcard-static-copy strong { font-family: var(--ui-font-heading); font-size: clamp(19px, 3vw, 23px); overflow-wrap: anywhere; }
+.vcard-static-copy span { color: var(--muted-foreground); font-size: var(--type-meta); overflow-wrap: anywhere; }
+.vcard-static-footer { margin: 12px 15px 15px; padding-top: 9px; border-top: 1px solid var(--border); color: var(--muted-foreground); font-size: 10px; }
+.vcard-details-heading > div { min-width: 0; overflow-wrap: anywhere; }
+.vcard-details-heading h2 { font-size: 20px; }
+.vcard-details-heading .vcard-avatar { width: 48px; height: 48px; flex: 0 0 48px; }
+.vcard-contact-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+@media (max-width: 760px) {
+  .vcard-badge-stage { height: 420px; }
+  .event-badge-canvas { touch-action: pan-y; }
+}

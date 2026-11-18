@@ -1,7 +1,9 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
+
+import { getDayPeriod } from "./dayPeriod";
 
 export type AppTheme = "light" | "dark";
-type ThemeContextValue = { theme: AppTheme; toggleTheme: () => void };
+type ThemeContextValue = { theme: AppTheme; toggleTheme: () => void; now: Date };
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 const THEME_STORAGE_KEY = "hrms-theme";
 
@@ -14,6 +16,8 @@ function getInitialTheme(): AppTheme {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
+  const [now, setNow] = useState(() => new Date());
+  const dayPeriod = getDayPeriod(now.getHours());
   const [theme, setTheme] = useState<AppTheme>(getInitialTheme);
   const [hasManualPreference, setHasManualPreference] = useState(() => {
     try {
@@ -24,24 +28,47 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
+    let timer: number;
+    const updateTime = () => {
+      window.clearTimeout(timer);
+      const current = new Date();
+      setNow(current);
+      timer = window.setTimeout(updateTime, 60_000 - (current.getTime() % 60_000));
+    };
+
+    updateTime();
+    document.addEventListener("visibilitychange", updateTime);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", updateTime);
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    root.dataset.dayPeriod = dayPeriod;
+    return () => { delete root.dataset.dayPeriod; };
+  }, [dayPeriod]);
+
+  useEffect(() => {
     const root = document.documentElement;
     root.classList.toggle("dark", theme === "dark");
     root.dataset.theme = theme;
     root.style.colorScheme = theme;
     document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute(
       "content",
-      theme === "dark" ? "#14181d" : "#fcfcfd"
+      getComputedStyle(document.body).backgroundColor
     );
     if (hasManualPreference) {
       try { localStorage.setItem(THEME_STORAGE_KEY, theme); } catch { /* Theme still works for this session. */ }
     }
-  }, [theme, hasManualPreference]);
+  }, [theme, dayPeriod, hasManualPreference]);
 
   const toggleTheme = useCallback(() => {
     setHasManualPreference(true);
     setTheme((current) => current === "dark" ? "light" : "dark");
   }, []);
-  const value = useMemo(() => ({ theme, toggleTheme }), [theme, toggleTheme]);
+  const value = useMemo(() => ({ theme, toggleTheme, now }), [theme, toggleTheme, now]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

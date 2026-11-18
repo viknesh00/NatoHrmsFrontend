@@ -1,3 +1,4 @@
+import { colorToken } from "./color-token";
 import { expect, test, type Page } from '@playwright/test';
 import dayjs from 'dayjs';
 
@@ -96,7 +97,7 @@ test('clock-in submits the browser GPS coordinates and accuracy', async ({ page 
   await page.goto('/attendance');
   const clockButton = page.getByRole('button', { name: 'Clock in', exact: true });
   await expect(clockButton).toBeVisible();
-  await expect(clockButton).toHaveCSS('background-color', 'rgb(47, 118, 89)');
+  await expect(clockButton).toHaveCSS('background-color', await colorToken(clockButton, '--primary'));
   await clockButton.click();
   await expect.poll(() => api.clockPayloads.length).toBe(1);
   expect(api.clockPayloads[0]).toMatchObject({
