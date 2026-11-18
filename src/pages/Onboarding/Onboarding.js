@@ -69,7 +69,6 @@ export default function Onboarding() {
     getRequest("WorkStatus/Assets").then((res) => setAssetMaster((res.data || []).map((a) => a.assetName))).catch(() => {});
     getRequest("WorkStatus/Activities").then((res) => setActivityMaster((res.data || []).map((a) => a.activityName))).catch(() => {});
     fetchList();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchList = () => {

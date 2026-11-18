@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, X, Calendar, Clock, Eye, EyeOff, Check, Trash2 } from "lucide-react";
+import { ChevronDown, X, Calendar, Eye, EyeOff, Check, Trash2 } from "lucide-react";
 
 /* ── CSS injected once ── */
 const FORM_STYLES = `
@@ -813,7 +813,7 @@ export function FormDate({ label, required, hint, error, value, onChange, disabl
 }
 
 /* ── FormTime ── */
-export function FormTime({ label, required, hint, error, ...props }) {
+export function FormTime({ label, required, hint: _hint, error, ...props }) {
   injectStyles();
   return (
     <div className="fc-group">

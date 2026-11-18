@@ -55,7 +55,8 @@ export default function WorkStatusReport() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { if (allowed) run(); /* eslint-disable-next-line */ }, [allowed]);
+  useEffect(() => { if (allowed) run(); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allowed]);
 
   if (!allowed) {
     return <div style={{ padding: 24, color: "var(--text-muted)" }}>The Work Status report is not available for your role.</div>;
